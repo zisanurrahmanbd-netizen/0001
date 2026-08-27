@@ -1,14 +1,62 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full bg-slate-950 text-slate-100">
+<html lang="en" class="h-full dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sign In - Bank File Tracking & Recovery System</title>
+
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'light') {
+                document.documentElement.classList.remove('dark');
+            } else {
+                document.documentElement.classList.add('dark');
+            }
+        })();
+    </script>
+
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class'
+        }
+    </script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
+
+    <style>
+        html:not(.dark) body { background-color: #f8fafc !important; color: #1e293b !important; }
+        html:not(.dark) .bg-slate-950 { background-color: #f8fafc !important; }
+        html:not(.dark) .bg-slate-900 { background-color: #ffffff !important; box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.1); }
+        html:not(.dark) .bg-slate-800 { background-color: #f1f5f9 !important; }
+        html:not(.dark) .border-slate-800 { border-color: #e2e8f0 !important; }
+        html:not(.dark) .border-slate-700 { border-color: #cbd5e1 !important; }
+        html:not(.dark) .text-white { color: #0f172a !important; }
+        html:not(.dark) .text-slate-200 { color: #1e293b !important; }
+        html:not(.dark) .text-slate-300 { color: #334155 !important; }
+        html:not(.dark) .text-slate-400 { color: #64748b !important; }
+        html:not(.dark) input { background-color: #ffffff !important; color: #0f172a !important; border-color: #cbd5e1 !important; }
+    </style>
 </head>
-<body class="h-full flex items-center justify-center p-4 sm:p-6 bg-slate-950 text-slate-200">
+<body class="h-full flex items-center justify-center p-4 sm:p-6 bg-slate-950 text-slate-200 relative">
+
+<!-- Theme toggle on Login screen -->
+<div class="absolute top-4 right-4">
+    <button type="button"
+            onclick="toggleTheme()"
+            title="Toggle Light / Dark Mode"
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 text-xs font-semibold shadow-sm transition-all">
+        <span class="hidden dark:inline-flex items-center gap-1.5 text-amber-300">
+            <i class="fa-solid fa-sun text-sm"></i>
+            <span>Light Mode</span>
+        </span>
+        <span class="inline-flex dark:hidden items-center gap-1.5 text-indigo-600">
+            <i class="fa-solid fa-moon text-sm"></i>
+            <span>Dark Mode</span>
+        </span>
+    </button>
+</div>
 
 <div class="w-full max-w-md" x-data="{
     fillCredentials(email, password) {
@@ -136,6 +184,18 @@
     </p>
 
 </div>
+
+<script>
+function toggleTheme() {
+    if (document.documentElement.classList.contains('dark')) {
+        document.documentElement.classList.remove('dark');
+        localStorage.setItem('theme', 'light');
+    } else {
+        document.documentElement.classList.add('dark');
+        localStorage.setItem('theme', 'dark');
+    }
+}
+</script>
 
 </body>
 </html>

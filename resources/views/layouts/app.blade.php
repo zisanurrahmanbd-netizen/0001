@@ -1,10 +1,22 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full bg-slate-900 text-slate-100">
+<html lang="en" class="h-full dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Dashboard') - Bank File Tracking & Recovery System</title>
+
+    <!-- Theme Initialization Script (Prevents flash of incorrect theme) -->
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'light') {
+                document.documentElement.classList.remove('dark');
+            } else {
+                document.documentElement.classList.add('dark');
+            }
+        })();
+    </script>
 
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -53,6 +65,101 @@
         .custom-scrollbar::-webkit-scrollbar-track { background: #0f172a; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+        /* ================= LIGHT MODE COMPREHENSIVE STYLES ================= */
+        html:not(.dark) body {
+            background-color: #f8fafc !important;
+            color: #1e293b !important;
+        }
+        html:not(.dark) .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+        html:not(.dark) .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; }
+        html:not(.dark) .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        html:not(.dark) .bg-slate-950,
+        html:not(.dark) .bg-slate-950\/80,
+        html:not(.dark) .bg-slate-950\/70,
+        html:not(.dark) .bg-slate-950\/60,
+        html:not(.dark) .bg-slate-950\/40 {
+            background-color: #f1f5f9 !important;
+        }
+
+        html:not(.dark) .bg-slate-900 {
+            background-color: #ffffff !important;
+            box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px -1px rgb(0 0 0 / 0.05);
+        }
+
+        html:not(.dark) .bg-slate-850 {
+            background-color: #f8fafc !important;
+        }
+
+        html:not(.dark) .bg-slate-800,
+        html:not(.dark) .bg-slate-800\/80,
+        html:not(.dark) .bg-slate-800\/60,
+        html:not(.dark) .bg-slate-800\/50,
+        html:not(.dark) .bg-slate-800\/40 {
+            background-color: #e2e8f0 !important;
+        }
+
+        html:not(.dark) .border-slate-800,
+        html:not(.dark) .border-slate-800\/80,
+        html:not(.dark) .border-slate-800\/60,
+        html:not(.dark) .border-slate-800\/50,
+        html:not(.dark) .border-slate-700,
+        html:not(.dark) .border-slate-700\/60,
+        html:not(.dark) .border-slate-700\/50,
+        html:not(.dark) .divide-slate-800,
+        html:not(.dark) .divide-slate-800\/60 {
+            border-color: #e2e8f0 !important;
+        }
+
+        html:not(.dark) .text-white,
+        html:not(.dark) .text-slate-100,
+        html:not(.dark) .text-slate-200 {
+            color: #0f172a !important;
+        }
+
+        html:not(.dark) .text-slate-300,
+        html:not(.dark) .text-slate-400 {
+            color: #475569 !important;
+        }
+
+        html:not(.dark) .text-slate-500 {
+            color: #64748b !important;
+        }
+
+        html:not(.dark) input,
+        html:not(.dark) select,
+        html:not(.dark) textarea {
+            background-color: #ffffff !important;
+            color: #0f172a !important;
+            border-color: #cbd5e1 !important;
+        }
+
+        html:not(.dark) input:focus,
+        html:not(.dark) select:focus,
+        html:not(.dark) textarea:focus {
+            background-color: #ffffff !important;
+            border-color: #10b981 !important;
+        }
+
+        html:not(.dark) tr:hover {
+            background-color: #f8fafc !important;
+        }
+
+        html:not(.dark) .text-amber-300 { color: #d97706 !important; }
+        html:not(.dark) .text-amber-200 { color: #b45309 !important; }
+        html:not(.dark) .text-emerald-400 { color: #059669 !important; }
+        html:not(.dark) .text-rose-400, html:not(.dark) .text-rose-300 { color: #e11d48 !important; }
+        html:not(.dark) .text-blue-400, html:not(.dark) .text-blue-300 { color: #2563eb !important; }
+        html:not(.dark) .text-indigo-400, html:not(.dark) .text-indigo-300 { color: #4f46e5 !important; }
+        html:not(.dark) .text-purple-400, html:not(.dark) .text-purple-300 { color: #9333ea !important; }
+
+        html:not(.dark) .bg-emerald-950, html:not(.dark) .bg-emerald-950\/80 { background-color: #ecfdf5 !important; color: #065f46 !important; border-color: #a7f3d0 !important; }
+        html:not(.dark) .bg-amber-950, html:not(.dark) .bg-amber-950\/40 { background-color: #fffbeb !important; color: #92400e !important; border-color: #fde68a !important; }
+        html:not(.dark) .bg-rose-950, html:not(.dark) .bg-rose-950\/80 { background-color: #fff1f2 !important; color: #9f1239 !important; border-color: #fecdd3 !important; }
+        html:not(.dark) .bg-blue-950, html:not(.dark) .bg-blue-950\/80 { background-color: #eff6ff !important; color: #1e40af !important; border-color: #bfdbfe !important; }
+        html:not(.dark) .bg-indigo-950, html:not(.dark) .bg-indigo-950\/50, html:not(.dark) .bg-indigo-950\/40 { background-color: #eef2ff !important; color: #3730a3 !important; border-color: #c7d2fe !important; }
+        html:not(.dark) .bg-purple-950, html:not(.dark) .bg-purple-950\/80 { background-color: #faf5ff !important; color: #6b21a8 !important; border-color: #e9d5ff !important; }
     </style>
     @stack('styles')
 </head>
@@ -214,6 +321,21 @@
                     </div>
                 @endif
 
+                <!-- Dark / Light Mode Toggle Button (Always visible on header) -->
+                <button type="button"
+                        onclick="toggleTheme()"
+                        title="Toggle Dark / Light Mode"
+                        class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/80 transition-all text-xs font-semibold shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50">
+                    <span class="hidden dark:inline-flex items-center gap-1.5 text-amber-300">
+                        <i class="fa-solid fa-sun text-sm"></i>
+                        <span class="hidden sm:inline text-[11px] font-medium">Light</span>
+                    </span>
+                    <span class="inline-flex dark:hidden items-center gap-1.5 text-indigo-600">
+                        <i class="fa-solid fa-moon text-sm"></i>
+                        <span class="hidden sm:inline text-[11px] font-medium">Dark</span>
+                    </span>
+                </button>
+
                 <div class="hidden sm:flex items-center gap-2 text-xs text-slate-400">
                     <i class="fa-regular fa-clock"></i>
                     <span>{{ now()->format('d M, Y') }}</span>
@@ -323,6 +445,18 @@
 })();
 </script>
 @endif
+
+<script>
+function toggleTheme() {
+    if (document.documentElement.classList.contains('dark')) {
+        document.documentElement.classList.remove('dark');
+        localStorage.setItem('theme', 'light');
+    } else {
+        document.documentElement.classList.add('dark');
+        localStorage.setItem('theme', 'dark');
+    }
+}
+</script>
 
 @stack('scripts')
 </body>

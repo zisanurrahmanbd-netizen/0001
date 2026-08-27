@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-900 text-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>@yield('title', 'Dashboard') - Bank File Tracking & Recovery System</title>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                            900: '#14532d',
+                        },
+                        navy: {
+                            800: '#1e293b',
+                            850: '#172033',
+                            900: '#0f172a',
+                            950: '#090d16',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Alpine.js CDN -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
+
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Leaflet.js CSS & JS for OpenStreetMap -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <style>
+        [x-cloak] { display: none !important; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #0f172a; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #475569; }
+    </style>
+    @stack('styles')
+</head>
+<body class="h-full font-sans antialiased bg-slate-950 text-slate-200" x-data="{ sidebarOpen: false }">
+
+<div class="min-h-full flex flex-col lg:flex-row">
+
+    <!-- Mobile Sidebar Backdrop -->
+    <div x-show="sidebarOpen" x-cloak class="fixed inset-0 z-40 bg-slate-950/80 backdrop-blur-sm lg:hidden" @click="sidebarOpen = false"></div>
+
+    <!-- Sidebar -->
+    <aside :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
+           class="fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 border-r border-slate-800 flex flex-col transition-transform duration-300 ease-in-out">
+        
+        <!-- App Brand Header -->
+        <div class="h-16 flex items-center justify-between px-5 bg-slate-900 border-b border-slate-800">
+            <a href="{{ route('dashboard') }}" class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-lg bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold text-lg shadow-sm">
+                    <i class="fa-solid fa-vault"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-base text-white tracking-wide leading-tight">BankRecovery</h1>
+                    <p class="text-[10px] text-emerald-400 font-medium tracking-wider uppercase">File Tracking & GPS</p>
+                </div>
+            </a>
+            <button @click="sidebarOpen = false" class="lg:hidden text-slate-400 hover:text-white">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+        </div>
+
+        <!-- Navigation Links -->
+        <div class="flex-1 overflow-y-auto px-3 py-4 space-y-1 custom-scrollbar">
+            
+            <div class="px-3 pb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Core Navigation</div>
+
+            <a href="{{ route('dashboard') }}"
+               class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors {{ request()->routeIs('dashboard') ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-900/30' : 'text-slate-300 hover:bg-slate-800/80 hover:text-white' }}">
+                <i class="fa-solid fa-chart-pie w-5 text-center {{ request()->routeIs('dashboard') ? 'text-white' : 'text-slate-400' }}"></i>
+                <span>Dashboard</span>
+            </a>
+
+            <a href="{{ route('cases.index') }}"
+               class="flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors {{ request()->routeIs('cases.*') ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-900/30' : 'text-slate-300 hover:bg-slate-800/80 hover:text-white' }}">
+                <div class="flex items-center gap-3">
+                    <i class="fa-solid fa-folder-open w-5 text-center {{ request()->routeIs('cases.*') ? 'text-white' : 'text-slate-400' }}"></i>
+                    <span>Recovery Cases</span>
+                </div>
+            </a>
+
+            @if(auth()->user()->isAdmin() || auth()->user()->isManager())
+                <a href="{{ route('tracking.map') }}"
+                   class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors {{ request()->routeIs('tracking.map') ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-900/30' : 'text-slate-300 hover:bg-slate-800/80 hover:text-white' }}">
+                    <i class="fa-solid fa-map-location-dot w-5 text-center {{ request()->routeIs('tracking.map') ? 'text-white' : 'text-slate-400' }}"></i>
+                    <span>Live Agent Map</span>
+                    <span class="ml-auto w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                </a>
+            @endif
+
+            <div class="pt-5 px-3 pb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Reports & Insights</div>
+
+            <a href="{{ route('reports.agent-performance') }}"
+               class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors {{ request()->routeIs('reports.agent-performance') ? 'bg-slate-800 text-emerald-400 font-semibold' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200' }}">
+                <i class="fa-solid fa-user-check w-5 text-center"></i>
+                <span>Agent Performance</span>
+            </a>
+
+            <a href="{{ route('reports.expiry-tracker') }}"
+               class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors {{ request()->routeIs('reports.expiry-tracker') ? 'bg-slate-800 text-emerald-400 font-semibold' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200' }}">
+                <i class="fa-solid fa-clock w-5 text-center"></i>
+                <span>Expiry Matrix</span>
+            </a>
+
+            <a href="{{ route('reports.flagged-status') }}"
+               class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors {{ request()->routeIs('reports.flagged-status') ? 'bg-slate-800 text-emerald-400 font-semibold' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200' }}">
+                <i class="fa-solid fa-triangle-exclamation w-5 text-center text-amber-400"></i>
+                <span>Flagged / Legal Cases</span>
+            </a>
+
+            <div class="pt-5 px-3 pb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Administration</div>
+
+            <a href="{{ route('contacts.index') }}"
+               class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors {{ request()->routeIs('contacts.*') ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800/80 hover:text-white' }}">
+                <i class="fa-solid fa-address-book w-5 text-center {{ request()->routeIs('contacts.*') ? 'text-white' : 'text-slate-400' }}"></i>
+                <span>Bank Contacts</span>
+            </a>
+
+            @if(auth()->user()->isAdmin())
+                <a href="{{ route('imports.index') }}"
+                   class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors {{ request()->routeIs('imports.*') ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800/80 hover:text-white' }}">
+                    <i class="fa-solid fa-file-excel w-5 text-center {{ request()->routeIs('imports.*') ? 'text-white' : 'text-slate-400' }}"></i>
+                    <span>Excel Importer</span>
+                </a>
+            @endif
+
+            @if(auth()->user()->isAdmin() || auth()->user()->isManager())
+                <a href="{{ route('users.index') }}"
+                   class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors {{ request()->routeIs('users.*') ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800/80 hover:text-white' }}">
+                    <i class="fa-solid fa-users-gear w-5 text-center {{ request()->routeIs('users.*') ? 'text-white' : 'text-slate-400' }}"></i>
+                    <span>Team & Users</span>
+                </a>
+            @endif
+        </div>
+
+        <!-- User Profile Bar -->
+        <div class="p-3 bg-slate-900 border-t border-slate-800">
+            <div class="flex items-center gap-3 px-2 py-2 rounded-lg bg-slate-800/60 border border-slate-700/50">
+                <div class="w-9 h-9 rounded-full bg-slate-700 border border-slate-600 flex items-center justify-center font-bold text-white text-xs">
+                    {{ strtoupper(substr(auth()->user()->name, 0, 2)) }}
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-xs font-semibold text-white truncate">{{ auth()->user()->name }}</p>
+                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium tracking-wide uppercase
+                        {{ auth()->user()->isAdmin() ? 'bg-purple-950/80 text-purple-300 border border-purple-800/50' : (auth()->user()->isManager() ? 'bg-blue-950/80 text-blue-300 border border-blue-800/50' : 'bg-emerald-950/80 text-emerald-300 border border-emerald-800/50') }}">
+                        {{ auth()->user()->roles->first()?->name ?? 'User' }}
+                    </span>
+                </div>
+                <form method="POST" action="{{ route('logout') }}">
+                    @csrf
+                    <button type="submit" title="Logout" class="text-slate-400 hover:text-rose-400 p-1.5 rounded transition-colors">
+                        <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <div class="flex-1 flex flex-col min-w-0 lg:pl-64">
+        
+        <!-- Top Navbar -->
+        <header class="h-16 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-4 sm:px-6 lg:px-8 sticky top-0 z-30">
+            
+            <div class="flex items-center gap-3 flex-1 max-w-xl">
+                <button @click="sidebarOpen = true" class="lg:hidden p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800">
+                    <i class="fa-solid fa-bars text-lg"></i>
+                </button>
+
+                <!-- Single-Box Global Search -->
+                <form action="{{ route('quick-search') }}" method="GET" class="relative w-full">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                        <i class="fa-solid fa-magnifying-glass text-xs"></i>
+                    </div>
+                    <input type="text"
+                           name="q"
+                           value="{{ request('q') }}"
+                           placeholder="Search File No, A/C No, Customer Name, Phone..."
+                           class="w-full pl-9 pr-4 py-1.5 text-xs sm:text-sm bg-slate-950 border border-slate-800 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all">
+                </form>
+            </div>
+
+            <!-- Header Right Section -->
+            <div class="flex items-center gap-3 sm:gap-4">
+                
+                <!-- Live GPS Status Indicator for Agents -->
+                @if(auth()->user()->isAgent())
+                    <div id="gps-status-indicator" class="flex items-center gap-2 px-2.5 py-1 rounded-full bg-slate-800 border border-slate-700 text-[11px] font-medium text-slate-300">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                        <span class="hidden sm:inline">GPS Active</span>
+                    </div>
+                @endif
+
+                <div class="hidden sm:flex items-center gap-2 text-xs text-slate-400">
+                    <i class="fa-regular fa-clock"></i>
+                    <span>{{ now()->format('d M, Y') }}</span>
+                </div>
+
+                <div class="h-6 w-px bg-slate-800"></div>
+
+                <!-- Role Pill -->
+                <div class="flex items-center gap-2">
+                    <span class="text-xs text-slate-300 font-medium hidden md:inline">{{ auth()->user()->name }}</span>
+                    <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full uppercase
+                        {{ auth()->user()->isAdmin() ? 'bg-purple-900/50 text-purple-300 border border-purple-700/50' : (auth()->user()->isManager() ? 'bg-blue-900/50 text-blue-300 border border-blue-700/50' : 'bg-emerald-900/50 text-emerald-300 border border-emerald-700/50') }}">
+                        {{ auth()->user()->roles->first()?->name ?? 'User' }}
+                    </span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Body -->
+        <main class="flex-1 p-4 sm:p-6 lg:p-8">
+
+            <!-- Flash Message Alerts -->
+            @if(session('success'))
+                <div class="mb-5 flex items-center justify-between p-4 rounded-lg bg-emerald-950/80 border border-emerald-800/80 text-emerald-200 text-sm shadow-sm" x-data="{ show: true }" x-show="show">
+                    <div class="flex items-center gap-3">
+                        <i class="fa-solid fa-circle-check text-emerald-400 text-base"></i>
+                        <span>{{ session('success') }}</span>
+                    </div>
+                    <button @click="show = false" class="text-emerald-400 hover:text-emerald-200"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+            @endif
+
+            @if(session('info'))
+                <div class="mb-5 flex items-center justify-between p-4 rounded-lg bg-blue-950/80 border border-blue-800/80 text-blue-200 text-sm shadow-sm" x-data="{ show: true }" x-show="show">
+                    <div class="flex items-center gap-3">
+                        <i class="fa-solid fa-circle-info text-blue-400 text-base"></i>
+                        <span>{{ session('info') }}</span>
+                    </div>
+                    <button @click="show = false" class="text-blue-400 hover:text-blue-200"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+            @endif
+
+            @if(session('warning'))
+                <div class="mb-5 flex items-center justify-between p-4 rounded-lg bg-amber-950/80 border border-amber-800/80 text-amber-200 text-sm shadow-sm" x-data="{ show: true }" x-show="show">
+                    <div class="flex items-center gap-3">
+                        <i class="fa-solid fa-triangle-exclamation text-amber-400 text-base"></i>
+                        <span>{{ session('warning') }}</span>
+                    </div>
+                    <button @click="show = false" class="text-amber-400 hover:text-amber-200"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+            @endif
+
+            @if($errors->any())
+                <div class="mb-5 p-4 rounded-lg bg-rose-950/80 border border-rose-800/80 text-rose-200 text-sm shadow-sm">
+                    <div class="flex items-center gap-2 font-semibold mb-1 text-rose-300">
+                        <i class="fa-solid fa-circle-exclamation"></i>
+                        <span>Please fix the following errors:</span>
+                    </div>
+                    <ul class="list-disc list-inside space-y-0.5 text-xs text-rose-200">
+                        @foreach($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
+            @yield('content')
+        </main>
+    </div>
+</div>
+
+<!-- Silent Background GPS Location Ping for Field Agents -->
+@if(auth()->check() && auth()->user()->isAgent())
+<script>
+(function() {
+    function pingCurrentLocation() {
+        if (!navigator.geolocation) return;
+
+        navigator.geolocation.getCurrentPosition(
+            function(position) {
+                fetch('{{ route('agent.ping-location') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        latitude: position.coords.latitude,
+                        longitude: position.coords.longitude,
+                        accuracy: position.coords.accuracy,
+                        speed: position.coords.speed,
+                        heading: position.coords.heading
+                    })
+                }).catch(err => console.debug('Location ping failed:', err));
+            },
+            function(err) {
+                console.debug('Geolocation watch warning:', err.message);
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
+        );
+    }
+
+    // Ping immediately on load, and then every 2 minutes
+    pingCurrentLocation();
+    setInterval(pingCurrentLocation, 120000);
+})();
+</script>
+@endif
+
+@stack('scripts')
+</body>
+</html>

@@ -7,12 +7,18 @@
     showCheckInModal: false,
     showCollectionModal: false,
     showReassignModal: false,
+    showRemarkModal: false,
     checkInType: 'present',
     latitude: '',
     longitude: '',
     accuracy: '',
     gpsError: '',
     gpsCapturing: false,
+
+    // Remarks form state
+    contactStatus: 'contacted',
+    commType: 'phone',
+    ptpCommitted: 'no',
 
     captureGps() {
         if (!navigator.geolocation) {
@@ -81,6 +87,14 @@
             <!-- Right Action Buttons -->
             <div class="flex flex-wrap items-center gap-2.5">
                 
+                <!-- Add Field Remark Button -->
+                <button type="button"
+                        @click="showRemarkModal = true"
+                        class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-sm transition-all">
+                    <i class="fa-solid fa-comment-dots"></i>
+                    <span>Add Remark</span>
+                </button>
+
                 <!-- GPS Check-In Button -->
                 <button type="button"
                         @click="showCheckInModal = true; captureGps()"
@@ -222,6 +236,99 @@
                         </p>
                     </div>
 
+                </div>
+            </div>
+
+            <!-- Field Remarks & Follow-Up Log Card -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm">
+                <div class="flex items-center justify-between pb-3 mb-4 border-b border-slate-800">
+                    <h3 class="text-sm font-semibold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-comments text-indigo-400"></i>
+                        <span>Field Remarks & Follow-up Log ({{ $case->remarks->count() }})</span>
+                    </h3>
+                    <button type="button" @click="showRemarkModal = true" class="text-xs text-indigo-400 hover:text-indigo-300 font-medium flex items-center gap-1">
+                        <i class="fa-solid fa-plus text-[10px]"></i> Add Remark
+                    </button>
+                </div>
+
+                <div class="space-y-4">
+                    @forelse($case->remarks as $rem)
+                        <div class="p-4 rounded-xl bg-slate-950/70 border border-slate-800/80 hover:border-slate-700 transition-colors">
+                            <div class="flex flex-wrap items-center justify-between gap-2 mb-2 pb-2 border-b border-slate-900">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-300 flex items-center justify-center text-[10px] font-bold">
+                                        {{ substr($rem->agent?->name ?? 'A', 0, 1) }}
+                                    </div>
+                                    <div>
+                                        <span class="font-bold text-white text-xs">{{ $rem->agent?->name ?? 'Agent' }}</span>
+                                        <span class="text-[10px] text-slate-500 ml-1">({{ $rem->created_at->format('d M Y, h:i A') }})</span>
+                                    </div>
+                                </div>
+                                <div class="flex flex-wrap items-center gap-1.5">
+                                    <!-- Contact Status Badge -->
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold
+                                        {{ $rem->contact_status === 'contacted' ? 'bg-emerald-950 text-emerald-300 border border-emerald-800' : 'bg-slate-800 text-slate-400 border border-slate-700' }}">
+                                        {{ $rem->contact_status_label }}
+                                    </span>
+
+                                    <!-- Communication Type Badge -->
+                                    @if($rem->communication_type)
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-950 text-indigo-300 border border-indigo-800">
+                                            <i class="fa-solid {{ $rem->communication_type === 'phone' ? 'fa-phone' : ($rem->communication_type === 'physical_visit' ? 'fa-person-walking' : 'fa-users') }} mr-1 text-[9px]"></i>
+                                            {{ $rem->communication_label }}
+                                        </span>
+                                    @endif
+                                </div>
+                            </div>
+
+                            <!-- PTP Callout Box if committed -->
+                            @if($rem->ptp_committed)
+                                <div class="mb-3 p-2.5 rounded-lg bg-amber-950/40 border border-amber-800/60 flex items-center justify-between text-xs">
+                                    <div class="flex items-center gap-2">
+                                        <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+                                        <span class="text-amber-300 font-semibold">Committed to Pay (PTP):</span>
+                                        <span class="text-amber-200 font-bold">৳ {{ number_format($rem->ptp_amount ?? 0, 2) }}</span>
+                                    </div>
+                                    @if($rem->ptp_date)
+                                        <span class="text-amber-400/90 text-[11px] font-mono">
+                                            Target Date: {{ $rem->ptp_date->format('d M, Y') }}
+                                        </span>
+                                    @endif
+                                </div>
+                            @endif
+
+                            <!-- New Traced Information Callout -->
+                            @if($rem->new_address || $rem->new_contact_no)
+                                <div class="mb-3 p-2.5 rounded-lg bg-blue-950/40 border border-blue-800/60 space-y-1 text-xs">
+                                    @if($rem->new_contact_no)
+                                        <div class="flex items-center gap-1.5 text-blue-300">
+                                            <i class="fa-solid fa-phone text-[10px]"></i>
+                                            <span class="font-semibold">New Contact Number:</span>
+                                            <span class="text-white font-mono">{{ $rem->new_contact_no }}</span>
+                                        </div>
+                                    @endif
+                                    @if($rem->new_address)
+                                        <div class="flex items-start gap-1.5 text-blue-300">
+                                            <i class="fa-solid fa-location-dot text-[10px] mt-0.5"></i>
+                                            <span class="font-semibold shrink-0">New Address Discovered:</span>
+                                            <span class="text-slate-200">{{ $rem->new_address }}</span>
+                                        </div>
+                                    @endif
+                                </div>
+                            @endif
+
+                            <!-- Remark Body Text -->
+                            <p class="text-xs text-slate-200 leading-relaxed whitespace-pre-line">{{ $rem->remark }}</p>
+                        </div>
+                    @empty
+                        <div class="py-8 text-center text-slate-500 bg-slate-950/40 rounded-xl border border-slate-800/50">
+                            <i class="fa-solid fa-comment-slash text-3xl text-slate-700 block mb-2"></i>
+                            <p class="text-xs">No field remarks logged yet for this case.</p>
+                            <button type="button" @click="showRemarkModal = true" class="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold">
+                                <i class="fa-solid fa-plus text-[10px]"></i> Add First Remark
+                            </button>
+                        </div>
+                    @endforelse
                 </div>
             </div>
 
@@ -391,6 +498,173 @@
 
         </div>
 
+    </div>
+
+    <!-- ================= MODALS ================= -->
+
+    <!-- Add Field Remark Modal -->
+    <div x-show="showRemarkModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto" role="dialog" aria-modal="true">
+        <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm transition-opacity" @click="showRemarkModal = false"></div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+            <div class="inline-block align-bottom bg-slate-900 border border-slate-800 rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-xl sm:w-full p-6">
+                <div class="flex items-center justify-between pb-3 mb-4 border-b border-slate-800">
+                    <h3 class="text-base font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-comment-dots text-indigo-400"></i>
+                        <span>Add Field Remark & Follow-up</span>
+                    </h3>
+                    <button @click="showRemarkModal = false" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+
+                <form method="POST" action="{{ route('cases.remarks.store', $case->id) }}" class="space-y-4">
+                    @csrf
+
+                    <!-- Case Context Summary Card (Matches the Form Header) -->
+                    <div class="p-3.5 rounded-xl bg-slate-950 border border-slate-800 grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs">
+                        <div>
+                            <span class="text-[10px] uppercase font-semibold text-slate-500 block">Bank Name</span>
+                            <span class="font-bold text-slate-200">{{ $case->bank?->name }}</span>
+                        </div>
+                        <div>
+                            <span class="text-[10px] uppercase font-semibold text-slate-500 block">File Type</span>
+                            <span class="font-bold text-indigo-300">{{ $case->product?->name }}</span>
+                        </div>
+                        <div>
+                            <span class="text-[10px] uppercase font-semibold text-slate-500 block">Agent Name</span>
+                            <span class="font-bold text-slate-200">{{ auth()->user()->name }}</span>
+                        </div>
+                        <div>
+                            <span class="text-[10px] uppercase font-semibold text-slate-500 block">File NO / Client ID</span>
+                            <span class="font-mono text-emerald-400">{{ $case->file_number }}</span>
+                        </div>
+                        <div class="sm:col-span-2">
+                            <span class="text-[10px] uppercase font-semibold text-slate-500 block">Customer Name</span>
+                            <span class="font-bold text-white">{{ $case->customer_name }}</span>
+                        </div>
+                    </div>
+
+                    <!-- 1. Contact Status (Radio) -->
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+                            Contact Status <span class="text-rose-400">*</span>
+                        </label>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                            <label class="flex items-center gap-2.5 p-3 rounded-lg border cursor-pointer transition-all"
+                                   :class="contactStatus === 'contacted' ? 'bg-indigo-950/40 border-indigo-500 text-white' : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'">
+                                <input type="radio" name="contact_status" value="contacted" x-model="contactStatus" required class="text-indigo-600 focus:ring-indigo-500">
+                                <span class="text-xs font-medium">Contacted with Customer</span>
+                            </label>
+                            <label class="flex items-center gap-2.5 p-3 rounded-lg border cursor-pointer transition-all"
+                                   :class="contactStatus === 'not_contacted' ? 'bg-indigo-950/40 border-indigo-500 text-white' : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'">
+                                <input type="radio" name="contact_status" value="not_contacted" x-model="contactStatus" class="text-indigo-600 focus:ring-indigo-500">
+                                <span class="text-xs font-medium">Not Contacted yet</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- 2. Type of Communication (Radio) -->
+                    <div x-show="contactStatus === 'contacted'" x-transition>
+                        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+                            Type of Communication
+                        </label>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                            <label class="flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer text-xs transition-all"
+                                   :class="commType === 'phone' ? 'bg-indigo-950/50 border-indigo-500 text-white' : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'">
+                                <input type="radio" name="communication_type" value="phone" x-model="commType" class="text-indigo-600">
+                                <span>Over the Phone</span>
+                            </label>
+                            <label class="flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer text-xs transition-all"
+                                   :class="commType === 'physical_visit' ? 'bg-indigo-950/50 border-indigo-500 text-white' : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'">
+                                <input type="radio" name="communication_type" value="physical_visit" x-model="commType" class="text-indigo-600">
+                                <span>Physical Visit</span>
+                            </label>
+                            <label class="flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer text-xs transition-all"
+                                   :class="commType === 'family_member' ? 'bg-indigo-950/50 border-indigo-500 text-white' : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'">
+                                <input type="radio" name="communication_type" value="family_member" x-model="commType" class="text-indigo-600">
+                                <span>With Family Member</span>
+                            </label>
+                            <label class="flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer text-xs transition-all"
+                                   :class="commType === 'reference' ? 'bg-indigo-950/50 border-indigo-500 text-white' : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'">
+                                <input type="radio" name="communication_type" value="reference" x-model="commType" class="text-indigo-600">
+                                <span>Reference</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- 3. Dates -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Contact Date</label>
+                            <input type="date" name="contact_date" value="{{ date('Y-m-d') }}" class="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white focus:ring-1 focus:ring-indigo-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+                                If visit, Visit Date
+                            </label>
+                            <input type="date" name="visit_date" class="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white focus:ring-1 focus:ring-indigo-500">
+                        </div>
+                    </div>
+
+                    <!-- 4. PTP / Committed to pay (Radio) -->
+                    <div class="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800">
+                        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+                            PTP / Committed to pay
+                        </label>
+                        <div class="flex items-center gap-6 mb-3">
+                            <label class="flex items-center gap-2 cursor-pointer text-xs text-slate-300">
+                                <input type="radio" name="ptp_committed" value="yes" x-model="ptpCommitted" class="text-amber-500 focus:ring-amber-500">
+                                <span class="font-semibold text-amber-400">Yes</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer text-xs text-slate-300">
+                                <input type="radio" name="ptp_committed" value="no" x-model="ptpCommitted" class="text-slate-500">
+                                <span>No</span>
+                            </label>
+                        </div>
+
+                        <!-- Conditional PTP Details -->
+                        <div x-show="ptpCommitted === 'yes'" x-transition class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-800/80">
+                            <div>
+                                <label class="block text-[11px] font-semibold text-amber-300 uppercase tracking-wider mb-1">PTP Target Date</label>
+                                <input type="date" name="ptp_date" class="w-full px-3 py-2 bg-slate-900 border border-amber-500/40 rounded-lg text-xs text-white focus:ring-1 focus:ring-amber-500">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-semibold text-amber-300 uppercase tracking-wider mb-1">PTP Amount (BDT)</label>
+                                <input type="number" step="0.01" min="1" name="ptp_amount" placeholder="e.g. 25000" class="w-full px-3 py-2 bg-slate-900 border border-amber-500/40 rounded-lg text-xs font-bold text-amber-300 focus:ring-1 focus:ring-amber-500">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 5. Traced Details (New Address & Contact No) -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">New Contact No (If Found Any)</label>
+                            <input type="text" name="new_contact_no" placeholder="e.g. 01711-XXXXXX" class="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white placeholder-slate-500 focus:ring-1 focus:ring-indigo-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">New Address (If Found Any)</label>
+                            <input type="text" name="new_address" placeholder="e.g. Shifted to Plot 4, Road 2..." class="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white placeholder-slate-500 focus:ring-1 focus:ring-indigo-500">
+                        </div>
+                    </div>
+
+                    <!-- 6. Remark Detail Text -->
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+                            Remark <span class="text-rose-400">*</span>
+                        </label>
+                        <textarea name="remark" rows="3" required placeholder="Detailed outcome of conversation, reason for default, borrower behavior, agreement reached..." class="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white placeholder-slate-500 focus:ring-1 focus:ring-indigo-500"></textarea>
+                    </div>
+
+                    <!-- Submit Buttons -->
+                    <div class="flex items-center justify-end gap-3 pt-2 border-t border-slate-800">
+                        <button type="button" @click="showRemarkModal = false" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium">Cancel</button>
+                        <button type="submit" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold shadow-sm transition-all">
+                            <i class="fa-solid fa-floppy-disk mr-1.5"></i> Save Remark
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
 
     <!-- Check-In Modal with Live HTML5 Geolocation -->

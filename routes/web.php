@@ -4,6 +4,7 @@ use App\Http\Controllers\AgentTrackingController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BankContactController;
 use App\Http\Controllers\CaseController;
+use App\Http\Controllers\CaseRemarkController;
 use App\Http\Controllers\CheckInController;
 use App\Http\Controllers\CollectionController;
 use App\Http\Controllers\DashboardController;
@@ -49,8 +50,9 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::post('/cases/{id}/reassign', [CaseController::class, 'reassign'])->name('cases.reassign');
     });
 
-    // Check-in & Collection Recording (Field Agents & Managers)
+    // Check-in, Remarks & Collection Recording (Field Agents & Managers)
     Route::post('/cases/{id}/check-in', [CheckInController::class, 'store'])->name('cases.check-in');
+    Route::post('/cases/{id}/remarks', [CaseRemarkController::class, 'store'])->name('cases.remarks.store');
     Route::post('/cases/{id}/collections', [CollectionController::class, 'store'])->name('cases.collections');
 
     // Live GPS Map & Agent Tracking

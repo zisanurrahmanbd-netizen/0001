@@ -120,7 +120,7 @@ class CaseController extends Controller
     public function show(int $id, Request $request): View
     {
         $case = CaseFile::forUser($request->user())
-            ->with(['bank', 'product', 'agent', 'manager', 'checkIns.agent', 'collections.agent'])
+            ->with(['bank', 'product', 'agent', 'manager', 'checkIns.agent', 'collections.agent', 'remarks.agent'])
             ->findOrFail($id);
 
         $availableAgents = collect();

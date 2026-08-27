@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Bank;
 use App\Models\BankContact;
 use App\Models\CaseFile;
+use App\Models\CaseRemark;
 use App\Models\CheckIn;
 use App\Models\Collection;
 use App\Models\Product;
@@ -103,6 +104,47 @@ class DatabaseSeeder extends Seeder
         Collection::updateOrCreate(["case_file_id"=>$createdCases[5]->id,"receipt_number"=>"DBBL-REC-001"], ["agent_id"=>$agents[4]->id,"amount"=>38500.00,"payment_method"=>"bkash","receipt_number"=>"DBBL-REC-001","notes"=>"Full settlement. TrxID: BK20240823112233","collected_at"=>$now->copy()->subDays(5)]);
         Collection::updateOrCreate(["case_file_id"=>$createdCases[0]->id,"receipt_number"=>"ONE-CC-REC-001"],["agent_id"=>$agents[0]->id,"amount"=>15000.00,"payment_method"=>"cash","receipt_number"=>"ONE-CC-REC-001","notes"=>"Partial cash from customer spouse.","collected_at"=>$now->copy()->subDays(2)]);
 
-        $this->command->info("Seeded: Roles, 1 Admin, 2 Managers, 5 Agents, 3 Banks, 5 Products, 5 Contacts, 9 Cases, 3 Check-ins, 2 Collections");
+        // 11. Sample Case Remarks
+        CaseRemark::updateOrCreate(
+            ['case_file_id' => $createdCases[0]->id, 'agent_id' => $agents[0]->id, 'contact_date' => $now->copy()->subDays(3)->toDateString()],
+            [
+                'contact_status' => 'contacted',
+                'communication_type' => 'physical_visit',
+                'contact_date' => $now->copy()->subDays(3)->toDateString(),
+                'visit_date' => $now->copy()->subDays(3)->toDateString(),
+                'ptp_committed' => true,
+                'ptp_date' => $now->copy()->addDays(5)->toDateString(),
+                'ptp_amount' => 25000.00,
+                'new_contact_no' => '01819-334455',
+                'new_address' => 'Shop #12, Banani Super Market, Dhaka',
+                'remark' => 'Visited present address and met with debtor spouse. Debtor promised to deposit BDT 25,000 via bKash by next week.',
+            ]
+        );
+
+        CaseRemark::updateOrCreate(
+            ['case_file_id' => $createdCases[3]->id, 'agent_id' => $agents[0]->id, 'contact_date' => $now->copy()->subDays(10)->toDateString()],
+            [
+                'contact_status' => 'contacted',
+                'communication_type' => 'phone',
+                'contact_date' => $now->copy()->subDays(10)->toDateString(),
+                'ptp_committed' => true,
+                'ptp_date' => $now->copy()->subDays(5)->toDateString(),
+                'ptp_amount' => 50000.00,
+                'remark' => 'Called customer. Committed to pay 50k on 5 days ago, but payment bounced/not received (broken promise). Need to follow up with physical visit.',
+            ]
+        );
+
+        CaseRemark::updateOrCreate(
+            ['case_file_id' => $createdCases[6]->id, 'agent_id' => $agents[3]->id, 'contact_date' => $now->copy()->subDays(15)->toDateString()],
+            [
+                'contact_status' => 'not_contacted',
+                'communication_type' => null,
+                'contact_date' => $now->copy()->subDays(15)->toDateString(),
+                'ptp_committed' => false,
+                'remark' => 'Phone numbers unreachable. Neighbor at Halishahar mentioned customer left for Middle East 6 months ago.',
+            ]
+        );
+
+        $this->command->info("Seeded: Roles, 1 Admin, 2 Managers, 5 Agents, 3 Banks, 5 Products, 5 Contacts, 9 Cases, 3 Check-ins, 2 Collections, 3 Remarks");
     }
 }

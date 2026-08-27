@@ -87,6 +87,11 @@ class CaseFile extends Model
         return $this->hasMany(Collection::class, 'case_file_id')->latest('collected_at');
     }
 
+    public function remarks(): HasMany
+    {
+        return $this->hasMany(CaseRemark::class, 'case_file_id')->latest('created_at');
+    }
+
     /**
      * Scope query to strictly enforce role-based access control at the database level.
      */

@@ -1,8 +1,9 @@
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+﻿import React, { Component, ErrorInfo, ReactNode } from 'react';
 import ReactDOM from 'react-dom/client';
 import { App } from './App';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { BrandingProvider } from './context/BrandingContext';
 import './index.css';
 
 interface Props {
@@ -48,8 +49,6 @@ class ErrorBoundary extends Component<Props, State> {
     return this.props.children;
   }
 }
-
-import { BrandingProvider } from './context/BrandingContext';
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>

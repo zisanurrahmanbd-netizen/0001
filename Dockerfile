@@ -1,10 +1,7 @@
-﻿FROM php:8.3-fpm-alpine
+FROM php:8.3-cli-alpine
 
-# Install Nginx, Supervisor, dos2unix, PostgreSQL extensions, and performance libraries
+# Install system dependencies, PostgreSQL extensions, and performance libraries
 RUN apk add --no-cache \
-    nginx \
-    supervisor \
-    dos2unix \
     postgresql-dev \
     libzip-dev \
     zip \
@@ -17,9 +14,10 @@ RUN apk add --no-cache \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install pdo pdo_pgsql pgsql zip gd pcntl bcmath opcache
 
-# Configure PHP OPcache for fast memory execution
+# Configure OPcache for ultra-fast in-memory execution (including CLI workers)
 RUN { \
     echo 'opcache.enable=1'; \
+    echo 'opcache.enable_cli=1'; \
     echo 'opcache.memory_consumption=128'; \
     echo 'opcache.interned_strings_buffer=16'; \
     echo 'opcache.max_accelerated_files=10000'; \
@@ -30,20 +28,20 @@ RUN { \
 # Install Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-WORKDIR /var/www/html
-COPY . /var/www/html
+WORKDIR /app
+COPY . /app
 
 # Install dependencies without dev packages and optimize autoloader
 RUN composer install --no-dev --optimize-autoloader --no-interaction
 
-# Setup Nginx and Supervisor configuration
-RUN mkdir -p /etc/nginx/http.d /etc/supervisor/conf.d /var/log/supervisor /run/nginx /var/run /var/log \
-    && cp docker/nginx.conf /etc/nginx/http.d/default.conf \
-    && cp docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf \
-    && dos2unix /var/www/html/docker/entrypoint.sh \
-    && chmod -R 777 /var/www/html/storage /var/www/html/bootstrap/cache \
-    && chmod +x /var/www/html/docker/entrypoint.sh
+# Set full storage permissions
+RUN chmod -R 777 /app/storage /app/bootstrap/cache
 
+# Expose all possible Render ports
 EXPOSE 80 8000 10000
 
-CMD ["/var/www/html/docker/entrypoint.sh"]
+# Set 8 concurrent workers for fast parallel asset loading
+ENV PHP_CLI_SERVER_WORKERS=8
+
+# Start multi-worker server directly on Render's assigned $PORT
+CMD php artisan config:cache && php artisan route:cache && php artisan view:cache && php artisan serve --host=0.0.0.0 --port=${PORT:-8000}

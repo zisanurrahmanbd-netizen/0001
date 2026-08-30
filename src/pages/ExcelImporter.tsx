@@ -1,5 +1,5 @@
 ﻿import React, { useState } from 'react';
-import { TemplateService, PREBUILT_TEMPLATES } from '../services/templateService';
+import { TemplateService, PREBUILT_TEMPLATES, TemplateDefinition } from '../services/templateService';
 import { ExcelImporter, InspectResult, PreviewResult } from '../services/excelImporter';
 import { dataService } from '../services/dataService';
 import { 
@@ -13,11 +13,16 @@ import {
   FileCheck, 
   Layers, 
   ArrowRight,
-  Eye
+  Eye,
+  Edit3,
+  Save
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 export const ExcelImporterPage: React.FC = () => {
+  // Live editable templates state
+  const [templates, setTemplates] = useState<Record<string, TemplateDefinition>>(() => ({ ...PREBUILT_TEMPLATES }));
+
   // Upload workflow state
   const [file, setFile] = useState<File | null>(null);
   const [workbook, setWorkbook] = useState<XLSX.WorkBook | null>(null);
@@ -29,6 +34,7 @@ export const ExcelImporterPage: React.FC = () => {
 
   // Custom Template Builder state
   const [showBuilderModal, setShowBuilderModal] = useState(false);
+  const [editingTemplateKey, setEditingTemplateKey] = useState<string | null>(null);
   const [customBank, setCustomBank] = useState('One Bank Limited');
   const [customProduct, setCustomProduct] = useState('Credit Card');
   const [customHeaders, setCustomHeaders] = useState<string[]>([
@@ -87,9 +93,27 @@ export const ExcelImporterPage: React.FC = () => {
     }, 600);
   };
 
+  // Open Edit Modal for a specific pre-built template
+  const handleEditTemplate = (key: string, tpl: TemplateDefinition) => {
+    setEditingTemplateKey(key);
+    setCustomBank(tpl.bankName);
+    setCustomProduct(tpl.productName);
+    setCustomHeaders([...tpl.headers]);
+    setShowBuilderModal(true);
+  };
+
+  // Open Blank Template Creator
+  const handleCreateNewTemplate = () => {
+    setEditingTemplateKey(null);
+    setCustomBank('One Bank Limited');
+    setCustomProduct('Custom Product');
+    setCustomHeaders(['FILE_NO', 'ACCOUNT_NO', 'CUSTOMER_NAME', 'MOBILE_NO', 'PRESENT_ADDRESS', 'TOTAL_OUTSTANDING', 'OVERDUE_AMOUNT', 'EXPIRY_DATE']);
+    setShowBuilderModal(true);
+  };
+
   const addCustomHeader = () => {
     if (newColName.trim() && !customHeaders.includes(newColName.trim())) {
-      setCustomHeaders([...customHeaders, newColName.trim().toUpperCase()]);
+      setCustomHeaders([...customHeaders, newColName.trim().toUpperCase().replace(/\s+/g, '_')]);
       setNewColName('');
     }
   };
@@ -98,7 +122,20 @@ export const ExcelImporterPage: React.FC = () => {
     setCustomHeaders(customHeaders.filter((_, i) => i !== idx));
   };
 
-  const handleDownloadCustomTemplate = () => {
+  const handleSaveAndDownload = () => {
+    // If editing an existing template, update state
+    if (editingTemplateKey && templates[editingTemplateKey]) {
+      setTemplates({
+        ...templates,
+        [editingTemplateKey]: {
+          ...templates[editingTemplateKey],
+          bankName: customBank,
+          productName: customProduct,
+          headers: [...customHeaders],
+        }
+      });
+    }
+
     TemplateService.generateAndDownload(customBank, customProduct, customHeaders, [
       ['SAMPLE-001', 'ACC-12345', 'John Doe', '01711-000000', 'Dhaka, Bangladesh', 50000, 15000, '2026-10-31']
     ]);
@@ -114,22 +151,22 @@ export const ExcelImporterPage: React.FC = () => {
             Excel Ingestion & Template Studio
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Download standard bank schemas or customize headers and ingest recovery workbooks
+            Download standard bank schemas, customize column headers, or ingest recovery workbooks
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
-            onClick={() => setShowBuilderModal(true)}
+            onClick={handleCreateNewTemplate}
             className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-md shadow-purple-600/30 flex items-center gap-2 transition-all"
           >
             <Plus className="w-4 h-4" />
-            <span>Customize Template (.XLSX)</span>
+            <span>Create Custom Template</span>
           </button>
 
           <button
             onClick={() => TemplateService.downloadMasterWorkbook()}
-            className="px-3.5 py-2 rounded-xl bg-slate-900 dark:bg-slate-800 text-white font-bold text-xs hover:bg-slate-800 flex items-center gap-2 transition-all border border-slate-700"
+            className="px-3.5 py-2 rounded-xl bg-slate-900 dark:bg-slate-800 text-white font-bold text-xs hover:bg-slate-800 flex items-center gap-2 transition-all border border-slate-700/50"
           >
             <Download className="w-4 h-4" />
             <span>Master Multi-Bank Workbook</span>
@@ -144,32 +181,60 @@ export const ExcelImporterPage: React.FC = () => {
         </div>
       )}
 
-      {/* Pre-built Templates Grid */}
+      {/* Pre-built Templates Grid with Edit & Download actions */}
       <div>
-        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
-          Pre-Built Institutional Recovery Templates
-        </h3>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+            Institutional Recovery Templates (Editable Formats)
+          </h3>
+          <span className="text-xs text-slate-400 font-medium">Click "Edit Format" to add/remove columns</span>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {Object.values(PREBUILT_TEMPLATES).map(tpl => (
-            <div key={tpl.type} className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between space-y-3">
+          {Object.entries(templates).map(([key, tpl]) => (
+            <div key={key} className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between space-y-4">
               <div>
                 <div className="flex items-center justify-between">
-                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 uppercase">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 uppercase">
                     {tpl.badge}
                   </span>
-                  <span className="text-[11px] font-mono text-slate-400">{tpl.headers.length} cols</span>
+                  <span className="text-[11px] font-mono text-slate-400 font-bold">{tpl.headers.length} columns</span>
                 </div>
                 <h4 className="font-bold text-slate-900 dark:text-white text-sm mt-2">{tpl.name}</h4>
                 <p className="text-xs text-slate-500 mt-1">{tpl.description}</p>
+                <div className="mt-3 flex flex-wrap gap-1">
+                  {tpl.headers.slice(0, 4).map((h, i) => (
+                    <span key={i} className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                      {h}
+                    </span>
+                  ))}
+                  {tpl.headers.length > 4 && (
+                    <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-400">
+                      +{tpl.headers.length - 4} more
+                    </span>
+                  )}
+                </div>
               </div>
 
-              <button
-                onClick={() => TemplateService.downloadTemplate(tpl.type)}
-                className="w-full py-2 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-emerald-600 hover:text-white dark:hover:bg-emerald-600 text-slate-700 dark:text-slate-300 font-bold text-xs flex items-center justify-center gap-1.5 transition-all"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>Download Sample Sheet</span>
-              </button>
+              {/* Action Buttons: Edit Format & Download */}
+              <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 dark:border-slate-800/80">
+                <button
+                  onClick={() => handleEditTemplate(key, tpl)}
+                  className="py-2 px-3 rounded-xl bg-purple-500/10 hover:bg-purple-600 hover:text-white text-purple-600 dark:text-purple-400 font-bold text-xs flex items-center justify-center gap-1.5 transition-all"
+                  title="Customize column headers for this format"
+                >
+                  <Edit3 className="w-3.5 h-3.5" />
+                  <span>Edit Format</span>
+                </button>
+
+                <button
+                  onClick={() => TemplateService.generateAndDownload(tpl.bankName, tpl.productName, tpl.headers, [tpl.sampleRow])}
+                  className="py-2 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-emerald-600 hover:text-white dark:hover:bg-emerald-600 text-slate-700 dark:text-slate-300 font-bold text-xs flex items-center justify-center gap-1.5 transition-all"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Download</span>
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -276,14 +341,14 @@ export const ExcelImporterPage: React.FC = () => {
         )}
       </div>
 
-      {/* MODAL: Custom Template Builder */}
+      {/* MODAL: Edit / Customize Template Format */}
       {showBuilderModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <FileSpreadsheet className="w-4 h-4 text-purple-500" />
-                <span>Custom Excel Template Studio</span>
+                <Edit3 className="w-4 h-4 text-purple-500" />
+                <span>{editingTemplateKey ? 'Edit Template Format' : 'Create Custom Template'}</span>
               </h3>
               <button onClick={() => setShowBuilderModal(false)} className="text-slate-400 hover:text-white">✕</button>
             </div>
@@ -291,12 +356,12 @@ export const ExcelImporterPage: React.FC = () => {
             <div className="space-y-4 text-xs">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Partner Bank</label>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Partner Bank Name</label>
                   <input
                     type="text"
                     value={customBank}
                     onChange={(e) => setCustomBank(e.target.value)}
-                    className="w-full p-2 rounded-xl bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200"
+                    className="w-full p-2.5 rounded-xl bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 font-medium"
                   />
                 </div>
                 <div>
@@ -305,46 +370,62 @@ export const ExcelImporterPage: React.FC = () => {
                     type="text"
                     value={customProduct}
                     onChange={(e) => setCustomProduct(e.target.value)}
-                    className="w-full p-2 rounded-xl bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200"
+                    className="w-full p-2.5 rounded-xl bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 font-medium"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Add Custom Column Header</label>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Add New Column Header</label>
                 <div className="flex gap-2">
                   <input
                     type="text"
                     value={newColName}
                     onChange={(e) => setNewColName(e.target.value)}
-                    placeholder="e.g. GUARANTOR_PHONE, BUCKET_DPD"
-                    className="flex-1 p-2 rounded-xl bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 uppercase"
+                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addCustomHeader())}
+                    placeholder="e.g. GUARANTOR_NAME, DPD_BUCKET, VEHICLE_REG_NO"
+                    className="flex-1 p-2.5 rounded-xl bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 uppercase font-mono"
                   />
                   <button
                     onClick={addCustomHeader}
-                    className="px-3 py-2 bg-purple-600 text-white font-bold rounded-xl"
+                    className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl flex items-center gap-1 shadow-md shadow-purple-600/30"
                   >
-                    Add
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Add</span>
                   </button>
                 </div>
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5">Configured Column Schema ({customHeaders.length})</label>
-                <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="font-bold text-slate-700 dark:text-slate-300">
+                    Configured Columns ({customHeaders.length})
+                  </label>
+                  <span className="text-[11px] text-slate-400">Click × to remove any column</span>
+                </div>
+
+                <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
                   {customHeaders.map((header, idx) => (
                     <span
                       key={idx}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-mono text-[11px]"
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-mono text-[11px] shadow-sm"
                     >
-                      <span>{header}</span>
-                      <button onClick={() => removeCustomHeader(idx)} className="text-slate-400 hover:text-rose-500">×</button>
+                      <span className="text-slate-400 font-mono text-[10px]">{idx + 1}.</span>
+                      <span className="font-bold">{header}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeCustomHeader(idx)}
+                        className="text-slate-400 hover:text-rose-500 font-bold ml-1"
+                        title="Remove column"
+                      >
+                        ×
+                      </button>
                     </span>
                   ))}
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-2">
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => setShowBuilderModal(false)}
@@ -354,11 +435,11 @@ export const ExcelImporterPage: React.FC = () => {
                 </button>
                 <button
                   type="button"
-                  onClick={handleDownloadCustomTemplate}
-                  className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold flex items-center gap-2 shadow-lg shadow-purple-600/30"
+                  onClick={handleSaveAndDownload}
+                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold flex items-center gap-2 shadow-lg shadow-emerald-600/30"
                 >
                   <Download className="w-4 h-4" />
-                  <span>Download Custom Template (.XLSX)</span>
+                  <span>Save & Download .XLSX</span>
                 </button>
               </div>
             </div>

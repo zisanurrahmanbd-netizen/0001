@@ -1,6 +1,6 @@
-﻿import React, { useState } from 'react';
+﻿import React, { useState, useRef } from 'react';
 import { useBranding, DEFAULT_BRANDING, BrandingConfig } from '../context/BrandingContext';
-import { Sparkles, Palette, Save, RotateCcw, X, Image, Type } from 'lucide-react';
+import { Sparkles, Palette, Save, RotateCcw, X, Image, Upload, Trash2, CheckCircle2 } from 'lucide-react';
 
 interface BrandingModalProps {
   isOpen: boolean;
@@ -22,8 +22,31 @@ export const BrandingModal: React.FC<BrandingModalProps> = ({ isOpen, onClose })
   const { branding, updateBranding, resetBranding } = useBranding();
   const [form, setForm] = useState<BrandingConfig>({ ...branding });
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        alert('Please choose an image file under 2MB.');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === 'string') {
+          setForm({ ...form, customLogoUrl: reader.result });
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemoveCustomLogo = () => {
+    setForm({ ...form, customLogoUrl: '' });
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,7 +66,7 @@ export const BrandingModal: React.FC<BrandingModalProps> = ({ isOpen, onClose })
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-xl w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
           <div className="flex items-center gap-2">
@@ -55,7 +78,7 @@ export const BrandingModal: React.FC<BrandingModalProps> = ({ isOpen, onClose })
                 Brand & Logo Customizer (Admin)
               </h3>
               <p className="text-[11px] text-slate-500">
-                Customize system name, logo icon/image, and subtitles across the app
+                Upload device logo, customize system title and subtitles
               </p>
             </div>
           </div>
@@ -68,18 +91,18 @@ export const BrandingModal: React.FC<BrandingModalProps> = ({ isOpen, onClose })
         <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800/80 space-y-2">
           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Live Header Preview</span>
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 text-white flex items-center justify-center text-xl shadow-lg shadow-emerald-950/30 overflow-hidden">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 text-white flex items-center justify-center text-xl shadow-lg shadow-emerald-950/30 overflow-hidden flex-shrink-0">
               {form.customLogoUrl ? (
-                <img src={form.customLogoUrl} alt="Logo" className="w-full h-full object-cover" onError={(e) => (e.currentTarget.style.display = 'none')} />
+                <img src={form.customLogoUrl} alt="Logo" className="w-full h-full object-cover" />
               ) : (
-                <i className={`fa-solid ${form.logoIcon}`}></i>
+                <i className={`fa-solid ${form.logoIcon || 'fa-vault'}`}></i>
               )}
             </div>
-            <div>
-              <h4 className="font-extrabold text-base text-slate-900 dark:text-white tracking-tight leading-none">
+            <div className="overflow-hidden">
+              <h4 className="font-extrabold text-base text-slate-900 dark:text-white tracking-tight leading-none truncate">
                 {form.headerText || 'RecoveryPRO'}
               </h4>
-              <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+              <span className="text-xs text-slate-500 dark:text-slate-400 font-medium truncate block mt-0.5">
                 {form.underText || 'Bank Telemetry V2'}
               </span>
             </div>
@@ -87,11 +110,55 @@ export const BrandingModal: React.FC<BrandingModalProps> = ({ isOpen, onClose })
         </div>
 
         <form onSubmit={handleSave} className="space-y-4 text-xs">
-          {/* Logo / Icon Selection */}
+          {/* Logo Upload Section */}
+          <div className="p-4 rounded-2xl bg-purple-500/5 dark:bg-purple-950/20 border border-purple-500/20 space-y-3">
+            <label className="block font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+              <Upload className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+              <span>Upload Custom Logo from Device</span>
+            </label>
+
+            <div className="flex flex-col sm:flex-row items-center gap-3">
+              <input
+                type="file"
+                ref={fileInputRef}
+                accept="image/png,image/jpeg,image/svg+xml,image/webp"
+                onChange={handleFileUpload}
+                className="hidden"
+                id="logo-upload-input"
+              />
+              <label
+                htmlFor="logo-upload-input"
+                className="px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs flex items-center gap-2 cursor-pointer transition-all shadow-md shadow-purple-600/30"
+              >
+                <Upload className="w-3.5 h-3.5" />
+                <span>Choose Image File (PNG/JPG/SVG)</span>
+              </label>
+
+              {form.customLogoUrl && (
+                <button
+                  type="button"
+                  onClick={handleRemoveCustomLogo}
+                  className="px-3 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 font-bold text-xs flex items-center gap-1.5 transition-all"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Remove Uploaded Logo</span>
+                </button>
+              )}
+            </div>
+
+            {form.customLogoUrl && (
+              <div className="flex items-center gap-2 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>Custom image logo loaded and ready to apply!</span>
+              </div>
+            )}
+          </div>
+
+          {/* Or Preset Icons */}
           <div>
             <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-purple-500" />
-              <span>Select Preset Logo Icon</span>
+              <Sparkles className="w-3.5 h-3.5 text-emerald-500" />
+              <span>Or Select Preset Icon</span>
             </label>
             <div className="grid grid-cols-4 gap-2">
               {PRESET_ICONS.map(icon => (
@@ -101,7 +168,7 @@ export const BrandingModal: React.FC<BrandingModalProps> = ({ isOpen, onClose })
                   onClick={() => setForm({ ...form, logoIcon: icon.class, customLogoUrl: '' })}
                   className={`p-2.5 rounded-xl border text-center transition-all flex flex-col items-center gap-1 ${
                     form.logoIcon === icon.class && !form.customLogoUrl
-                      ? 'bg-purple-500/10 border-purple-500 text-purple-600 dark:text-purple-300 font-bold'
+                      ? 'bg-emerald-500/10 border-emerald-500 text-emerald-600 dark:text-emerald-300 font-bold'
                       : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-300'
                   }`}
                 >
@@ -112,22 +179,7 @@ export const BrandingModal: React.FC<BrandingModalProps> = ({ isOpen, onClose })
             </div>
           </div>
 
-          {/* Optional Custom Image URL */}
-          <div>
-            <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
-              <Image className="w-3.5 h-3.5 text-emerald-500" />
-              <span>Or Custom Logo Image URL (Optional)</span>
-            </label>
-            <input
-              type="url"
-              value={form.customLogoUrl}
-              onChange={(e) => setForm({ ...form, customLogoUrl: e.target.value })}
-              placeholder="https://example.com/your-company-logo.png"
-              className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-800 dark:text-slate-200 font-medium"
-            />
-          </div>
-
-          {/* Sidebar / Top Header Texts */}
+          {/* Header & Under Text */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
@@ -138,7 +190,7 @@ export const BrandingModal: React.FC<BrandingModalProps> = ({ isOpen, onClose })
                 required
                 value={form.headerText}
                 onChange={(e) => setForm({ ...form, headerText: e.target.value })}
-                placeholder="e.g. RecoveryPRO, Delta Recovery Agency"
+                placeholder="e.g. RecoveryPRO"
                 className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-800 dark:text-slate-200 font-bold"
               />
             </div>
@@ -151,13 +203,13 @@ export const BrandingModal: React.FC<BrandingModalProps> = ({ isOpen, onClose })
                 required
                 value={form.underText}
                 onChange={(e) => setForm({ ...form, underText: e.target.value })}
-                placeholder="e.g. Bank Telemetry V2, Debt Recovery System"
+                placeholder="e.g. Bank Telemetry V2"
                 className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-800 dark:text-slate-200 font-medium"
               />
             </div>
           </div>
 
-          {/* Login Screen Texts */}
+          {/* Login Screen Customization */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
             <div>
               <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
@@ -168,7 +220,6 @@ export const BrandingModal: React.FC<BrandingModalProps> = ({ isOpen, onClose })
                 required
                 value={form.loginTitle}
                 onChange={(e) => setForm({ ...form, loginTitle: e.target.value })}
-                placeholder="e.g. Bank Recovery Tracking"
                 className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-800 dark:text-slate-200 font-bold"
               />
             </div>
@@ -181,7 +232,6 @@ export const BrandingModal: React.FC<BrandingModalProps> = ({ isOpen, onClose })
                 required
                 value={form.loginSubtitle}
                 onChange={(e) => setForm({ ...form, loginSubtitle: e.target.value })}
-                placeholder="e.g. Multi-Bank Loan & Credit Card File Tracking System"
                 className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-800 dark:text-slate-200 font-medium"
               />
             </div>

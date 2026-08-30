@@ -32,7 +32,7 @@ services:
       - key: DATABASE_URL
         value: "postgresql://postgres.wbgacppzdyqextjxlgwq:5k44RWWPYqEZdu6H@aws-0-ap-northeast-1.pooler.supabase.com:5432/postgres?sslmode=require"
       - key: SESSION_DRIVER
-        value: file
+        value: cookie
       - key: SESSION_LIFETIME
         value: "120"
       - key: CACHE_STORE

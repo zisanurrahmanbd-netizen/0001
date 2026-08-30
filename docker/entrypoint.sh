@@ -1,18 +1,12 @@
 #!/bin/sh
 set -e
 
-PORT_NUM=${PORT:-80}
+PORT_NUM=""
+echo "Starting container on port ${PORT_NUM}..."
 
-# Update Nginx config with Render's assigned dynamic PORT
-if [ -f /etc/nginx/http.d/default.conf ]; then
-    sed -i "s/listen [0-9]*;/listen ${PORT_NUM};/g" /etc/nginx/http.d/default.conf
-fi
+sed -i "s/listen [0-9]*;/listen ${PORT_NUM};/g" /etc/nginx/http.d/default.conf 2>/dev/null || true
+sed -i "s/listen [0-9]*;/listen ${PORT_NUM};/g" /etc/nginx/conf.d/default.conf 2>/dev/null || true
 
-if [ -f /etc/nginx/conf.d/default.conf ]; then
-    sed -i "s/listen [0-9]*;/listen ${PORT_NUM};/g" /etc/nginx/conf.d/default.conf
-fi
-
-# Pre-compile Laravel caches for instant page loads
 php /var/www/html/artisan config:cache || true
 php /var/www/html/artisan route:cache || true
 php /var/www/html/artisan view:cache || true

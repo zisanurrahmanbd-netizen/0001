@@ -1,9 +1,10 @@
-FROM php:8.3-fpm-alpine
+﻿FROM php:8.3-fpm-alpine
 
-# Install Nginx, Supervisor, PostgreSQL extensions, and performance libraries
+# Install Nginx, Supervisor, dos2unix, PostgreSQL extensions, and performance libraries
 RUN apk add --no-cache \
     nginx \
     supervisor \
+    dos2unix \
     postgresql-dev \
     libzip-dev \
     zip \
@@ -36,9 +37,10 @@ COPY . /var/www/html
 RUN composer install --no-dev --optimize-autoloader --no-interaction
 
 # Setup Nginx and Supervisor configuration
-RUN mkdir -p /etc/nginx/http.d /etc/supervisor/conf.d /var/log/supervisor /run/nginx \
+RUN mkdir -p /etc/nginx/http.d /etc/supervisor/conf.d /var/log/supervisor /run/nginx /var/run /var/log \
     && cp docker/nginx.conf /etc/nginx/http.d/default.conf \
     && cp docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf \
+    && dos2unix /var/www/html/docker/entrypoint.sh \
     && chmod -R 777 /var/www/html/storage /var/www/html/bootstrap/cache \
     && chmod +x /var/www/html/docker/entrypoint.sh
 

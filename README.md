@@ -4,7 +4,7 @@
 [![PHP 8.3](https://img.shields.io/badge/PHP-8.3-777BB4?style=for-the-badge&logo=php)](https://php.net)
 [![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com)
 [![Leaflet](https://img.shields.io/badge/Leaflet-OpenStreetMap-199900?style=for-the-badge&logo=leaflet)](https://leafletjs.com)
-[![Tests](https://img.shields.io/badge/Tests-16%20Passed%20(100%25)-10B981?style=for-the-badge)](tests)
+[![Tests](https://img.shields.io/badge/Tests-21%20Passed%20(100%25)-10B981?style=for-the-badge)](tests)
 
 A production-ready Laravel web application built to replace spreadsheet-based debt recovery operations with a secure, multi-tenant, role-scoped recovery tracking platform. Handles recovery files across multiple banks (**One Bank, Dutch-Bangla Bank, Asian Paints Dealer Recovery**) and product categories (Credit Cards, Personal Loans, SME / Agent Banking Loans, Dealer Overdues).
 

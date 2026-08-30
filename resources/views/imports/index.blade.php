@@ -18,6 +18,27 @@
         'ALLOCATION DATE', 'EXPIRY DATE'
     ],
 
+    openEditTemplate(bankName, productName, headers) {
+        this.customBankName = bankName;
+        this.customProductName = productName;
+        this.customCols = [...headers];
+        this.customExtraCol = '';
+        this.showCustomModal = true;
+    },
+
+    openNewTemplate() {
+        this.customBankName = '';
+        this.customProductName = '';
+        this.customCols = [
+            'ACCOUNT NO', 'CUSTOMER NAME', 'PHONE NUMBER', 'ALT CONTACT',
+            'PRESENT ADDRESS', 'PERMANENT ADDRESS', 'TOTAL OUTSTANDING',
+            'OVERDUE AMOUNT', 'STATUS', 'LEGAL STATUS', 'ASSIGNED AGENT',
+            'ALLOCATION DATE', 'EXPIRY DATE'
+        ];
+        this.customExtraCol = '';
+        this.showCustomModal = true;
+    },
+
     addCustomColumn() {
         const col = this.customExtraCol.trim().toUpperCase();
         if (col && !this.customCols.includes(col)) {
@@ -27,6 +48,10 @@
     },
 
     removeCustomColumn(idx) {
+        if (this.customCols.length <= 2) {
+            alert('A template must have at least 2 columns.');
+            return;
+        }
         this.customCols.splice(idx, 1);
     },
 
@@ -84,110 +109,214 @@
             </span>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
             <!-- One Bank Credit Card -->
-            <a href="{{ route('imports.templates.download', 'one_bank_credit_card') }}"
-               class="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800/80 hover:border-emerald-500/60 hover:bg-emerald-950/20 transition-all group block">
-                <div class="flex items-center justify-between mb-2">
-                    <span class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-sm font-bold group-hover:scale-110 transition-transform">
-                        <i class="fa-regular fa-credit-card"></i>
-                    </span>
-                    <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-400">.XLSX</span>
+            <div class="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800/80 hover:border-emerald-500/50 transition-all flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-sm font-bold">
+                            <i class="fa-regular fa-credit-card"></i>
+                        </span>
+                        <span class="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800/60">15 Cols</span>
+                    </div>
+                    <div class="font-bold text-white text-xs">One Bank Credit Card</div>
+                    <div class="text-[11px] text-slate-400 mt-0.5">Card No, Client Name, Bucket, Due</div>
                 </div>
-                <div class="font-bold text-white text-xs group-hover:text-emerald-300">One Bank Credit Card</div>
-                <div class="text-[11px] text-slate-400 mt-0.5">Card No, Client Name, Bucket, Due</div>
-            </a>
+                <div class="flex items-center gap-2 mt-3.5 pt-2.5 border-t border-slate-900">
+                    <a href="{{ route('imports.templates.download', 'one_bank_credit_card') }}"
+                       class="flex-1 py-1.5 px-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-center text-[11px] font-bold shadow-sm transition-all">
+                        <i class="fa-solid fa-download mr-1"></i> Download
+                    </a>
+                    <button type="button"
+                            @click="openEditTemplate('One Bank Limited', 'Credit Card Recovery', ['CARD NO', 'CLIENT NAME', 'CONTACT NO', 'ALT CONTACT', 'PRESENT ADDRESS', 'PERMANENT ADDRESS', 'TOTAL OUTSTANDING', 'MINIMUM DUE', 'BUCKET STATUS', 'LEGAL STATUS', 'AGENT NAME', 'ALLOCATION DATE', 'EXPIRY DATE', 'CARD TYPE', 'EXPIRY BATCH'])"
+                            title="Edit / Customize Format"
+                            class="py-1.5 px-2 rounded-lg bg-slate-800 hover:bg-indigo-600 text-slate-300 hover:text-white text-[11px] font-semibold transition-all">
+                        <i class="fa-solid fa-pen-to-square"></i> Edit
+                    </button>
+                </div>
+            </div>
 
             <!-- One Bank Loan -->
-            <a href="{{ route('imports.templates.download', 'one_bank_loan') }}"
-               class="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800/80 hover:border-emerald-500/60 hover:bg-emerald-950/20 transition-all group block">
-                <div class="flex items-center justify-between mb-2">
-                    <span class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-sm font-bold group-hover:scale-110 transition-transform">
-                        <i class="fa-solid fa-hand-holding-dollar"></i>
-                    </span>
-                    <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-400">.XLSX</span>
+            <div class="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800/80 hover:border-emerald-500/50 transition-all flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-sm font-bold">
+                            <i class="fa-solid fa-hand-holding-dollar"></i>
+                        </span>
+                        <span class="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800/60">15 Cols</span>
+                    </div>
+                    <div class="font-bold text-white text-xs">One Bank Loan Recovery</div>
+                    <div class="text-[11px] text-slate-400 mt-0.5">Loan A/C, Borrower, Scheme, Branch</div>
                 </div>
-                <div class="font-bold text-white text-xs group-hover:text-emerald-300">One Bank Loan Recovery</div>
-                <div class="text-[11px] text-slate-400 mt-0.5">Loan A/C, Borrower, Scheme, Branch</div>
-            </a>
+                <div class="flex items-center gap-2 mt-3.5 pt-2.5 border-t border-slate-900">
+                    <a href="{{ route('imports.templates.download', 'one_bank_loan') }}"
+                       class="flex-1 py-1.5 px-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-center text-[11px] font-bold shadow-sm transition-all">
+                        <i class="fa-solid fa-download mr-1"></i> Download
+                    </a>
+                    <button type="button"
+                            @click="openEditTemplate('One Bank Limited', 'Personal & SME Loan', ['LOAN A/C NO', 'BORROWER NAME', 'MOBILE NO', 'GUARANTOR MOBILE', 'PRESENT ADDRESS', 'PERMANENT ADDRESS', 'TOTAL OUTSTANDING', 'OVERDUE AMOUNT', 'LOAN STATUS', 'LEGAL CASE NO', 'AGENT', 'ALLOCATION DATE', 'EXPIRY DATE', 'LOAN SCHEME', 'BRANCH NAME'])"
+                            title="Edit / Customize Format"
+                            class="py-1.5 px-2 rounded-lg bg-slate-800 hover:bg-indigo-600 text-slate-300 hover:text-white text-[11px] font-semibold transition-all">
+                        <i class="fa-solid fa-pen-to-square"></i> Edit
+                    </button>
+                </div>
+            </div>
 
             <!-- DBBL Credit Card -->
-            <a href="{{ route('imports.templates.download', 'dbbl_credit_card') }}"
-               class="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800/80 hover:border-blue-500/60 hover:bg-blue-950/20 transition-all group block">
-                <div class="flex items-center justify-between mb-2">
-                    <span class="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center text-sm font-bold group-hover:scale-110 transition-transform">
-                        <i class="fa-solid fa-credit-card"></i>
-                    </span>
-                    <span class="text-[10px] font-bold uppercase tracking-wider text-blue-400">.XLSX</span>
+            <div class="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800/80 hover:border-blue-500/50 transition-all flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center text-sm font-bold">
+                            <i class="fa-solid fa-credit-card"></i>
+                        </span>
+                        <span class="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-blue-950 text-blue-300 border border-blue-800/60">14 Cols</span>
+                    </div>
+                    <div class="font-bold text-white text-xs">DBBL Credit Card</div>
+                    <div class="text-[11px] text-slate-400 mt-0.5">Card No, Customer, Min Due, Agent</div>
                 </div>
-                <div class="font-bold text-white text-xs group-hover:text-blue-300">DBBL Credit Card</div>
-                <div class="text-[11px] text-slate-400 mt-0.5">Card No, Customer, Min Due, Agent</div>
-            </a>
+                <div class="flex items-center gap-2 mt-3.5 pt-2.5 border-t border-slate-900">
+                    <a href="{{ route('imports.templates.download', 'dbbl_credit_card') }}"
+                       class="flex-1 py-1.5 px-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-center text-[11px] font-bold shadow-sm transition-all">
+                        <i class="fa-solid fa-download mr-1"></i> Download
+                    </a>
+                    <button type="button"
+                            @click="openEditTemplate('Dutch-Bangla Bank PLC', 'Credit Card Recovery', ['CARD NO', 'CUSTOMER NAME', 'PHONE NO', 'ALT PHONE', 'PRESENT ADDRESS', 'PERMANENT ADDRESS', 'TOTAL OUTSTANDING', 'MIN DUE', 'STATUS', 'LEGAL STATUS', 'AGENT NAME', 'ALLOCATION DATE', 'EXPIRY DATE', 'BRANCH CODE'])"
+                            title="Edit / Customize Format"
+                            class="py-1.5 px-2 rounded-lg bg-slate-800 hover:bg-indigo-600 text-slate-300 hover:text-white text-[11px] font-semibold transition-all">
+                        <i class="fa-solid fa-pen-to-square"></i> Edit
+                    </button>
+                </div>
+            </div>
 
             <!-- DBBL Write-Off -->
-            <a href="{{ route('imports.templates.download', 'dbbl_write_off') }}"
-               class="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800/80 hover:border-blue-500/60 hover:bg-blue-950/20 transition-all group block">
-                <div class="flex items-center justify-between mb-2">
-                    <span class="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center text-sm font-bold group-hover:scale-110 transition-transform">
-                        <i class="fa-solid fa-ban"></i>
-                    </span>
-                    <span class="text-[10px] font-bold uppercase tracking-wider text-blue-400">.XLSX</span>
+            <div class="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800/80 hover:border-blue-500/50 transition-all flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center text-sm font-bold">
+                            <i class="fa-solid fa-ban"></i>
+                        </span>
+                        <span class="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-blue-950 text-blue-300 border border-blue-800/60">14 Cols</span>
+                    </div>
+                    <div class="font-bold text-white text-xs">DBBL Write-Off Debt</div>
+                    <div class="text-[11px] text-slate-400 mt-0.5">Account, Write-Off Year, Artha Rin</div>
                 </div>
-                <div class="font-bold text-white text-xs group-hover:text-blue-300">DBBL Write-Off Debt</div>
-                <div class="text-[11px] text-slate-400 mt-0.5">Account, Write-Off Year, Artha Rin</div>
-            </a>
+                <div class="flex items-center gap-2 mt-3.5 pt-2.5 border-t border-slate-900">
+                    <a href="{{ route('imports.templates.download', 'dbbl_write_off') }}"
+                       class="flex-1 py-1.5 px-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-center text-[11px] font-bold shadow-sm transition-all">
+                        <i class="fa-solid fa-download mr-1"></i> Download
+                    </a>
+                    <button type="button"
+                            @click="openEditTemplate('Dutch-Bangla Bank PLC', 'Write-Off & Bad Debt', ['ACCOUNT NO', 'BORROWER NAME', 'CONTACT NO', 'GUARANTOR CONTACT', 'PRESENT ADDRESS', 'PERMANENT ADDRESS', 'TOTAL OUTSTANDING', 'OVERDUE AMOUNT', 'STATUS', 'LEGAL CASE NO', 'AGENT NAME', 'ALLOCATION DATE', 'EXPIRY DATE', 'WRITE OFF YEAR'])"
+                            title="Edit / Customize Format"
+                            class="py-1.5 px-2 rounded-lg bg-slate-800 hover:bg-indigo-600 text-slate-300 hover:text-white text-[11px] font-semibold transition-all">
+                        <i class="fa-solid fa-pen-to-square"></i> Edit
+                    </button>
+                </div>
+            </div>
 
             <!-- DBBL Loan Branch -->
-            <a href="{{ route('imports.templates.download', 'dbbl_loan_branch') }}"
-               class="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800/80 hover:border-blue-500/60 hover:bg-blue-950/20 transition-all group block">
-                <div class="flex items-center justify-between mb-2">
-                    <span class="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center text-sm font-bold group-hover:scale-110 transition-transform">
-                        <i class="fa-solid fa-building-columns"></i>
-                    </span>
-                    <span class="text-[10px] font-bold uppercase tracking-wider text-blue-400">.XLSX</span>
+            <div class="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800/80 hover:border-blue-500/50 transition-all flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center text-sm font-bold">
+                            <i class="fa-solid fa-building-columns"></i>
+                        </span>
+                        <span class="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-blue-950 text-blue-300 border border-blue-800/60">13 Cols</span>
+                    </div>
+                    <div class="font-bold text-white text-xs">DBBL Loan Branch</div>
+                    <div class="text-[11px] text-slate-400 mt-0.5">A/C No, Nominee Phone, Branch</div>
                 </div>
-                <div class="font-bold text-white text-xs group-hover:text-blue-300">DBBL Loan Branch</div>
-                <div class="text-[11px] text-slate-400 mt-0.5">A/C No, Nominee Phone, Branch</div>
-            </a>
+                <div class="flex items-center gap-2 mt-3.5 pt-2.5 border-t border-slate-900">
+                    <a href="{{ route('imports.templates.download', 'dbbl_loan_branch') }}"
+                       class="flex-1 py-1.5 px-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-center text-[11px] font-bold shadow-sm transition-all">
+                        <i class="fa-solid fa-download mr-1"></i> Download
+                    </a>
+                    <button type="button"
+                            @click="openEditTemplate('Dutch-Bangla Bank PLC', 'Branch Loan Recovery', ['ACCOUNT NO', 'CUSTOMER NAME', 'PHONE NO', 'NOMINEE PHONE', 'PRESENT ADDRESS', 'PERMANENT ADDRESS', 'TOTAL OUTSTANDING', 'OVERDUE AMOUNT', 'STATUS', 'AGENT NAME', 'ALLOCATION DATE', 'EXPIRY DATE', 'BRANCH NAME'])"
+                            title="Edit / Customize Format"
+                            class="py-1.5 px-2 rounded-lg bg-slate-800 hover:bg-indigo-600 text-slate-300 hover:text-white text-[11px] font-semibold transition-all">
+                        <i class="fa-solid fa-pen-to-square"></i> Edit
+                    </button>
+                </div>
+            </div>
 
             <!-- DBBL Agent Banking -->
-            <a href="{{ route('imports.templates.download', 'dbbl_agent_banking') }}"
-               class="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800/80 hover:border-blue-500/60 hover:bg-blue-950/20 transition-all group block">
-                <div class="flex items-center justify-between mb-2">
-                    <span class="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center text-sm font-bold group-hover:scale-110 transition-transform">
-                        <i class="fa-solid fa-store"></i>
-                    </span>
-                    <span class="text-[10px] font-bold uppercase tracking-wider text-blue-400">.XLSX</span>
+            <div class="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800/80 hover:border-blue-500/50 transition-all flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center text-sm font-bold">
+                            <i class="fa-solid fa-store"></i>
+                        </span>
+                        <span class="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-blue-950 text-blue-300 border border-blue-800/60">13 Cols</span>
+                    </div>
+                    <div class="font-bold text-white text-xs">DBBL Agent Banking</div>
+                    <div class="text-[11px] text-slate-400 mt-0.5">Outlet A/C, Outlet Name, Area</div>
                 </div>
-                <div class="font-bold text-white text-xs group-hover:text-blue-300">DBBL Agent Banking</div>
-                <div class="text-[11px] text-slate-400 mt-0.5">Outlet A/C, Outlet Name, Area</div>
-            </a>
+                <div class="flex items-center gap-2 mt-3.5 pt-2.5 border-t border-slate-900">
+                    <a href="{{ route('imports.templates.download', 'dbbl_agent_banking') }}"
+                       class="flex-1 py-1.5 px-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-center text-[11px] font-bold shadow-sm transition-all">
+                        <i class="fa-solid fa-download mr-1"></i> Download
+                    </a>
+                    <button type="button"
+                            @click="openEditTemplate('Dutch-Bangla Bank PLC', 'Agent Banking Recovery', ['OUTLET / A/C NO', 'CUSTOMER NAME', 'PHONE NO', 'ALT CONTACT', 'OUTLET ADDRESS', 'PERMANENT ADDRESS', 'TOTAL OUTSTANDING', 'OVERDUE AMOUNT', 'STATUS', 'AGENT NAME', 'ALLOCATION DATE', 'EXPIRY DATE', 'OUTLET NAME'])"
+                            title="Edit / Customize Format"
+                            class="py-1.5 px-2 rounded-lg bg-slate-800 hover:bg-indigo-600 text-slate-300 hover:text-white text-[11px] font-semibold transition-all">
+                        <i class="fa-solid fa-pen-to-square"></i> Edit
+                    </button>
+                </div>
+            </div>
 
             <!-- Asian Paints Dealer -->
-            <a href="{{ route('imports.templates.download', 'asian_paints_dealer') }}"
-               class="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800/80 hover:border-amber-500/60 hover:bg-amber-950/20 transition-all group block">
-                <div class="flex items-center justify-between mb-2">
-                    <span class="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center text-sm font-bold group-hover:scale-110 transition-transform">
-                        <i class="fa-solid fa-paint-roller"></i>
-                    </span>
-                    <span class="text-[10px] font-bold uppercase tracking-wider text-amber-400">.XLSX</span>
+            <div class="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800/80 hover:border-amber-500/50 transition-all flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center text-sm font-bold">
+                            <i class="fa-solid fa-paint-roller"></i>
+                        </span>
+                        <span class="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-800/60">15 Cols</span>
+                    </div>
+                    <div class="font-bold text-white text-xs">Asian Paints Dealer</div>
+                    <div class="text-[11px] text-slate-400 mt-0.5">Dealer Code, Shop & Godown Addr</div>
                 </div>
-                <div class="font-bold text-white text-xs group-hover:text-amber-300">Asian Paints Dealer</div>
-                <div class="text-[11px] text-slate-400 mt-0.5">Dealer Code, Shop & Godown Addr</div>
-            </a>
+                <div class="flex items-center gap-2 mt-3.5 pt-2.5 border-t border-slate-900">
+                    <a href="{{ route('imports.templates.download', 'asian_paints_dealer') }}"
+                       class="flex-1 py-1.5 px-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-center text-[11px] font-bold shadow-sm transition-all">
+                        <i class="fa-solid fa-download mr-1"></i> Download
+                    </a>
+                    <button type="button"
+                            @click="openEditTemplate('Asian Paints Limited', 'Dealer Recovery', ['DEALER CODE', 'DEALER NAME', 'CONTACT PERSON', 'PHONE NUMBER', 'SHOP ADDRESS', 'GODOWN ADDRESS', 'OUTSTANDING AMOUNT', 'OVERDUE AMOUNT', 'STATUS', 'LEGAL STATUS', 'ASSIGNED AGENT', 'ALLOCATION DATE', 'EXPIRY DATE', 'TERRITORY', 'REGION'])"
+                            title="Edit / Customize Format"
+                            class="py-1.5 px-2 rounded-lg bg-slate-800 hover:bg-indigo-600 text-slate-300 hover:text-white text-[11px] font-semibold transition-all">
+                        <i class="fa-solid fa-pen-to-square"></i> Edit
+                    </button>
+                </div>
+            </div>
 
             <!-- Universal Standard Template -->
-            <a href="{{ route('imports.templates.download', 'universal_recovery') }}"
-               class="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800/80 hover:border-indigo-500/60 hover:bg-indigo-950/20 transition-all group block">
-                <div class="flex items-center justify-between mb-2">
-                    <span class="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center text-sm font-bold group-hover:scale-110 transition-transform">
-                        <i class="fa-solid fa-file-lines"></i>
-                    </span>
-                    <span class="text-[10px] font-bold uppercase tracking-wider text-indigo-400">.XLSX</span>
+            <div class="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800/80 hover:border-indigo-500/50 transition-all flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center text-sm font-bold">
+                            <i class="fa-solid fa-file-lines"></i>
+                        </span>
+                        <span class="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-indigo-950 text-indigo-300 border border-indigo-800/60">15 Cols</span>
+                    </div>
+                    <div class="font-bold text-white text-xs">Universal Format</div>
+                    <div class="text-[11px] text-slate-400 mt-0.5">Works for any custom bank/institution</div>
                 </div>
-                <div class="font-bold text-white text-xs group-hover:text-indigo-300">Universal Recovery Format</div>
-                <div class="text-[11px] text-slate-400 mt-0.5">Works for any bank or custom product</div>
-            </a>
+                <div class="flex items-center gap-2 mt-3.5 pt-2.5 border-t border-slate-900">
+                    <a href="{{ route('imports.templates.download', 'universal_recovery') }}"
+                       class="flex-1 py-1.5 px-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-center text-[11px] font-bold shadow-sm transition-all">
+                        <i class="fa-solid fa-download mr-1"></i> Download
+                    </a>
+                    <button type="button"
+                            @click="openEditTemplate('Universal Bank', 'Standard Recovery File', ['FILE NO', 'ACCOUNT NO', 'CUSTOMER NAME', 'PHONE', 'ALT PHONE', 'PRESENT ADDRESS', 'PERMANENT ADDRESS', 'TOTAL OUTSTANDING', 'TOTAL OVERDUE', 'STATUS', 'LEGAL STATUS', 'AGENT NAME', 'ALLOCATION DATE', 'EXPIRY DATE', 'NOTES'])"
+                            title="Edit / Customize Format"
+                            class="py-1.5 px-2 rounded-lg bg-slate-800 hover:bg-indigo-600 text-slate-300 hover:text-white text-[11px] font-semibold transition-all">
+                        <i class="fa-solid fa-pen-to-square"></i> Edit
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -327,8 +456,8 @@
             <div class="inline-block align-bottom bg-slate-900 border border-slate-800 rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-xl sm:w-full p-6">
                 <div class="flex items-center justify-between pb-3 mb-4 border-b border-slate-800">
                     <h3 class="text-base font-bold text-white flex items-center gap-2">
-                        <i class="fa-solid fa-wand-magic-sparkles text-teal-400"></i>
-                        <span>Create Custom Bank Excel Template</span>
+                        <i class="fa-solid fa-pen-to-square text-teal-400"></i>
+                        <span x-text="customBankName ? 'Customize Format: ' + customBankName : 'Create Custom Bank Excel Template'"></span>
                     </h3>
                     <button @click="showCustomModal = false" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
                 </div>

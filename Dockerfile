@@ -28,5 +28,5 @@ RUN chmod -R 777 storage bootstrap/cache
 
 EXPOSE 8000
 
-# Run migrations and start server
-CMD php artisan config:cache && php artisan route:cache && php artisan view:cache && php artisan serve --host=0.0.0.0 --port=${PORT:-8000}
+# Start server
+CMD php artisan config:clear && php artisan route:clear && php artisan view:clear && php artisan serve --host=0.0.0.0 --port=${PORT:-8000}

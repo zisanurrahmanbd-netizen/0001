@@ -66,28 +66,40 @@
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #475569; }
 
-        /* ================= LIGHT MODE COMPREHENSIVE STYLES ================= */
+        /* ================= LIGHT THEME COMPREHENSIVE REFINEMENT ================= */
         html:not(.dark) body {
-            background-color: #f8fafc !important;
-            color: #1e293b !important;
+            background-color: #f1f5f9 !important;
+            color: #0f172a !important;
         }
+
         html:not(.dark) .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
         html:not(.dark) .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; }
         html:not(.dark) .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* Main surfaces */
+        html:not(.dark) aside {
+            background-color: #ffffff !important;
+            border-color: #e2e8f0 !important;
+            box-shadow: 1px 0 3px 0 rgb(0 0 0 / 0.03);
+        }
+
+        html:not(.dark) header {
+            background-color: #ffffff !important;
+            border-color: #e2e8f0 !important;
+            box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.03);
+        }
+
+        html:not(.dark) .bg-slate-900 {
+            background-color: #ffffff !important;
+            border-color: #e2e8f0 !important;
+            box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.04), 0 1px 2px -1px rgb(0 0 0 / 0.04);
+        }
 
         html:not(.dark) .bg-slate-950,
         html:not(.dark) .bg-slate-950\/80,
         html:not(.dark) .bg-slate-950\/70,
         html:not(.dark) .bg-slate-950\/60,
-        html:not(.dark) .bg-slate-950\/40 {
-            background-color: #f1f5f9 !important;
-        }
-
-        html:not(.dark) .bg-slate-900 {
-            background-color: #ffffff !important;
-            box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px -1px rgb(0 0 0 / 0.05);
-        }
-
+        html:not(.dark) .bg-slate-950\/40,
         html:not(.dark) .bg-slate-850 {
             background-color: #f8fafc !important;
         }
@@ -97,14 +109,17 @@
         html:not(.dark) .bg-slate-800\/60,
         html:not(.dark) .bg-slate-800\/50,
         html:not(.dark) .bg-slate-800\/40 {
-            background-color: #e2e8f0 !important;
+            background-color: #f1f5f9 !important;
+            border-color: #cbd5e1 !important;
         }
 
+        /* Borders & Dividers */
         html:not(.dark) .border-slate-800,
         html:not(.dark) .border-slate-800\/80,
         html:not(.dark) .border-slate-800\/60,
         html:not(.dark) .border-slate-800\/50,
         html:not(.dark) .border-slate-700,
+        html:not(.dark) .border-slate-700\/80,
         html:not(.dark) .border-slate-700\/60,
         html:not(.dark) .border-slate-700\/50,
         html:not(.dark) .divide-slate-800,
@@ -112,10 +127,21 @@
             border-color: #e2e8f0 !important;
         }
 
-        html:not(.dark) .text-white,
+        /* Typography */
+        html:not(.dark) h1, 
+        html:not(.dark) h2, 
+        html:not(.dark) h3, 
+        html:not(.dark) h4 {
+            color: #0f172a !important;
+        }
+
+        html:not(.dark) .text-white {
+            color: #0f172a !important;
+        }
+
         html:not(.dark) .text-slate-100,
         html:not(.dark) .text-slate-200 {
-            color: #0f172a !important;
+            color: #1e293b !important;
         }
 
         html:not(.dark) .text-slate-300,
@@ -127,6 +153,52 @@
             color: #64748b !important;
         }
 
+        /* Keep crisp white text on solid color buttons & active elements */
+        html:not(.dark) .bg-emerald-600,
+        html:not(.dark) .bg-emerald-600 *,
+        html:not(.dark) .bg-emerald-500,
+        html:not(.dark) .bg-emerald-500 *,
+        html:not(.dark) .bg-blue-600,
+        html:not(.dark) .bg-blue-600 *,
+        html:not(.dark) .bg-indigo-600,
+        html:not(.dark) .bg-indigo-600 *,
+        html:not(.dark) .bg-rose-600,
+        html:not(.dark) .bg-rose-600 *,
+        html:not(.dark) .bg-purple-600,
+        html:not(.dark) .bg-purple-600 * {
+            color: #ffffff !important;
+        }
+
+        /* Sidebar items hover and active fix */
+        html:not(.dark) aside .text-slate-500 {
+            color: #94a3b8 !important;
+        }
+        html:not(.dark) aside a:not(.bg-emerald-600) {
+            color: #475569 !important;
+        }
+        html:not(.dark) aside a:not(.bg-emerald-600) i {
+            color: #64748b !important;
+        }
+        html:not(.dark) aside a:not(.bg-emerald-600):hover {
+            background-color: #f1f5f9 !important;
+            color: #0f172a !important;
+        }
+        html:not(.dark) aside a:not(.bg-emerald-600):hover i {
+            color: #059669 !important;
+        }
+
+        /* Sidebar profile card */
+        html:not(.dark) aside .bg-slate-800\/60 {
+            background-color: #f8fafc !important;
+            border-color: #e2e8f0 !important;
+        }
+        html:not(.dark) aside .bg-slate-700 {
+            background-color: #d1fae5 !important;
+            border-color: #a7f3d0 !important;
+            color: #065f46 !important;
+        }
+
+        /* Inputs, selects, and textareas */
         html:not(.dark) input,
         html:not(.dark) select,
         html:not(.dark) textarea {
@@ -134,32 +206,106 @@
             color: #0f172a !important;
             border-color: #cbd5e1 !important;
         }
-
+        html:not(.dark) input::placeholder,
+        html:not(.dark) textarea::placeholder {
+            color: #94a3b8 !important;
+        }
         html:not(.dark) input:focus,
         html:not(.dark) select:focus,
         html:not(.dark) textarea:focus {
             background-color: #ffffff !important;
             border-color: #10b981 !important;
+            outline: none !important;
+            box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2) !important;
         }
 
-        html:not(.dark) tr:hover {
+        /* Tables & hover states */
+        html:not(.dark) table {
+            background-color: #ffffff !important;
+        }
+        html:not(.dark) thead {
+            background-color: #f8fafc !important;
+        }
+        html:not(.dark) thead th {
+            background-color: #f8fafc !important;
+            color: #475569 !important;
+            border-bottom: 1px solid #e2e8f0 !important;
+        }
+        html:not(.dark) tbody tr {
+            background-color: #ffffff !important;
+            border-bottom: 1px solid #f1f5f9 !important;
+        }
+        html:not(.dark) tbody tr:hover {
             background-color: #f8fafc !important;
         }
 
-        html:not(.dark) .text-amber-300 { color: #d97706 !important; }
-        html:not(.dark) .text-amber-200 { color: #b45309 !important; }
-        html:not(.dark) .text-emerald-400 { color: #059669 !important; }
-        html:not(.dark) .text-rose-400, html:not(.dark) .text-rose-300 { color: #e11d48 !important; }
-        html:not(.dark) .text-blue-400, html:not(.dark) .text-blue-300 { color: #2563eb !important; }
-        html:not(.dark) .text-indigo-400, html:not(.dark) .text-indigo-300 { color: #4f46e5 !important; }
-        html:not(.dark) .text-purple-400, html:not(.dark) .text-purple-300 { color: #9333ea !important; }
+        /* Status & KPI Color Accents */
+        html:not(.dark) .text-amber-300,
+        html:not(.dark) .text-amber-400 { color: #b45309 !important; }
+        html:not(.dark) .text-amber-200 { color: #92400e !important; }
+        html:not(.dark) .text-emerald-400 { color: #047857 !important; }
+        html:not(.dark) .text-rose-400, html:not(.dark) .text-rose-300 { color: #be123c !important; }
+        html:not(.dark) .text-blue-400, html:not(.dark) .text-blue-300 { color: #1d4ed8 !important; }
+        html:not(.dark) .text-indigo-400, html:not(.dark) .text-indigo-300 { color: #4338ca !important; }
+        html:not(.dark) .text-purple-400, html:not(.dark) .text-purple-300 { color: #7e22ce !important; }
 
-        html:not(.dark) .bg-emerald-950, html:not(.dark) .bg-emerald-950\/80 { background-color: #ecfdf5 !important; color: #065f46 !important; border-color: #a7f3d0 !important; }
-        html:not(.dark) .bg-amber-950, html:not(.dark) .bg-amber-950\/40 { background-color: #fffbeb !important; color: #92400e !important; border-color: #fde68a !important; }
-        html:not(.dark) .bg-rose-950, html:not(.dark) .bg-rose-950\/80 { background-color: #fff1f2 !important; color: #9f1239 !important; border-color: #fecdd3 !important; }
-        html:not(.dark) .bg-blue-950, html:not(.dark) .bg-blue-950\/80 { background-color: #eff6ff !important; color: #1e40af !important; border-color: #bfdbfe !important; }
-        html:not(.dark) .bg-indigo-950, html:not(.dark) .bg-indigo-950\/50, html:not(.dark) .bg-indigo-950\/40 { background-color: #eef2ff !important; color: #3730a3 !important; border-color: #c7d2fe !important; }
-        html:not(.dark) .bg-purple-950, html:not(.dark) .bg-purple-950\/80 { background-color: #faf5ff !important; color: #6b21a8 !important; border-color: #e9d5ff !important; }
+        /* Badges & Pills */
+        html:not(.dark) .bg-emerald-950, html:not(.dark) .bg-emerald-950\/80 {
+            background-color: #d1fae5 !important;
+            color: #065f46 !important;
+            border-color: #a7f3d0 !important;
+        }
+        html:not(.dark) .bg-amber-950, html:not(.dark) .bg-amber-950\/40 {
+            background-color: #fef3c7 !important;
+            color: #92400e !important;
+            border-color: #fde68a !important;
+        }
+        html:not(.dark) .bg-rose-950, html:not(.dark) .bg-rose-950\/80 {
+            background-color: #ffe4e6 !important;
+            color: #9f1239 !important;
+            border-color: #fecdd3 !important;
+        }
+        html:not(.dark) .bg-blue-950, html:not(.dark) .bg-blue-950\/80 {
+            background-color: #dbeafe !important;
+            color: #1e40af !important;
+            border-color: #bfdbfe !important;
+        }
+        html:not(.dark) .bg-indigo-950, html:not(.dark) .bg-indigo-950\/50, html:not(.dark) .bg-indigo-950\/40 {
+            background-color: #e0e7ff !important;
+            color: #3730a3 !important;
+            border-color: #c7d2fe !important;
+        }
+        html:not(.dark) .bg-purple-950, html:not(.dark) .bg-purple-950\/80,
+        html:not(.dark) .bg-purple-900\/50 {
+            background-color: #f3e8ff !important;
+            color: #6b21a8 !important;
+            border-color: #e9d5ff !important;
+        }
+        html:not(.dark) .bg-blue-900\/50 {
+            background-color: #dbeafe !important;
+            color: #1d4ed8 !important;
+            border-color: #bfdbfe !important;
+        }
+        html:not(.dark) .bg-emerald-900\/50 {
+            background-color: #d1fae5 !important;
+            color: #047857 !important;
+            border-color: #a7f3d0 !important;
+        }
+
+        /* Secondary & Action Buttons in Light Mode */
+        html:not(.dark) a.bg-slate-800,
+        html:not(.dark) button.bg-slate-800 {
+            background-color: #ffffff !important;
+            color: #334155 !important;
+            border: 1px solid #cbd5e1 !important;
+            box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+        }
+        html:not(.dark) a.bg-slate-800:hover,
+        html:not(.dark) button.bg-slate-800:hover {
+            background-color: #f8fafc !important;
+            color: #0f172a !important;
+            border-color: #94a3b8 !important;
+        }
     </style>
     @stack('styles')
 </head>

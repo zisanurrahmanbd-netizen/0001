@@ -69,43 +69,42 @@ export const INITIAL_CASES: CaseFile[] = [
   },
   {
     id: 3,
-    file_number: 'ONE-CC-2024-00003',
+    file_number: 'ONE-PL-2024-00010',
     bank_id: 1,
-    product_id: 1,
-    account_number: 'CC4521022340',
-    customer_name: 'Aminul Haque Chowdhury',
+    product_id: 2,
+    account_number: 'PL8830129481',
+    customer_name: 'Tanvir Hossain',
     customer_phone: '01911-300003',
-    customer_address_present: 'Road 15, House 23, Dhanmondi, Dhaka',
-    customer_address_permanent: 'Vill. Sujanagar, Pabna District',
-    present_address_visited: true,
-    permanent_address_visited: true,
-    outstanding_amount: 120000,
+    customer_address_present: 'Sector 3, Uttara, Dhaka-1230',
+    customer_address_permanent: 'Vill. Charghat, Rajshahi',
+    present_address_visited: false,
+    permanent_address_visited: false,
+    outstanding_amount: 320000,
     overdue_amount: 45000,
-    status: 'legal',
-    legal_status: 'Suit Filed at Artha Rin Court',
-    assigned_agent_id: 6,
+    status: 'disputed',
+    assigned_agent_id: 4,
     assigned_manager_id: 2,
-    allocation_date: '2026-06-01',
-    expiry_date: '2026-08-25',
+    allocation_date: '2026-06-10',
+    expiry_date: '2026-09-10',
     total_collected_amount: 0,
   },
   {
     id: 4,
-    file_number: 'ONE-PL-2024-00010',
+    file_number: 'ONE-PL-2024-00011',
     bank_id: 1,
     product_id: 2,
-    account_number: 'PL2024008811',
-    customer_name: 'Shahabuddin Ahmed',
-    customer_phone: '01615-400010',
-    customer_address_present: 'Plot 33, Block B, Bashundhara R/A, Dhaka',
-    customer_address_permanent: 'Vill. Monoharpur, Narail District',
+    account_number: 'PL8830133221',
+    customer_name: 'Kazi Tariqul Islam',
+    customer_phone: '01711-400004',
+    customer_address_present: 'Dhanmondi 27, Dhaka-1209',
+    customer_address_permanent: 'Kushtia Sadar, Kushtia',
     present_address_visited: true,
     permanent_address_visited: true,
-    outstanding_amount: 250000,
-    overdue_amount: 75000,
+    outstanding_amount: 195000,
+    overdue_amount: 50000,
     status: 'broken_promise',
-    extra_attributes: { promised_amount: 50000, promise_date: '2026-08-20' },
-    assigned_agent_id: 4,
+    legal_status: 'Section 138 Notice Issued',
+    assigned_agent_id: 6,
     assigned_manager_id: 2,
     allocation_date: '2026-07-01',
     expiry_date: '2026-09-20',
@@ -168,7 +167,6 @@ export const INITIAL_CASES: CaseFile[] = [
     outstanding_amount: 185000,
     overdue_amount: 60000,
     status: 'untraceable',
-    availability_status: 'No Contact / Abroad',
     assigned_agent_id: 7,
     assigned_manager_id: 3,
     allocation_date: '2026-05-20',
@@ -181,48 +179,29 @@ export const INITIAL_CASES: CaseFile[] = [
     bank_id: 3,
     product_id: 5,
     account_number: 'DR2024200001',
-    customer_name: 'Mahmud Brothers Trading',
-    customer_phone: '01912-800200',
-    customer_address_present: 'Kawran Bazar, Dhaka-1215',
-    customer_address_permanent: 'Demra Road, Narayanganj',
+    customer_name: 'M/S Bismillah Hardware',
+    customer_phone: '01711-800200',
+    customer_address_present: 'Nawabpur Road, Old Dhaka-1100',
+    customer_address_permanent: 'Keraniganj, Dhaka',
     present_address_visited: true,
     permanent_address_visited: false,
-    outstanding_amount: 320000,
-    overdue_amount: 130000,
-    status: 'disputed',
+    outstanding_amount: 540000,
+    overdue_amount: 180000,
+    status: 'legal',
+    legal_status: 'Money Loan Court (Artha Rin) Case #88/2024',
     assigned_agent_id: 5,
     assigned_manager_id: 2,
-    allocation_date: '2026-06-15',
-    expiry_date: '2026-09-06',
+    allocation_date: '2026-06-01',
+    expiry_date: '2026-09-01',
     total_collected_amount: 0,
-  },
-  {
-    id: 9,
-    file_number: 'APB-DR-2024-00201',
-    bank_id: 3,
-    product_id: 5,
-    account_number: 'DR2024200002',
-    customer_name: 'Rahim Paints & Hardware',
-    customer_phone: '01812-900201',
-    customer_address_present: 'Moghbazar, Dhaka-1217',
-    customer_address_permanent: 'Savar, Dhaka District',
-    present_address_visited: false,
-    permanent_address_visited: false,
-    outstanding_amount: 145000,
-    overdue_amount: 45000,
-    status: 'in_progress',
-    assigned_agent_id: 6,
-    assigned_manager_id: 2,
-    allocation_date: '2026-08-15',
-    expiry_date: '2026-10-15',
-    total_collected_amount: 0,
-  },
+  }
 ];
 
 export const INITIAL_REMARKS: CaseRemark[] = [
-  { id: 1, case_file_id: 1, user_id: 4, contact_status: 'contacted', promised_amount: 15000, promise_date: '2026-09-05', remarks: 'Customer agreed to pay partial amount on next salary date.', created_at: '2026-08-28T10:30:00Z' },
-  { id: 2, case_file_id: 4, user_id: 4, contact_status: 'contacted', promised_amount: 50000, promise_date: '2026-08-20', remarks: 'Customer promised payment by 20th August but broke promise.', created_at: '2026-08-18T14:15:00Z' },
-  { id: 3, case_file_id: 7, user_id: 7, contact_status: 'uncontacted', remarks: 'Phone numbers switched off. Neighbors stated customer went abroad.', created_at: '2026-08-22T09:00:00Z' }
+  { id: 1, case_file_id: 1, user_id: 4, contact_status: 'contacted', promised_amount: 25000, promise_date: '2026-08-30', remarks: 'Customer committed to pay BDT 25,000 today via bKash/Bank deposit.', created_at: '2026-08-28T10:30:00Z' },
+  { id: 2, case_file_id: 2, user_id: 5, contact_status: 'contacted', promised_amount: 12000, promise_date: '2026-08-30', remarks: 'Customer promised remaining overdue payment today by 4 PM.', created_at: '2026-08-29T11:00:00Z' },
+  { id: 3, case_file_id: 4, user_id: 6, contact_status: 'contacted', promised_amount: 50000, promise_date: '2026-08-20', remarks: 'Customer promised payment by 20th August but broke promise and phone was unreachable.', created_at: '2026-08-18T14:15:00Z' },
+  { id: 4, case_file_id: 5, user_id: 7, contact_status: 'contacted', promised_amount: 22000, promise_date: '2026-08-22', remarks: 'Missed scheduled repayment date. Requires immediate field visit.', created_at: '2026-08-15T09:00:00Z' }
 ];
 
 export const INITIAL_CHECKINS: CheckIn[] = [
@@ -235,7 +214,15 @@ export const INITIAL_COLLECTIONS: Collection[] = [
   { id: 2, case_file_id: 6, agent_id: 8, amount: 38500, payment_method: 'bank_deposit', receipt_number: 'REC-2024-002', notes: 'Full account closure payment', collected_at: '2026-08-27T15:45:00Z' }
 ];
 
-// In-memory state with local storage persistence
+export interface PtpAlertItem {
+  caseItem: CaseFile;
+  remark: CaseRemark;
+  promisedAmount: number;
+  promiseDate: string;
+  isOverdue: boolean;
+  daysDiff: number;
+}
+
 class DataService {
   private cases: CaseFile[] = [];
   private remarks: CaseRemark[] = [];
@@ -280,12 +267,8 @@ class DataService {
     return INITIAL_PRODUCTS;
   }
 
-  public getContacts(bankId?: number): BankContact[] {
-    let result = [...this.contacts];
-    if (bankId) {
-      result = result.filter(c => c.bank_id === bankId);
-    }
-    return result.map(c => ({
+  public getContacts(): BankContact[] {
+    return this.contacts.map(c => ({
       ...c,
       bank: INITIAL_BANKS.find(b => b.id === c.bank_id)
     }));
@@ -296,34 +279,30 @@ class DataService {
       ...contact,
       id: Date.now()
     };
-    this.contacts.push(newContact);
+    this.contacts.unshift(newContact);
     this.saveState();
     return newContact;
   }
 
-  public updateContact(id: number, updates: Partial<BankContact>): BankContact | null {
-    const index = this.contacts.findIndex(c => c.id === id);
-    if (index === -1) return null;
-    this.contacts[index] = { ...this.contacts[index], ...updates };
-    this.saveState();
-    return this.contacts[index];
+  public updateContact(id: number, contact: Partial<BankContact>) {
+    const existing = this.contacts.find(c => c.id === id);
+    if (existing) {
+      Object.assign(existing, contact);
+      this.saveState();
+    }
   }
 
-  public deleteContact(id: number): boolean {
-    const before = this.contacts.length;
+  public deleteContact(id: number) {
     this.contacts = this.contacts.filter(c => c.id !== id);
     this.saveState();
-    return this.contacts.length < before;
   }
 
   public getCases(user: User): CaseFile[] {
     let list = [...this.cases];
-
-    // Role-based scoping
-    if (user.role === 'agent') {
-      list = list.filter(c => c.assigned_agent_id === user.id);
-    } else if (user.role === 'manager') {
+    if (user.role === 'manager') {
       list = list.filter(c => c.assigned_manager_id === user.id);
+    } else if (user.role === 'agent') {
+      list = list.filter(c => c.assigned_agent_id === user.id);
     }
 
     return list.map(c => ({
@@ -334,77 +313,60 @@ class DataService {
   }
 
   public getCaseById(id: number): CaseFile | undefined {
-    const c = this.cases.find(item => item.id === id);
-    if (!c) return undefined;
+    const item = this.cases.find(c => c.id === id);
+    if (!item) return undefined;
     return {
-      ...c,
-      bank: INITIAL_BANKS.find(b => b.id === c.bank_id),
-      product: INITIAL_PRODUCTS.find(p => p.id === c.product_id),
+      ...item,
+      bank: INITIAL_BANKS.find(b => b.id === item.bank_id),
+      product: INITIAL_PRODUCTS.find(p => p.id === item.product_id),
     };
   }
 
-  public updateCaseStatus(id: number, status: CaseFile['status'], extra?: Partial<CaseFile>): CaseFile | null {
-    const idx = this.cases.findIndex(c => c.id === id);
-    if (idx === -1) return null;
-    this.cases[idx] = { ...this.cases[idx], status, ...extra, updated_at: new Date().toISOString() };
-    this.saveState();
-    return this.cases[idx];
-  }
-
-  public reassignCase(id: number, agentId: number, managerId?: number): CaseFile | null {
-    const idx = this.cases.findIndex(c => c.id === id);
-    if (idx === -1) return null;
-    this.cases[idx].assigned_agent_id = agentId;
-    if (managerId) this.cases[idx].assigned_manager_id = managerId;
-    this.saveState();
-    return this.cases[idx];
+  public reassignCase(caseId: number, agentId: number) {
+    const item = this.cases.find(c => c.id === caseId);
+    if (item) {
+      item.assigned_agent_id = agentId;
+      item.status = 'in_progress';
+      this.saveState();
+    }
   }
 
   public addCheckIn(checkIn: Omit<CheckIn, 'id'>): CheckIn {
-    const newCheckIn: CheckIn = {
+    const newCi: CheckIn = {
       ...checkIn,
       id: Date.now(),
     };
-    this.checkIns.push(newCheckIn);
+    this.checkIns.unshift(newCi);
 
-    // Update case visited flag
-    const c = this.cases.find(item => item.id === checkIn.case_file_id);
-    if (c) {
-      if (checkIn.address_type === 'present') c.present_address_visited = true;
-      if (checkIn.address_type === 'permanent') c.permanent_address_visited = true;
-      c.last_visit_at = checkIn.visited_at;
-      if (c.status === 'new' || c.status === 'in_progress') {
-        c.status = 'visited';
-      }
+    const item = this.cases.find(c => c.id === checkIn.case_file_id);
+    if (item) {
+      if (checkIn.address_type === 'present') item.present_address_visited = true;
+      if (checkIn.address_type === 'permanent') item.permanent_address_visited = true;
+      item.status = 'visited';
     }
 
     this.saveState();
-    return newCheckIn;
+    return newCi;
   }
 
   public getCheckInsByCase(caseId: number): CheckIn[] {
-    return this.checkIns.filter(ci => ci.case_file_id === caseId).sort((a, b) => new Date(b.visited_at).getTime() - new Date(a.visited_at).getTime());
+    return this.checkIns.filter(c => c.case_file_id === caseId);
   }
 
   public addRemark(remark: Omit<CaseRemark, 'id'>): CaseRemark {
-    const newRemark: CaseRemark = {
+    const newR: CaseRemark = {
       ...remark,
-      id: Date.now()
+      id: Date.now(),
     };
-    this.remarks.push(newRemark);
+    this.remarks.unshift(newR);
 
-    const c = this.cases.find(item => item.id === remark.case_file_id);
-    if (c && remark.promised_amount && remark.promise_date) {
-      c.status = 'in_progress';
-      c.extra_attributes = {
-        ...c.extra_attributes,
-        promised_amount: remark.promised_amount,
-        promise_date: remark.promise_date
-      };
+    const item = this.cases.find(c => c.id === remark.case_file_id);
+    if (item && remark.promised_amount && remark.promise_date) {
+      item.status = 'in_progress';
     }
 
     this.saveState();
-    return newRemark;
+    return newR;
   }
 
   public getRemarksByCase(caseId: number): CaseRemark[] {
@@ -414,15 +376,15 @@ class DataService {
   public addCollection(collection: Omit<Collection, 'id'>): Collection {
     const newCol: Collection = {
       ...collection,
-      id: Date.now()
+      id: Date.now(),
     };
-    this.collections.push(newCol);
+    this.collections.unshift(newCol);
 
-    const c = this.cases.find(item => item.id === collection.case_file_id);
-    if (c) {
-      c.total_collected_amount += collection.amount;
-      if (c.total_collected_amount >= c.outstanding_amount) {
-        c.status = 'settled';
+    const item = this.cases.find(c => c.id === collection.case_file_id);
+    if (item) {
+      item.total_collected_amount = (item.total_collected_amount || 0) + collection.amount;
+      if (item.total_collected_amount >= item.outstanding_amount) {
+        item.status = 'settled';
       }
     }
 
@@ -434,12 +396,65 @@ class DataService {
     return this.collections.filter(c => c.case_file_id === caseId).sort((a, b) => new Date(b.collected_at).getTime() - new Date(a.collected_at).getTime());
   }
 
+  // TODAY'S PROMISE TO PAY ALERTS
+  public getTodayPtpAlerts(user: User): PtpAlertItem[] {
+    const userCases = this.getCases(user).filter(c => !['settled', 'closed'].includes(c.status));
+    const todayStr = '2026-08-30'; // Current system date
+
+    const results: PtpAlertItem[] = [];
+    userCases.forEach(c => {
+      const caseRemarks = this.remarks.filter(r => r.case_file_id === c.id && r.promise_date);
+      if (caseRemarks.length > 0) {
+        const latestPtp = caseRemarks[0];
+        if (latestPtp.promise_date === todayStr) {
+          results.push({
+            caseItem: c,
+            remark: latestPtp,
+            promisedAmount: latestPtp.promised_amount || c.overdue_amount,
+            promiseDate: latestPtp.promise_date,
+            isOverdue: false,
+            daysDiff: 0
+          });
+        }
+      }
+    });
+    return results;
+  }
+
+  // MISSED / OVERDUE PROMISE TO PAY ALERTS
+  public getMissedPaymentAlerts(user: User): PtpAlertItem[] {
+    const userCases = this.getCases(user).filter(c => !['settled', 'closed'].includes(c.status));
+    const todayStr = '2026-08-30';
+    const todayDate = new Date(todayStr);
+
+    const results: PtpAlertItem[] = [];
+    userCases.forEach(c => {
+      const caseRemarks = this.remarks.filter(r => r.case_file_id === c.id && r.promise_date);
+      if (caseRemarks.length > 0) {
+        const latestPtp = caseRemarks[0];
+        if (latestPtp.promise_date && latestPtp.promise_date < todayStr) {
+          const ptpDate = new Date(latestPtp.promise_date);
+          const diffDays = Math.max(1, Math.floor((todayDate.getTime() - ptpDate.getTime()) / (1000 * 3600 * 24)));
+          results.push({
+            caseItem: c,
+            remark: latestPtp,
+            promisedAmount: latestPtp.promised_amount || c.overdue_amount,
+            promiseDate: latestPtp.promise_date,
+            isOverdue: true,
+            daysDiff: diffDays
+          });
+        }
+      }
+    });
+    return results;
+  }
+
   public getDashboardMetrics(user: User) {
     const cases = this.getCases(user);
     const totalFiles = cases.length;
     const activeFiles = cases.filter(c => !['settled', 'closed'].includes(c.status)).length;
     
-    const now = new Date();
+    const now = new Date('2026-08-30');
     const sevenDaysLater = new Date(now.getTime() + 7 * 86400000);
     
     const expiringSoon = cases.filter(c => {
@@ -456,6 +471,9 @@ class DataService {
     const settled = cases.filter(c => c.status === 'settled').length;
     const totalOutstanding = cases.reduce((acc, c) => acc + (c.outstanding_amount || 0), 0);
     const totalCollected = cases.reduce((acc, c) => acc + (c.total_collected_amount || 0), 0);
+
+    const todayPtps = this.getTodayPtpAlerts(user);
+    const missedPtps = this.getMissedPaymentAlerts(user);
 
     // Bank breakdown
     const bankBreakdown: Record<string, { count: number; outstanding: number }> = {};
@@ -479,7 +497,11 @@ class DataService {
         total_collected: totalCollected,
         online_agents_count: 5,
         total_agents_count: 5,
+        today_ptp_count: todayPtps.length,
+        missed_ptp_count: missedPtps.length,
       },
+      todayPtps,
+      missedPtps,
       charts: {
         files_by_bank: {
           labels: Object.keys(bankBreakdown),

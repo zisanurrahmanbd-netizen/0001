@@ -1,6 +1,6 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { useAuth, DEMO_USERS } from '../context/AuthContext';
-import { dataService } from '../services/dataService';
+import { dataService, PtpAlertItem } from '../services/dataService';
 import { StatusBadge } from '../components/StatusBadge';
 import { 
   FolderCheck, 
@@ -13,7 +13,13 @@ import {
   ArrowUpRight,
   ShieldAlert,
   Calendar,
-  Building2
+  Building2,
+  Phone,
+  Receipt,
+  BellRing,
+  Sparkles,
+  AlertCircle,
+  X
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -27,6 +33,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectCase, onNavigate }
   const [metrics, setMetrics] = useState<any>(() => dataService.getDashboardMetrics(activeUser));
   const [cases, setCases] = useState<any[]>(() => dataService.getCases(activeUser));
 
+  // Automatic popup modal state for Today's PTPs & Missed Payments
+  const [showPtpPopup, setShowPtpPopup] = useState<boolean>(true);
+  const [activeTab, setActiveTab] = useState<'today' | 'missed'>('today');
+
   useEffect(() => {
     if (user) {
       setMetrics(dataService.getDashboardMetrics(user));
@@ -36,20 +46,35 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectCase, onNavigate }
 
   if (!metrics) return <div className="p-8 text-center text-slate-500">Loading dashboard metrics...</div>;
 
-  const { summary, charts } = metrics;
+  const { summary, charts, todayPtps = [], missedPtps = [] } = metrics;
   const expiringCases = cases.filter(c => c.expiry_date && !['settled', 'closed'].includes(c.status)).slice(0, 5);
+
+  const totalActionAlerts = todayPtps.length + missedPtps.length;
 
   return (
     <div className="space-y-6">
+      {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-            Operational Dashboard
-          </h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+              Operational Dashboard
+            </h2>
+            {totalActionAlerts > 0 && (
+              <button
+                onClick={() => setShowPtpPopup(true)}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400 text-xs font-bold animate-pulse hover:bg-rose-500/20 transition-all cursor-pointer"
+              >
+                <BellRing className="w-3.5 h-3.5" />
+                <span>{totalActionAlerts} Urgent Follow-Ups</span>
+              </button>
+            )}
+          </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Real-time multi-bank debt recovery tracking & agent telemetry
+            Real-time multi-bank debt recovery tracking & automated customer payment follow-ups
           </p>
         </div>
+
         <div className="flex items-center gap-2">
           <button
             onClick={() => onNavigate('imports')}
@@ -61,8 +86,199 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectCase, onNavigate }
         </div>
       </div>
 
+      {/* AUTOMATIC URGENT ACTION POPUP MODAL */}
+      {showPtpPopup && totalActionAlerts > 0 && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-2xl w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                  <BellRing className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
+                    Daily Payment Follow-Up Alert
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    Customers committed to pay today & missed payment dates requiring immediate action
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowPtpPopup(false)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-white p-1 rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Tabs */}
+            <div className="flex gap-2 border-b border-slate-100 dark:border-slate-800 pb-2">
+              <button
+                onClick={() => setActiveTab('today')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                  activeTab === 'today'
+                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                }`}
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>Today's Commitments ({todayPtps.length})</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('missed')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                  activeTab === 'missed'
+                    ? 'bg-rose-600 text-white shadow-md shadow-rose-600/30'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                }`}
+              >
+                <AlertTriangle className="w-3.5 h-3.5" />
+                <span>Missed / Broken Promises ({missedPtps.length})</span>
+              </button>
+            </div>
+
+            {/* Modal Content List */}
+            <div className="max-h-72 overflow-y-auto space-y-3 pr-1">
+              {activeTab === 'today' ? (
+                todayPtps.length === 0 ? (
+                  <p className="text-xs text-slate-400 text-center py-6">No payment commitments scheduled for today.</p>
+                ) : (
+                  todayPtps.map((item: PtpAlertItem) => (
+                    <div key={'pop-today-' + item.caseItem.id} className="p-3.5 rounded-2xl bg-emerald-500/5 dark:bg-emerald-950/20 border border-emerald-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-extrabold text-slate-900 dark:text-white text-sm">{item.caseItem.customer_name}</span>
+                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold uppercase">{item.caseItem.bank?.name}</span>
+                        </div>
+                        <div className="text-slate-600 dark:text-slate-400 mt-0.5">
+                          Promised: <span className="font-bold font-mono text-emerald-600 dark:text-emerald-400">BDT {item.promisedAmount.toLocaleString()}</span> (Due Today)
+                        </div>
+                        <div className="text-[11px] text-slate-500 italic mt-1">"{item.remark.remarks}"</div>
+                      </div>
+
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <a
+                          href={'tel:' + item.caseItem.customer_phone}
+                          className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 font-bold flex items-center gap-1.5"
+                        >
+                          <Phone className="w-3.5 h-3.5 text-emerald-500" />
+                          <span>Call</span>
+                        </a>
+                        <button
+                          onClick={() => {
+                            setShowPtpPopup(false);
+                            onSelectCase(item.caseItem.id);
+                          }}
+                          className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold shadow-md shadow-emerald-600/30 flex items-center gap-1.5"
+                        >
+                          <Receipt className="w-3.5 h-3.5" />
+                          <span>Collect / View</span>
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )
+              ) : (
+                missedPtps.length === 0 ? (
+                  <p className="text-xs text-slate-400 text-center py-6">No missed payment promises recorded.</p>
+                ) : (
+                  missedPtps.map((item: PtpAlertItem) => (
+                    <div key={'pop-missed-' + item.caseItem.id} className="p-3.5 rounded-2xl bg-rose-500/5 dark:bg-rose-950/20 border border-rose-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-extrabold text-slate-900 dark:text-white text-sm">{item.caseItem.customer_name}</span>
+                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-600 dark:text-rose-400 font-bold uppercase">
+                            {item.daysDiff} Days Overdue
+                          </span>
+                        </div>
+                        <div className="text-slate-600 dark:text-slate-400 mt-0.5">
+                          Missed Promised Date: <span className="font-bold font-mono text-rose-600 dark:text-rose-400">{item.promiseDate}</span> (BDT {item.promisedAmount.toLocaleString()})
+                        </div>
+                        <div className="text-[11px] text-slate-500 italic mt-1">"{item.remark.remarks}"</div>
+                      </div>
+
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <a
+                          href={'tel:' + item.caseItem.customer_phone}
+                          className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 font-bold flex items-center gap-1.5"
+                        >
+                          <Phone className="w-3.5 h-3.5 text-rose-500" />
+                          <span>Call</span>
+                        </a>
+                        <button
+                          onClick={() => {
+                            setShowPtpPopup(false);
+                            onSelectCase(item.caseItem.id);
+                          }}
+                          className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold shadow-md shadow-rose-600/30 flex items-center gap-1.5"
+                        >
+                          <span>Re-Engage</span>
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )
+              )}
+            </div>
+
+            <div className="flex justify-end pt-2 border-t border-slate-100 dark:border-slate-800">
+              <button
+                onClick={() => setShowPtpPopup(false)}
+                className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs"
+              >
+                Close & Proceed to Dashboard
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* KPI Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Today's PTP Card */}
+        <div 
+          onClick={() => { setActiveTab('today'); setShowPtpPopup(true); }}
+          className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-emerald-500/30 shadow-sm cursor-pointer hover:border-emerald-500 transition-all"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Due Today (PTP)</span>
+            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+              <Calendar className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-3">
+            <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 tracking-tight">
+              {todayPtps.length} Cases
+            </div>
+            <div className="text-xs text-slate-500 mt-1 flex items-center gap-1">
+              <span className="font-bold text-slate-700 dark:text-slate-300">Click to view & follow up</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Missed Payment Card */}
+        <div 
+          onClick={() => { setActiveTab('missed'); setShowPtpPopup(true); }}
+          className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-rose-500/30 shadow-sm cursor-pointer hover:border-rose-500 transition-all"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-rose-600 dark:text-rose-400 uppercase tracking-wider">Missed PTP / Broken</span>
+            <div className="w-8 h-8 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center">
+              <ShieldAlert className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-3">
+            <div className="text-2xl font-black text-rose-600 dark:text-rose-400 tracking-tight">
+              {missedPtps.length} Cases
+            </div>
+            <div className="text-xs text-slate-500 mt-1">
+              Overdue commitment dates
+            </div>
+          </div>
+        </div>
+
         <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Portfolio</span>
@@ -74,8 +290,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectCase, onNavigate }
             <div className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
               BDT {summary.total_outstanding.toLocaleString()}
             </div>
-            <div className="text-xs text-slate-500 mt-1 flex items-center gap-1.5">
-              <span className="font-bold text-slate-700 dark:text-slate-300">{summary.total_files}</span> cases assigned
+            <div className="text-xs text-slate-500 mt-1">
+              {summary.total_files} active recovery cases
             </div>
           </div>
         </div>
@@ -91,45 +307,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectCase, onNavigate }
             <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 tracking-tight">
               BDT {summary.total_collected.toLocaleString()}
             </div>
-            <div className="text-xs text-slate-500 mt-1 flex items-center gap-1.5">
-              <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                {summary.total_outstanding > 0 ? ((summary.total_collected / summary.total_outstanding) * 100).toFixed(1) : 0}%
-              </span> recovery rate
-            </div>
-          </div>
-        </div>
-
-        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Expiring ≤7 Days</span>
-            <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
-              <Clock className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-3">
-            <div className="text-2xl font-black text-amber-600 dark:text-amber-400 tracking-tight">
-              {summary.expiring_soon_count}
-            </div>
             <div className="text-xs text-slate-500 mt-1">
-              Urgent bank contract expiry
-            </div>
-          </div>
-        </div>
-
-        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Active Agents</span>
-            <div className="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center">
-              <Users className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-3">
-            <div className="text-2xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-              <span>{summary.online_agents_count}</span>
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            </div>
-            <div className="text-xs text-slate-500 mt-1">
-              Live telemetry active
+              {summary.total_outstanding > 0 ? ((summary.total_collected / summary.total_outstanding) * 100).toFixed(1) : 0}% recovery rate
             </div>
           </div>
         </div>

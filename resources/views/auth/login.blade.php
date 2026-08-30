@@ -120,18 +120,24 @@
 
             <div>
                 <label for="password" class="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider">Password</label>
-                <div class="relative">
+                <div class="relative" x-data="{ showPassword: false }">
                     <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
                         <i class="fa-solid fa-lock text-sm"></i>
                     </div>
                     <input id="password"
                            name="password"
-                           type="password"
+                           :type="showPassword ? 'text' : 'password'"
                            autocomplete="current-password"
                            required
                            value="password123"
                            placeholder="••••••••"
-                           class="w-full pl-10 pr-3.5 py-2.5 bg-slate-950 border border-slate-700/70 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all">
+                           class="w-full pl-10 pr-10 py-2.5 bg-slate-950 border border-slate-700/70 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all">
+                    <button type="button"
+                            @click="showPassword = !showPassword"
+                            class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-white transition-colors focus:outline-none"
+                            :title="showPassword ? 'Hide password' : 'Show password'">
+                        <i :class="showPassword ? 'fa-solid fa-eye-slash text-emerald-400' : 'fa-solid fa-eye text-slate-400'" class="text-sm"></i>
+                    </button>
                 </div>
             </div>
 

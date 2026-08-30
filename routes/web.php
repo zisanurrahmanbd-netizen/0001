@@ -73,6 +73,8 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::post('/imports/preview', [ExcelImportController::class, 'preview'])->name('imports.preview');
         Route::post('/imports', [ExcelImportController::class, 'store'])->name('imports.store');
         Route::get('/imports/{job}/status', [ExcelImportController::class, 'jobStatus'])->name('imports.job-status');
+        Route::get('/imports/templates/{type}', [ExcelImportController::class, 'downloadTemplate'])->name('imports.templates.download');
+        Route::post('/imports/templates/custom', [ExcelImportController::class, 'customTemplate'])->name('imports.templates.custom');
     });
 
     // Google Sheet Bi-Directional Live Sync (Admin & Manager)

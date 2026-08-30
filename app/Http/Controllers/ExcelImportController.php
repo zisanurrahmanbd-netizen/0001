@@ -7,17 +7,20 @@ use App\Models\Bank;
 use App\Models\ImportJob;
 use App\Models\Product;
 use App\Services\ExcelImportService;
+use App\Services\TemplateGeneratorService;
 use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ExcelImportController extends Controller
 {
     public function __construct(
-        protected ExcelImportService $importer
+        protected ExcelImportService $importer,
+        protected TemplateGeneratorService $templateGenerator
     ) {}
 
     public function index(Request $request): View
@@ -33,8 +36,9 @@ class ExcelImportController extends Controller
 
         $banks = Bank::where('is_active', true)->orderBy('name')->get();
         $products = Product::orderBy('name')->get();
+        $availableTemplates = $this->templateGenerator->getAvailableTemplates();
 
-        return view('imports.index', compact('importJobs', 'banks', 'products'));
+        return view('imports.index', compact('importJobs', 'banks', 'products', 'availableTemplates'));
     }
 
     public function inspect(Request $request): JsonResponse
@@ -211,5 +215,56 @@ class ExcelImportController extends Controller
             'created_at' => $job->created_at->diffForHumans(),
             'updated_at' => $job->updated_at->diffForHumans(),
         ]);
+    }
+
+    /**
+     * Download pre-configured Excel template for any bank/product or master workbook.
+     */
+    public function downloadTemplate(string $type): StreamedResponse
+    {
+        return $this->templateGenerator->downloadTemplate($type);
+    }
+
+    /**
+     * Build and download a custom Excel template with user-selected columns.
+     */
+    public function customTemplate(Request $request): StreamedResponse
+    {
+        $request->validate([
+            'bank_name' => 'required|string|max:100',
+            'product_name' => 'required|string|max:100',
+            'columns' => 'required|array|min:3',
+        ]);
+
+        $bankName = $request->input('bank_name');
+        $productName = $request->input('product_name');
+        $headers = array_map(fn($col) => strtoupper(trim($col)), $request->input('columns'));
+
+        // Generate sample row for instructions
+        $sampleRow = [];
+        foreach ($headers as $h) {
+            $upper = strtoupper($h);
+            if (str_contains($upper, 'NO') || str_contains($upper, 'ID') || str_contains($upper, 'A/C')) {
+                $sampleRow[] = 'ACC-2026-001';
+            } elseif (str_contains($upper, 'NAME')) {
+                $sampleRow[] = 'Md. Sample Customer';
+            } elseif (str_contains($upper, 'PHONE') || str_contains($upper, 'MOBILE') || str_contains($upper, 'CONTACT')) {
+                $sampleRow[] = '01711-223344';
+            } elseif (str_contains($upper, 'ADDRESS')) {
+                $sampleRow[] = 'House 12, Road 5, Dhanmondi, Dhaka';
+            } elseif (str_contains($upper, 'OUTSTANDING') || str_contains($upper, 'DUE') || str_contains($upper, 'AMOUNT')) {
+                $sampleRow[] = '150000.00';
+            } elseif (str_contains($upper, 'STATUS')) {
+                $sampleRow[] = 'active';
+            } elseif (str_contains($upper, 'DATE')) {
+                $sampleRow[] = date('Y-m-d');
+            } elseif (str_contains($upper, 'AGENT')) {
+                $sampleRow[] = 'Md. Abdur Rahim';
+            } else {
+                $sampleRow[] = 'Sample Data';
+            }
+        }
+
+        return $this->templateGenerator->generateCustomTemplate($bankName, $productName, $headers, [$sampleRow]);
     }
 }

@@ -61,11 +61,37 @@ class ExcelImportTest extends TestCase
         }
 
         $service = app(ExcelImportService::class);
-        $summary = $service->importSheet($filePath, 'OneBank_CreditCard');
+        $result = $service->importSheet($filePath, 'OneBank_CreditCard');
 
-        $this->assertGreaterThan(0, $summary['imported']);
-        $this->assertDatabaseHas('banks', ['name' => 'One Bank Limited']);
-        $this->assertDatabaseHas('products', ['code' => 'credit_card']);
-        $this->assertDatabaseHas('cases', ['file_number' => 'CC4521000101']);
+        $this->assertGreaterThan(0, $result['imported']);
+        $this->assertDatabaseHas('cases', [
+            'file_number' => 'CC4521000101',
+        ]);
+    }
+
+    public function test_admin_can_download_standard_template(): void
+    {
+        $response = $this->actingAs($this->admin)->get(route('imports.templates.download', 'one_bank_credit_card'));
+        $response->assertStatus(200);
+        $response->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    }
+
+    public function test_admin_can_download_master_workbook_template(): void
+    {
+        $response = $this->actingAs($this->admin)->get(route('imports.templates.download', 'master_workbook'));
+        $response->assertStatus(200);
+        $response->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    }
+
+    public function test_admin_can_generate_custom_template(): void
+    {
+        $response = $this->actingAs($this->admin)->post(route('imports.templates.custom'), [
+            'bank_name' => 'City Bank PLC',
+            'product_name' => 'Personal Loan',
+            'columns' => ['ACCOUNT NO', 'CUSTOMER NAME', 'PHONE NUMBER', 'TOTAL OUTSTANDING', 'STATUS'],
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     }
 }

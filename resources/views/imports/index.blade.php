@@ -1,5 +1,5 @@
-﻿@extends('layouts.app')
-@section('title', 'Excel Importer')
+@extends('layouts.app')
+@section('title', 'Excel Importer & Templates')
 
 @section('content')
 <div x-data="{
@@ -7,23 +7,195 @@
     file: null, isDragging: false, isUploading: false,
     inspectResult: null, previewData: null, previewLoading: false,
     selectedSheet: null, queueMode: false,
-    handleDrop(e) { const f = e.dataTransfer.files[0]; if(f && f.name.endsWith('.xlsx')) { this.file = f; this.isDragging = false; } },
-    handleFile(e) { this.file = e.target.files[0] || null; }
+    showCustomModal: false,
+    customBankName: '',
+    customProductName: '',
+    customExtraCol: '',
+    customCols: [
+        'ACCOUNT NO', 'CUSTOMER NAME', 'PHONE NUMBER', 'ALT CONTACT',
+        'PRESENT ADDRESS', 'PERMANENT ADDRESS', 'TOTAL OUTSTANDING',
+        'OVERDUE AMOUNT', 'STATUS', 'LEGAL STATUS', 'ASSIGNED AGENT',
+        'ALLOCATION DATE', 'EXPIRY DATE'
+    ],
+
+    addCustomColumn() {
+        const col = this.customExtraCol.trim().toUpperCase();
+        if (col && !this.customCols.includes(col)) {
+            this.customCols.push(col);
+            this.customExtraCol = '';
+        }
+    },
+
+    removeCustomColumn(idx) {
+        this.customCols.splice(idx, 1);
+    },
+
+    handleDrop(e) {
+        const f = e.dataTransfer.files[0];
+        if (f && (f.name.endsWith('.xlsx') || f.name.endsWith('.xls') || f.name.endsWith('.csv'))) {
+            this.file = f;
+            this.isDragging = false;
+        }
+    },
+    handleFile(e) {
+        this.file = e.target.files[0] || null;
+    }
 }">
 
+    <!-- Page Header -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
             <h1 class="text-2xl font-bold text-white flex items-center gap-2.5">
-                <i class="fa-solid fa-file-excel text-emerald-400"></i> Excel / Workbook Importer
+                <i class="fa-solid fa-file-excel text-emerald-400"></i>
+                <span>Excel Workbook Importer & Template Engine</span>
             </h1>
-            <p class="text-sm text-slate-400 mt-0.5">Upload recovery allocation workbooks to sync case files into the database.</p>
+            <p class="text-sm text-slate-400 mt-0.5">
+                Download formatted bank Excel templates, fill your recovery files, and upload to auto-update cases across the system.
+            </p>
+        </div>
+
+        <div class="flex items-center gap-2.5">
+            <button type="button"
+                    @click="showCustomModal = true"
+                    class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold shadow-sm transition-all">
+                <i class="fa-solid fa-wand-magic-sparkles"></i>
+                <span>Create New Bank Template</span>
+            </button>
+            <a href="{{ route('imports.templates.download', 'master_workbook') }}"
+               class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-sm transition-all">
+                <i class="fa-solid fa-download"></i>
+                <span>Download Master Multi-Bank Workbook</span>
+            </a>
         </div>
     </div>
 
-    <!-- Step 1: Upload -->
+    <!-- Download Bank Templates Showcase Cards -->
+    <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 mb-6 shadow-sm">
+        <div class="flex items-center justify-between pb-3 mb-4 border-b border-slate-800">
+            <div>
+                <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-download text-emerald-400"></i>
+                    <span>Download Ready-to-Fill Excel Formats for Every Bank</span>
+                </h3>
+                <p class="text-xs text-slate-400 mt-0.5">Click any format below to download a pre-formatted Excel template with sample rows and column rules.</p>
+            </div>
+            <span class="text-xs text-emerald-400 font-semibold hidden md:inline">
+                <i class="fa-solid fa-check-circle mr-1"></i> Auto-mapped on upload
+            </span>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <!-- One Bank Credit Card -->
+            <a href="{{ route('imports.templates.download', 'one_bank_credit_card') }}"
+               class="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800/80 hover:border-emerald-500/60 hover:bg-emerald-950/20 transition-all group block">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-sm font-bold group-hover:scale-110 transition-transform">
+                        <i class="fa-regular fa-credit-card"></i>
+                    </span>
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-400">.XLSX</span>
+                </div>
+                <div class="font-bold text-white text-xs group-hover:text-emerald-300">One Bank Credit Card</div>
+                <div class="text-[11px] text-slate-400 mt-0.5">Card No, Client Name, Bucket, Due</div>
+            </a>
+
+            <!-- One Bank Loan -->
+            <a href="{{ route('imports.templates.download', 'one_bank_loan') }}"
+               class="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800/80 hover:border-emerald-500/60 hover:bg-emerald-950/20 transition-all group block">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-sm font-bold group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-hand-holding-dollar"></i>
+                    </span>
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-400">.XLSX</span>
+                </div>
+                <div class="font-bold text-white text-xs group-hover:text-emerald-300">One Bank Loan Recovery</div>
+                <div class="text-[11px] text-slate-400 mt-0.5">Loan A/C, Borrower, Scheme, Branch</div>
+            </a>
+
+            <!-- DBBL Credit Card -->
+            <a href="{{ route('imports.templates.download', 'dbbl_credit_card') }}"
+               class="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800/80 hover:border-blue-500/60 hover:bg-blue-950/20 transition-all group block">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center text-sm font-bold group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-credit-card"></i>
+                    </span>
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-blue-400">.XLSX</span>
+                </div>
+                <div class="font-bold text-white text-xs group-hover:text-blue-300">DBBL Credit Card</div>
+                <div class="text-[11px] text-slate-400 mt-0.5">Card No, Customer, Min Due, Agent</div>
+            </a>
+
+            <!-- DBBL Write-Off -->
+            <a href="{{ route('imports.templates.download', 'dbbl_write_off') }}"
+               class="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800/80 hover:border-blue-500/60 hover:bg-blue-950/20 transition-all group block">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center text-sm font-bold group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-ban"></i>
+                    </span>
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-blue-400">.XLSX</span>
+                </div>
+                <div class="font-bold text-white text-xs group-hover:text-blue-300">DBBL Write-Off Debt</div>
+                <div class="text-[11px] text-slate-400 mt-0.5">Account, Write-Off Year, Artha Rin</div>
+            </a>
+
+            <!-- DBBL Loan Branch -->
+            <a href="{{ route('imports.templates.download', 'dbbl_loan_branch') }}"
+               class="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800/80 hover:border-blue-500/60 hover:bg-blue-950/20 transition-all group block">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center text-sm font-bold group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-building-columns"></i>
+                    </span>
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-blue-400">.XLSX</span>
+                </div>
+                <div class="font-bold text-white text-xs group-hover:text-blue-300">DBBL Loan Branch</div>
+                <div class="text-[11px] text-slate-400 mt-0.5">A/C No, Nominee Phone, Branch</div>
+            </a>
+
+            <!-- DBBL Agent Banking -->
+            <a href="{{ route('imports.templates.download', 'dbbl_agent_banking') }}"
+               class="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800/80 hover:border-blue-500/60 hover:bg-blue-950/20 transition-all group block">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center text-sm font-bold group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-store"></i>
+                    </span>
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-blue-400">.XLSX</span>
+                </div>
+                <div class="font-bold text-white text-xs group-hover:text-blue-300">DBBL Agent Banking</div>
+                <div class="text-[11px] text-slate-400 mt-0.5">Outlet A/C, Outlet Name, Area</div>
+            </a>
+
+            <!-- Asian Paints Dealer -->
+            <a href="{{ route('imports.templates.download', 'asian_paints_dealer') }}"
+               class="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800/80 hover:border-amber-500/60 hover:bg-amber-950/20 transition-all group block">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center text-sm font-bold group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-paint-roller"></i>
+                    </span>
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-amber-400">.XLSX</span>
+                </div>
+                <div class="font-bold text-white text-xs group-hover:text-amber-300">Asian Paints Dealer</div>
+                <div class="text-[11px] text-slate-400 mt-0.5">Dealer Code, Shop & Godown Addr</div>
+            </a>
+
+            <!-- Universal Standard Template -->
+            <a href="{{ route('imports.templates.download', 'universal_recovery') }}"
+               class="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800/80 hover:border-indigo-500/60 hover:bg-indigo-950/20 transition-all group block">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center text-sm font-bold group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-file-lines"></i>
+                    </span>
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-indigo-400">.XLSX</span>
+                </div>
+                <div class="font-bold text-white text-xs group-hover:text-indigo-300">Universal Recovery Format</div>
+                <div class="text-[11px] text-slate-400 mt-0.5">Works for any bank or custom product</div>
+            </a>
+        </div>
+    </div>
+
+    <!-- Step 1: Upload File -->
     <div x-show="step === 'upload'" class="bg-slate-900 border border-slate-800 rounded-xl p-6 mb-6 shadow-sm">
-        <h3 class="text-sm font-semibold text-white mb-4 flex items-center gap-2">
-            <i class="fa-solid fa-upload text-emerald-400"></i> Step 1: Select Workbook File
+        <h3 class="text-sm font-bold text-white mb-4 flex items-center gap-2">
+            <i class="fa-solid fa-cloud-arrow-up text-emerald-400"></i>
+            <span>Upload Completed Excel Workbook to Sync Cases</span>
         </h3>
 
         <form id="inspectForm" method="POST" action="{{ route('imports.inspect') }}" enctype="multipart/form-data">
@@ -37,19 +209,19 @@
                     <div class="text-center px-4">
                         <i class="fa-solid fa-cloud-arrow-up text-4xl text-slate-500 mb-3 block" x-show="!file"></i>
                         <i class="fa-solid fa-file-excel text-4xl text-emerald-400 mb-3 block" x-show="file"></i>
-                        <p class="text-sm text-slate-300 font-medium" x-text="file ? file.name : 'Drag & drop your .xlsx file here'"></p>
-                        <p class="text-xs text-slate-500 mt-1" x-show="!file">or click to browse — supports standard bank recovery workbooks</p>
+                        <p class="text-sm text-slate-300 font-medium" x-text="file ? file.name : 'Drag & drop your filled .xlsx file here'"></p>
+                        <p class="text-xs text-slate-500 mt-1" x-show="!file">or click to browse — supports single-sheet and multi-bank workbooks</p>
                         <p class="text-xs text-emerald-400 mt-1" x-show="file" x-text="'Size: ' + (file ? (file.size / 1024).toFixed(1) + ' KB' : '')"></p>
                     </div>
-                    <input type="file" name="excel_file" accept=".xlsx,.xls" class="hidden" @change="handleFile($event)">
+                    <input type="file" name="excel_file" accept=".xlsx,.xls,.csv" class="hidden" @change="handleFile($event)">
                 </label>
             </div>
 
             <div class="flex items-center gap-3">
                 <button type="submit" :disabled="!file" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-sm font-semibold transition-all">
-                    <i class="fa-solid fa-magnifying-glass mr-2"></i> Inspect Sheets
+                    <i class="fa-solid fa-magnifying-glass mr-2"></i> Inspect & Preview Workbook
                 </button>
-                <span class="text-xs text-slate-500">This will scan the workbook without importing any data.</span>
+                <span class="text-xs text-slate-500">Scans sheets and detects bank format before importing.</span>
             </div>
         </form>
     </div>
@@ -59,109 +231,178 @@
         <h3 class="text-sm font-semibold text-white mb-4 flex items-center gap-2">
             <i class="fa-solid fa-table text-blue-400"></i> Step 2: Select Sheet & Run Import
         </h3>
-        <div x-show="inspectResult" class="space-y-4">
-            <div class="text-xs text-slate-400">Found <span class="font-bold text-white" x-text="inspectResult?.sheets?.length || 0"></span> sheets in workbook.</div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <template x-for="sheet in (inspectResult?.sheets || [])" :key="sheet.name">
-                    <label class="flex items-center gap-3 p-3 rounded-lg bg-slate-950 border border-slate-800 cursor-pointer hover:border-emerald-500/50 transition-colors"
-                           :class="selectedSheet === sheet.name ? 'border-emerald-500 bg-emerald-950/20' : ''">
-                        <input type="radio" x-model="selectedSheet" :value="sheet.name" class="text-emerald-500">
+
+        <div class="space-y-4">
+            <template x-for="(sh, idx) in inspectResult ? inspectResult.sheets : []" :key="idx">
+                <div class="p-4 rounded-xl border transition-all"
+                     :class="selectedSheet === sh.sheet_name ? 'border-emerald-500 bg-emerald-950/20' : 'border-slate-800 bg-slate-950/50'">
+                    <div class="flex items-center justify-between">
                         <div>
-                            <div class="text-xs font-semibold text-white" x-text="sheet.name"></div>
-                            <div class="text-[10px] text-slate-400" x-text="(sheet.rows || 0) + ' data rows detected'"></div>
-                            <div class="text-[10px] text-emerald-400" x-text="sheet.type ? 'Type: ' + sheet.type : ''"></div>
+                            <div class="font-bold text-white text-sm" x-text="sh.sheet_name"></div>
+                            <div class="text-xs text-slate-400 mt-0.5">
+                                Rows: <strong class="text-slate-200" x-text="sh.total_rows"></strong> &bull;
+                                Columns: <strong class="text-slate-200" x-text="sh.columns_count"></strong>
+                            </div>
                         </div>
-                    </label>
-                </template>
-            </div>
-            <form method="POST" action="{{ route('imports.store') }}" enctype="multipart/form-data" class="flex flex-wrap items-center gap-3 pt-3 border-t border-slate-800">
-                @csrf
-                <input type="hidden" name="file_path" :value="inspectResult?.temp_path">
-                <input type="hidden" name="sheet_name" :value="selectedSheet">
-                <label class="flex items-center gap-2 text-xs text-slate-300">
-                    <input type="checkbox" name="queue" value="1" x-model="queueMode" class="text-emerald-500">
-                    Run in background queue (for large files)
-                </label>
-                <button type="submit" :disabled="!selectedSheet" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-lg text-sm font-semibold transition-all">
-                    <i class="fa-solid fa-play mr-1"></i> Start Import
-                </button>
-                <button type="button" @click="step = 'upload'" class="px-4 py-2 bg-slate-800 text-slate-300 rounded-lg text-sm border border-slate-700">
-                    ← Back
-                </button>
-            </form>
+                        <div class="flex items-center gap-2">
+                            <form method="POST" action="{{ route('imports.store') }}" class="inline">
+                                @csrf
+                                <input type="hidden" name="temp_path" :value="inspectResult.temp_path">
+                                <input type="hidden" name="sheet_name" :value="sh.sheet_name">
+                                <input type="hidden" name="file_name" :value="inspectResult.file_name">
+                                <button type="submit" class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold">
+                                    <i class="fa-solid fa-bolt mr-1"></i> Import Now
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </div>
+
+        <div class="mt-4 pt-4 border-t border-slate-800 flex justify-between">
+            <button type="button" @click="step = 'upload'; file = null; inspectResult = null;" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-lg font-medium">
+                &larr; Upload Another File
+            </button>
         </div>
     </div>
 
-    <!-- Recent Import Jobs Table -->
-    <div class="bg-slate-900 border border-slate-800 rounded-xl shadow-sm overflow-hidden">
-        <div class="p-5 border-b border-slate-800 flex items-center justify-between">
-            <h3 class="text-sm font-semibold text-white flex items-center gap-2">
-                <i class="fa-solid fa-clock-rotate-left text-slate-400"></i> Recent Import Jobs
-            </h3>
-            <span class="text-xs text-slate-400">Auto-refreshes every 5s while jobs are running</span>
-        </div>
-        <div class="overflow-x-auto custom-scrollbar" id="jobs-table-wrapper">
+    <!-- Recent Import Jobs Log -->
+    <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm">
+        <h3 class="text-sm font-bold text-white mb-4 flex items-center gap-2">
+            <i class="fa-solid fa-clock-rotate-left text-slate-400"></i> Recent Import Jobs History
+        </h3>
+        <div class="overflow-x-auto custom-scrollbar">
             <table class="w-full text-left text-xs">
-                <thead class="bg-slate-950/80 text-slate-400 text-[11px] uppercase tracking-wider border-b border-slate-800">
+                <thead class="bg-slate-950/80 border-b border-slate-800 text-slate-400 uppercase tracking-wider text-[11px]">
                     <tr>
-                        <th class="py-3 px-4">Job ID</th>
-                        <th class="py-3 px-4">File / Sheet</th>
-                        <th class="py-3 px-4 text-center">Status</th>
-                        <th class="py-3 px-4 text-center">Imported</th>
-                        <th class="py-3 px-4 text-center">Skipped</th>
-                        <th class="py-3 px-4 text-center">Errors</th>
-                        <th class="py-3 px-4">Started At</th>
-                        <th class="py-3 px-4">Duration</th>
+                        <th class="py-2.5 px-3">Job ID</th>
+                        <th class="py-2.5 px-3">File / Sheet</th>
+                        <th class="py-2.5 px-3">Status</th>
+                        <th class="py-2.5 px-3 text-right">Imported</th>
+                        <th class="py-2.5 px-3 text-right">Updated</th>
+                        <th class="py-2.5 px-3 text-right">Failed</th>
+                        <th class="py-2.5 px-3">Imported At</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-slate-800/60" id="jobs-tbody">
+                <tbody class="divide-y divide-slate-800/60">
                     @forelse($importJobs as $job)
-                        <tr class="hover:bg-slate-800/40 transition-colors">
-                            <td class="py-3 px-4 font-mono text-slate-400">#{{ $job->id }}</td>
-                            <td class="py-3 px-4">
-                                <div class="font-medium text-white">{{ $job->original_filename }}</div>
-                                <div class="text-[10px] text-slate-400">{{ $job->sheet_name ?? 'All Sheets' }}</div>
+                        <tr class="hover:bg-slate-800/30">
+                            <td class="py-2.5 px-3 font-mono text-slate-400">#{{ $job->id }}</td>
+                            <td class="py-2.5 px-3 font-medium text-white">
+                                <div>{{ $job->file_name }}</div>
+                                <div class="text-[10px] text-slate-500">{{ $job->sheet_name }}</div>
                             </td>
-                            <td class="py-3 px-4 text-center">
-                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase
-                                    {{ $job->status === 'completed' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' :
-                                       ($job->status === 'failed' ? 'bg-rose-950 text-rose-400 border border-rose-800' :
-                                       ($job->status === 'processing' ? 'bg-blue-950 text-blue-400 border border-blue-800' :
-                                       'bg-amber-950 text-amber-400 border border-amber-800')) }}">
-                                    @if($job->status === 'processing')
-                                        <i class="fa-solid fa-spinner animate-spin mr-1 text-[9px]"></i>
-                                    @endif
+                            <td class="py-2.5 px-3">
+                                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase
+                                    {{ $job->status === 'completed' ? 'bg-emerald-950 text-emerald-300 border border-emerald-800' :
+                                       ($job->status === 'failed' ? 'bg-rose-950 text-rose-300 border border-rose-800' : 'bg-amber-950 text-amber-300 border border-amber-800') }}">
                                     {{ $job->status }}
                                 </span>
                             </td>
-                            <td class="py-3 px-4 text-center text-emerald-400 font-bold">{{ $job->rows_imported ?? 0 }}</td>
-                            <td class="py-3 px-4 text-center text-amber-400">{{ $job->rows_skipped ?? 0 }}</td>
-                            <td class="py-3 px-4 text-center text-rose-400">{{ $job->rows_failed ?? 0 }}</td>
-                            <td class="py-3 px-4 text-slate-300">{{ $job->started_at?->format('d M Y, H:i') ?? '-' }}</td>
-                            <td class="py-3 px-4 text-slate-400">
-                                @if($job->started_at && $job->completed_at)
-                                    {{ $job->started_at->diffForHumans($job->completed_at, true) }}
-                                @elseif($job->status === 'processing')
-                                    <span class="text-blue-400 animate-pulse">Running...</span>
-                                @else
-                                    -
-                                @endif
-                            </td>
+                            <td class="py-2.5 px-3 text-right font-bold text-emerald-400">{{ number_format($job->imported_rows) }}</td>
+                            <td class="py-2.5 px-3 text-right font-bold text-blue-400">{{ number_format($job->updated_rows) }}</td>
+                            <td class="py-2.5 px-3 text-right font-bold text-rose-400">{{ number_format($job->failed_rows) }}</td>
+                            <td class="py-2.5 px-3 text-slate-400">{{ $job->created_at->format('d M, h:i A') }}</td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="py-10 text-center text-slate-500">
-                                <i class="fa-solid fa-inbox text-3xl text-slate-600 block mb-2"></i>
-                                No import jobs have been run yet.
-                            </td>
+                            <td colspan="7" class="py-6 text-center text-slate-500">No workbook import jobs recorded yet.</td>
                         </tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
-        @if($importJobs->hasPages())
-            <div class="p-4 border-t border-slate-800">{{ $importJobs->links() }}</div>
-        @endif
+        <div class="mt-4">
+            {{ $importJobs->links() }}
+        </div>
+    </div>
+
+    <!-- ================= MODAL: CREATE CUSTOM BANK TEMPLATE ================= -->
+    <div x-show="showCustomModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto" role="dialog" aria-modal="true">
+        <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm transition-opacity" @click="showCustomModal = false"></div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+            <div class="inline-block align-bottom bg-slate-900 border border-slate-800 rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-xl sm:w-full p-6">
+                <div class="flex items-center justify-between pb-3 mb-4 border-b border-slate-800">
+                    <h3 class="text-base font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-wand-magic-sparkles text-teal-400"></i>
+                        <span>Create Custom Bank Excel Template</span>
+                    </h3>
+                    <button @click="showCustomModal = false" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+
+                <form method="POST" action="{{ route('imports.templates.custom') }}" class="space-y-4">
+                    @csrf
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
+                                Bank Name <span class="text-rose-400">*</span>
+                            </label>
+                            <input type="text"
+                                   name="bank_name"
+                                   required
+                                   x-model="customBankName"
+                                   placeholder="e.g. City Bank, BRAC Bank"
+                                   class="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white focus:ring-1 focus:ring-teal-500">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
+                                Product Type <span class="text-rose-400">*</span>
+                            </label>
+                            <input type="text"
+                                   name="product_name"
+                                   required
+                                   x-model="customProductName"
+                                   placeholder="e.g. Personal Loan, Auto Loan"
+                                   class="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white focus:ring-1 focus:ring-teal-500">
+                        </div>
+                    </div>
+
+                    <!-- Column List Manager -->
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+                            Template Column Headers (<span x-text="customCols.length"></span> columns)
+                        </label>
+                        <div class="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-2 max-h-48 overflow-y-auto custom-scrollbar">
+                            <template x-for="(col, idx) in customCols" :key="idx">
+                                <div class="flex items-center justify-between p-2 rounded bg-slate-900 border border-slate-800 text-xs">
+                                    <span class="font-mono text-emerald-400" x-text="(idx + 1) + '. ' + col"></span>
+                                    <input type="hidden" name="columns[]" :value="col">
+                                    <button type="button" @click="removeCustomColumn(idx)" class="text-slate-500 hover:text-rose-400 text-xs">
+                                        <i class="fa-solid fa-trash"></i>
+                                    </button>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- Add Extra Column -->
+                    <div class="flex gap-2">
+                        <input type="text"
+                               x-model="customExtraCol"
+                               @keydown.enter.prevent="addCustomColumn()"
+                               placeholder="Type extra column name (e.g. DPD_BUCKET, VEHICLE_REG)..."
+                               class="flex-1 px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white">
+                        <button type="button"
+                                @click="addCustomColumn()"
+                                class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-semibold">
+                            + Add Column
+                        </button>
+                    </div>
+
+                    <div class="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+                        <button type="button" @click="showCustomModal = false" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium">Cancel</button>
+                        <button type="submit" class="px-5 py-2 bg-teal-600 hover:bg-teal-500 text-white rounded-lg text-xs font-bold shadow-md transition-all">
+                            <i class="fa-solid fa-download mr-1.5"></i> Generate & Download Template
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
 
 </div>
@@ -169,36 +410,36 @@
 
 @push('scripts')
 <script>
-// Handle inspect form submission to switch to sheet selection step
-document.getElementById('inspectForm')?.addEventListener('submit', async function(e) {
-    e.preventDefault();
-    const formData = new FormData(this);
-    const alpineComp = Alpine.$data(document.querySelector('[x-data]'));
-    alpineComp.isUploading = true;
-    try {
-        const res = await fetch(this.action, { method: 'POST', body: formData, headers: { 'X-Requested-With': 'XMLHttpRequest' } });
-        if (res.ok) {
-            const data = await res.json();
-            alpineComp.inspectResult = data;
-            alpineComp.step = 'sheets';
-        } else {
-            alert('Failed to inspect file. Please ensure it is a valid .xlsx workbook.');
-        }
-    } catch(err) {
-        console.error(err);
-        alert('Upload failed: ' + err.message);
-    } finally {
-        alpineComp.isUploading = false;
+document.addEventListener('DOMContentLoaded', () => {
+    const form = document.getElementById('inspectForm');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const alpineData = Alpine.$data(document.querySelector('[x-data]'));
+            alpineData.isUploading = true;
+
+            fetch('{{ route('imports.inspect') }}', {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' },
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                alpineData.isUploading = false;
+                if (data.success) {
+                    alpineData.inspectResult = data;
+                    alpineData.step = 'sheets';
+                } else {
+                    alert('Inspection failed: ' + (data.error || 'Unknown error'));
+                }
+            })
+            .catch(err => {
+                alpineData.isUploading = false;
+                alert('Inspection error: ' + err.message);
+            });
+        });
     }
 });
-
-// Auto-refresh jobs table if any are pending/running
-(function autoRefreshJobs() {
-    const hasActiveJobs = document.querySelector('[data-status="pending"], [data-status="processing"]');
-    if (!hasActiveJobs) return;
-    setInterval(async () => {
-        const res = await fetch(window.location.href, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
-    }, 5000);
-})();
 </script>
 @endpush

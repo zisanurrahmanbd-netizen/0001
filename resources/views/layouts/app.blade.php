@@ -401,6 +401,15 @@
             @endif
 
             @if(auth()->user()->isAdmin() || auth()->user()->isManager())
+                <a href="{{ route('google-sheet.index') }}"
+                   class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors {{ request()->routeIs('google-sheet.*') ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800/80 hover:text-white' }}">
+                    <i class="fa-brands fa-google-drive w-5 text-center {{ request()->routeIs('google-sheet.*') ? 'text-white' : 'text-slate-400' }}"></i>
+                    <span>Google Sheets Sync</span>
+                    <span class="ml-auto text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 uppercase">Live</span>
+                </a>
+            @endif
+
+            @if(auth()->user()->isAdmin() || auth()->user()->isManager())
                 <a href="{{ route('users.index') }}"
                    class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors {{ request()->routeIs('users.*') ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800/80 hover:text-white' }}">
                     <i class="fa-solid fa-users-gear w-5 text-center {{ request()->routeIs('users.*') ? 'text-white' : 'text-slate-400' }}"></i>

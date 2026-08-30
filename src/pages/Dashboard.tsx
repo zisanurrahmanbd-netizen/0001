@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
+﻿import React, { useState, useEffect } from 'react';
+import { useAuth, DEMO_USERS } from '../context/AuthContext';
 import { dataService } from '../services/dataService';
 import { StatusBadge } from '../components/StatusBadge';
 import { 
@@ -23,13 +23,13 @@ interface DashboardProps {
 
 export const Dashboard: React.FC<DashboardProps> = ({ onSelectCase, onNavigate }) => {
   const { user } = useAuth();
-  const [metrics, setMetrics] = useState<any>(null);
-  const [cases, setCases] = useState<any[]>([]);
+  const activeUser = user || DEMO_USERS[0];
+  const [metrics, setMetrics] = useState<any>(() => dataService.getDashboardMetrics(activeUser));
+  const [cases, setCases] = useState<any[]>(() => dataService.getCases(activeUser));
 
   useEffect(() => {
     if (user) {
-      const data = dataService.getDashboardMetrics(user);
-      setMetrics(data);
+      setMetrics(dataService.getDashboardMetrics(user));
       setCases(dataService.getCases(user));
     }
   }, [user]);
@@ -41,7 +41,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectCase, onNavigate }
 
   return (
     <div className="space-y-6">
-      {/* Top Welcome & KPI Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
@@ -64,7 +63,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectCase, onNavigate }
 
       {/* KPI Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Total Portfolio */}
         <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Portfolio</span>
@@ -82,7 +80,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectCase, onNavigate }
           </div>
         </div>
 
-        {/* Total Recovered */}
         <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Collected</span>
@@ -102,7 +99,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectCase, onNavigate }
           </div>
         </div>
 
-        {/* Expiring Soon */}
         <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Expiring ≤7 Days</span>
@@ -120,7 +116,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectCase, onNavigate }
           </div>
         </div>
 
-        {/* Field Agents Online */}
         <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Active Agents</span>
@@ -140,9 +135,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectCase, onNavigate }
         </div>
       </div>
 
-      {/* Middle Grid: Bank Breakdown & Urgent Watchlist */}
+      {/* Middle Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Bank Allocation Portfolio */}
         <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
           <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
             <Building2 className="w-4 h-4 text-emerald-500" />
@@ -172,7 +166,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectCase, onNavigate }
           </div>
         </div>
 
-        {/* Urgent Expiry Cases Table */}
         <div className="lg:col-span-2 p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">

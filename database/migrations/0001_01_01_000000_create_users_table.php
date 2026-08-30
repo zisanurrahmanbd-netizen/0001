@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->string('phone')->nullable();
             $table->string('employee_id')->nullable()->index();
-            $table->foreignId('manager_id')->nullable()->constrained('users')->nullOnDelete();
+            $table->unsignedBigInteger('manager_id')->nullable()->index();
             $table->string('status')->default('active'); // active, inactive
             $table->decimal('last_latitude', 10, 7)->nullable();
             $table->decimal('last_longitude', 10, 7)->nullable();
@@ -26,6 +26,10 @@ return new class extends Migration
             $table->string('password');
             $table->rememberToken();
             $table->timestamps();
+        });
+
+        Schema::table('users', function (Blueprint $table) {
+            $table->foreign('manager_id')->references('id')->on('users')->nullOnDelete();
         });
 
         Schema::create('password_reset_tokens', function (Blueprint $table) {

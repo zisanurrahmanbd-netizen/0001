@@ -9,7 +9,6 @@ use App\Http\Controllers\CheckInController;
 use App\Http\Controllers\CollectionController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExcelImportController;
-use App\Http\Controllers\GoogleSheetSyncController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
@@ -77,14 +76,6 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::post('/imports/templates/custom', [ExcelImportController::class, 'customTemplate'])->name('imports.templates.custom');
     });
 
-    // Google Sheet Bi-Directional Live Sync (Admin & Manager)
-    Route::middleware('role:admin|manager')->group(function () {
-        Route::get('/sync/google-sheet', [GoogleSheetSyncController::class, 'index'])->name('google-sheet.index');
-        Route::post('/sync/google-sheet/inspect', [GoogleSheetSyncController::class, 'inspect'])->name('google-sheet.inspect');
-        Route::post('/sync/google-sheet/sync', [GoogleSheetSyncController::class, 'sync'])->name('google-sheet.sync');
-        Route::post('/sync/google-sheet/push', [GoogleSheetSyncController::class, 'pushUpdates'])->name('google-sheet.push');
-    });
-
     // Reporting
     Route::get('/reports/agent-performance', [ReportController::class, 'agentPerformance'])->name('reports.agent-performance');
     Route::get('/reports/expiry-tracker', [ReportController::class, 'expiryTracker'])->name('reports.expiry-tracker');
@@ -110,12 +101,3 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::patch('/users/{id}/toggle-status', [UserController::class, 'toggleStatus'])->name('users.toggle-status');
     });
 });
-
-/*
-|--------------------------------------------------------------------------
-| Public Google Apps Script Webhook Endpoint (No CSRF)
-|--------------------------------------------------------------------------
-*/
-Route::post('/api/sync/google-sheet/webhook', [GoogleSheetSyncController::class, 'webhook'])
-    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class])
-    ->name('api.google-sheet.webhook');

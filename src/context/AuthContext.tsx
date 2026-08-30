@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+﻿import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, UserRole } from '../types';
 
 export const DEMO_USERS: User[] = [
@@ -64,8 +64,8 @@ export const DEMO_USERS: User[] = [
   },
   {
     id: 6,
-    name: 'Nasrin Akter',
-    email: 'agent.nasrin@recovery.local',
+    name: 'Tanvir Ahmed',
+    email: 'agent.tanvir@recovery.local',
     role: 'agent',
     employee_id: 'AGT-003',
     phone: '01812-300003',
@@ -79,8 +79,8 @@ export const DEMO_USERS: User[] = [
   },
   {
     id: 7,
-    name: 'Jahangir Alam',
-    email: 'agent.jahangir@recovery.local',
+    name: 'Faisal Mahmud',
+    email: 'agent.faisal@recovery.local',
     role: 'agent',
     employee_id: 'AGT-004',
     phone: '01612-400001',
@@ -111,21 +111,37 @@ export const DEMO_USERS: User[] = [
 
 interface AuthContextType {
   user: User | null;
+  users: User[];
   login: (email: string, pass: string) => boolean;
   logout: () => void;
   switchUser: (email: string) => void;
+  addUser: (user: Omit<User, 'id'>) => User;
+  updateUser: (id: number, user: Partial<User>) => void;
+  deleteUser: (id: number) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [users, setUsers] = useState<User[]>(() => {
+    const saved = localStorage.getItem('recovery_all_users');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) { return DEMO_USERS; }
+    }
+    return DEMO_USERS;
+  });
+
   const [user, setUser] = useState<User | null>(() => {
     const saved = localStorage.getItem('recovery_auth_user');
     if (saved) {
       try { return JSON.parse(saved); } catch (e) { return null; }
     }
-    return DEMO_USERS[0]; // default to Admin
+    return DEMO_USERS[0];
   });
+
+  useEffect(() => {
+    localStorage.setItem('recovery_all_users', JSON.stringify(users));
+  }, [users]);
 
   useEffect(() => {
     if (user) {
@@ -136,7 +152,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [user]);
 
   const login = (email: string, pass: string): boolean => {
-    const found = DEMO_USERS.find(u => u.email.toLowerCase() === email.toLowerCase());
+    const found = users.find(u => u.email.toLowerCase() === email.toLowerCase());
     if (found && (pass === 'password123' || pass === 'password' || pass.length >= 4)) {
       setUser(found);
       return true;
@@ -149,12 +165,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const switchUser = (email: string) => {
-    const found = DEMO_USERS.find(u => u.email.toLowerCase() === email.toLowerCase());
+    const found = users.find(u => u.email.toLowerCase() === email.toLowerCase());
     if (found) setUser(found);
   };
 
+  const addUser = (newUser: Omit<User, 'id'>): User => {
+    const created: User = {
+      ...newUser,
+      id: Date.now(),
+      status: newUser.status || 'active',
+      is_online: false,
+    };
+    setUsers(prev => [created, ...prev]);
+    return created;
+  };
+
+  const updateUser = (id: number, updated: Partial<User>) => {
+    setUsers(prev => prev.map(u => u.id === id ? { ...u, ...updated } : u));
+    if (user && user.id === id) {
+      setUser(prev => prev ? { ...prev, ...updated } : null);
+    }
+  };
+
+  const deleteUser = (id: number) => {
+    setUsers(prev => prev.filter(u => u.id !== id));
+  };
+
   return (
-    <AuthContext.Provider value={{ user, login, logout, switchUser }}>
+    <AuthContext.Provider value={{ user, users, login, logout, switchUser, addUser, updateUser, deleteUser }}>
       {children}
     </AuthContext.Provider>
   );

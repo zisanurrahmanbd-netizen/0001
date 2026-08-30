@@ -8,6 +8,7 @@ use App\Models\CheckIn;
 use App\Models\Collection;
 use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class DashboardMetricService
@@ -18,17 +19,39 @@ class DashboardMetricService
     public function getMetrics(?User $user = null): array
     {
         $user = $user ?? auth()->user();
+        if (!$user) return [];
+
+        $cacheKey = "dashboard_metrics_u{$user->id}_r" . ($user->roles->first()?->name ?? 'user');
+
+        return Cache::remember($cacheKey, 15, function () use ($user) {
+            return $this->computeMetrics($user);
+        });
+    }
+
+    protected function computeMetrics(User $user): array
+    {
         $casesQuery = CaseFile::forUser($user);
 
-        // Core counts and sums
-        $totalFiles = (clone $casesQuery)->count();
-        $activeFiles = (clone $casesQuery)->active()->count();
-        $expiringSoonCount = (clone $casesQuery)->expiringSoon(7)->count();
-        $expiredCount = (clone $casesQuery)->expired()->count();
-        $settledCount = (clone $casesQuery)->where('status', 'settled')->count();
+        // Core counts and sums combined in single aggregation
+        $summaryStats = (clone $casesQuery)
+            ->selectRaw('
+                COUNT(*) as total_files,
+                COUNT(CASE WHEN status NOT IN (\'settled\', \'closed\') AND (expiry_date IS NULL OR expiry_date >= CURRENT_DATE) THEN 1 END) as active_files,
+                COUNT(CASE WHEN expiry_date >= CURRENT_DATE AND expiry_date <= (CURRENT_DATE + INTERVAL \'7 days\') AND status NOT IN (\'settled\', \'closed\') THEN 1 END) as expiring_soon_count,
+                COUNT(CASE WHEN expiry_date < CURRENT_DATE AND status NOT IN (\'settled\', \'closed\') THEN 1 END) as expired_count,
+                COUNT(CASE WHEN status = \'settled\' THEN 1 END) as settled_count,
+                COALESCE(SUM(outstanding_amount), 0) as total_outstanding,
+                COALESCE(SUM(total_collected_amount), 0) as total_collected
+            ')
+            ->first();
 
-        $totalOutstanding = (float) (clone $casesQuery)->sum('outstanding_amount');
-        $totalCollected = (float) (clone $casesQuery)->sum('total_collected_amount');
+        $totalFiles = (int) ($summaryStats->total_files ?? 0);
+        $activeFiles = (int) ($summaryStats->active_files ?? 0);
+        $expiringSoonCount = (int) ($summaryStats->expiring_soon_count ?? 0);
+        $expiredCount = (int) ($summaryStats->expired_count ?? 0);
+        $settledCount = (int) ($summaryStats->settled_count ?? 0);
+        $totalOutstanding = (float) ($summaryStats->total_outstanding ?? 0);
+        $totalCollected = (float) ($summaryStats->total_collected ?? 0);
 
         // Online agents count (scoped)
         $agentsQuery = User::role('agent')->active();

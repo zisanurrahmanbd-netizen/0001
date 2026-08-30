@@ -1,57 +1,26 @@
-FROM php:8.3-fpm-alpine
+FROM php:8.3-cli-alpine
 
-# Install system dependencies
-RUN apk update && apk add --no-cache \
-    nginx \
-    supervisor \
-    curl \
-    git \
-    libpng-dev \
-    libxml2-dev \
+RUN apk add --no-cache \
+    postgresql-dev \
+    libzip-dev \
     zip \
     unzip \
-    libzip-dev \
-    freetype-dev \
+    git \
+    curl \
+    libpng-dev \
     libjpeg-turbo-dev \
-    oniguruma-dev \
-    icu-dev \
-    sqlite-dev
+    freetype-dev \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install pdo pdo_pgsql pgsql zip gd pcntl bcmath
 
-# Install PHP extensions
-RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install -j$(nproc) \
-        pdo \
-        pdo_mysql \
-        pdo_sqlite \
-        mbstring \
-        exif \
-        pcntl \
-        bcmath \
-        gd \
-        zip \
-        intl \
-        opcache
-
-# Install Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-# Set working directory
-WORKDIR /var/www/html
+WORKDIR /app
+COPY . /app
 
-# Copy application files
-COPY . /var/www/html
-
-# Set permissions
-RUN chown -R www-data:www-data /var/www/html \
-    && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
-
-# Copy Nginx and Supervisor configurations
-COPY docker/nginx.conf /etc/nginx/http.d/default.conf
-COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
-
-# Install composer dependencies
 RUN composer install --no-dev --optimize-autoloader --no-interaction
+RUN chmod -R 777 storage bootstrap/cache
 
-EXPOSE 80
+EXPOSE 8000
 
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+CMD php artisan serve --host=0.0.0.0 --port=${PORT:-8000}

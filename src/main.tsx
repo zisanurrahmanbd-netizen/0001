@@ -1,4 +1,4 @@
-﻿import React, { Component, ErrorInfo, ReactNode } from 'react';
+import React, { Component, ErrorInfo, ReactNode } from 'react';
 import ReactDOM from 'react-dom/client';
 import { App } from './App';
 import { AuthProvider } from './context/AuthContext';
@@ -49,13 +49,17 @@ class ErrorBoundary extends Component<Props, State> {
   }
 }
 
+import { BrandingProvider } from './context/BrandingContext';
+
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
     <ErrorBoundary>
       <ThemeProvider>
-        <AuthProvider>
-          <App />
-        </AuthProvider>
+        <BrandingProvider>
+          <AuthProvider>
+            <App />
+          </AuthProvider>
+        </BrandingProvider>
       </ThemeProvider>
     </ErrorBoundary>
   </React.StrictMode>

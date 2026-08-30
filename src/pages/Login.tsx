@@ -1,11 +1,14 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { useAuth, DEMO_USERS } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { Lock, Mail, Eye, EyeOff, ArrowRight, Sun, Moon, ShieldCheck, Sparkles } from 'lucide-react';
 
+import { useBranding } from '../context/BrandingContext';
+
 export const Login: React.FC = () => {
   const { login, switchUser } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { branding } = useBranding();
   
   const [email, setEmail] = useState('admin@recovery.local');
   const [password, setPassword] = useState('password123');
@@ -51,13 +54,21 @@ export const Login: React.FC = () => {
       </div>
 
       <div className="w-full max-w-md animate-in fade-in zoom-in-95 duration-300">
-        {/* Brand Header */}
+        {/* Dynamic Brand Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-400 text-white text-2xl mb-4 shadow-xl shadow-emerald-600/30">
-            <i className="fa-solid fa-vault"></i>
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-400 text-white text-2xl mb-4 shadow-xl shadow-emerald-600/30 overflow-hidden">
+            {branding.customLogoUrl ? (
+              <img src={branding.customLogoUrl} alt="Logo" className="w-full h-full object-cover" onError={(e) => (e.currentTarget.style.display = 'none')} />
+            ) : (
+              <i className={`fa-solid ${branding.logoIcon || 'fa-vault'}`}></i>
+            )}
           </div>
-          <h2 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">Bank Recovery Tracking</h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">Multi-Bank Loan & Credit Card File Tracking System</p>
+          <h2 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+            {branding.loginTitle || branding.headerText}
+          </h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">
+            {branding.loginSubtitle || branding.underText}
+          </p>
         </div>
 
         {/* Login Card */}

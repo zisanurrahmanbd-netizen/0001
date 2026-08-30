@@ -1,5 +1,6 @@
-import React from 'react';
+﻿import React from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useBranding } from '../context/BrandingContext';
 import { 
   LayoutDashboard, 
   Briefcase, 
@@ -22,6 +23,7 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, isOpen, onClose }) => {
   const { user } = useAuth();
+  const { branding } = useBranding();
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin', 'manager', 'agent'] },
@@ -53,17 +55,21 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, isOpe
         }`}
       >
         <div>
-          {/* Logo Brand Header */}
+          {/* Dynamic Logo Brand Header */}
           <div className="h-16 px-6 flex items-center gap-3 border-b border-slate-200 dark:border-slate-800">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 text-white flex items-center justify-center text-lg shadow-lg shadow-emerald-950/30">
-              <i className="fa-solid fa-vault"></i>
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 text-white flex items-center justify-center text-lg shadow-lg shadow-emerald-950/30 overflow-hidden flex-shrink-0">
+              {branding.customLogoUrl ? (
+                <img src={branding.customLogoUrl} alt="Logo" className="w-full h-full object-cover" onError={(e) => (e.currentTarget.style.display = 'none')} />
+              ) : (
+                <i className={`fa-solid ${branding.logoIcon || 'fa-vault'}`}></i>
+              )}
             </div>
-            <div>
-              <h1 className="font-extrabold text-sm text-slate-900 dark:text-white leading-tight tracking-tight">
-                Bank Recovery
+            <div className="overflow-hidden">
+              <h1 className="font-extrabold text-sm text-slate-900 dark:text-white leading-tight tracking-tight truncate">
+                {branding.headerText}
               </h1>
-              <p className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
-                Multi-Bank Tracking
+              <p className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider truncate">
+                {branding.underText}
               </p>
             </div>
           </div>
@@ -80,29 +86,29 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, isOpe
                     onNavigate(item.id);
                     onClose();
                   }}
-                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl font-bold text-xs transition-all ${
                     isActive
-                      ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30 font-bold'
-                      : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-emerald-600 dark:hover:text-emerald-400'
+                      ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30'
+                      : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
-                  <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-400'}`} />
-                  <span>{item.label}</span>
+                  <Icon className="w-4 h-4 flex-shrink-0" />
+                  <span className="truncate">{item.label}</span>
                 </button>
               );
             })}
           </nav>
         </div>
 
-        {/* User Card Bottom */}
+        {/* User Card at Bottom */}
         <div className="p-4 border-t border-slate-200 dark:border-slate-800">
-          <div className="p-3 rounded-xl bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-xs">
-              <Sparkles className="w-4 h-4" />
+          <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800/80 flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold flex items-center justify-center text-xs flex-shrink-0">
+              {user?.name.charAt(0)}
             </div>
-            <div className="overflow-hidden">
-              <p className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">{user?.name}</p>
-              <p className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">{user?.role} Mode</p>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{user?.name}</p>
+              <p className="text-[10px] text-slate-400 capitalize truncate">{user?.role} • {user?.employee_id || 'ID'}</p>
             </div>
           </div>
         </div>

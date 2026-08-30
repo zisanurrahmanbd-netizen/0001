@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useAuth, DEMO_USERS } from '../context/AuthContext';
 import { User } from '../types';
 import { MapPin, Users, Phone, Navigation, RefreshCw } from 'lucide-react';
@@ -127,7 +127,7 @@ export const TrackingMap: React.FC = () => {
         </div>
 
         {/* Right: Map Container */}
-        <div className="lg:col-span-3 rounded-3xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm bg-slate-900 min-h-[550px] relative">
+        <div className="lg:col-span-3 rounded-3xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm bg-slate-900 min-h-[550px] relative isolate z-0">
           <div ref={mapContainerRef} className="w-full h-full min-h-[550px]" />
         </div>
       </div>

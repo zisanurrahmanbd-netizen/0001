@@ -1,4 +1,4 @@
-﻿import React, { createContext, useContext, useState, useEffect } from 'react';
+﻿import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { User } from '../types';
 import { supabase } from '../lib/supabase';
 
@@ -55,6 +55,7 @@ interface AuthContextType {
   addUser: (user: Omit<User, 'id'>) => User;
   updateUser: (id: number, user: Partial<User>) => void;
   deleteUser: (id: number) => void;
+  updateUserLocation: (lat: number, lng: number) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -109,6 +110,70 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (_) {}
     return users;
   };
+
+  // Real-time GPS Location Broadcast for Every User (Admin, Manager, Agent)
+  const updateUserLocation = useCallback((lat: number, lng: number) => {
+    if (!user) return;
+    const nowIso = new Date().toISOString();
+    
+    setUsers(prev => {
+      const next = prev.map(u => {
+        if (u.id === user.id) {
+          return {
+            ...u,
+            last_latitude: lat,
+            last_longitude: lng,
+            last_ping_at: nowIso,
+            is_online: true,
+          };
+        }
+        return u;
+      });
+      localStorage.setItem('recovery_all_users', JSON.stringify(next));
+      return next;
+    });
+
+    setUser(prev => prev ? {
+      ...prev,
+      last_latitude: lat,
+      last_longitude: lng,
+      last_ping_at: nowIso,
+      is_online: true,
+    } : null);
+  }, [user]);
+
+  // Automatic Background Geolocation Watcher for Authenticated User
+  useEffect(() => {
+    if (!user) return;
+
+    if ('geolocation' in navigator) {
+      // First quick ping
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          updateUserLocation(pos.coords.latitude, pos.coords.longitude);
+        },
+        (err) => {
+          console.warn('Geolocation initial ping notice:', err.message);
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+      );
+
+      // Continuous telemetry watch
+      const watchId = navigator.geolocation.watchPosition(
+        (pos) => {
+          updateUserLocation(pos.coords.latitude, pos.coords.longitude);
+        },
+        (err) => {
+          console.warn('Geolocation continuous telemetry notice:', err.message);
+        },
+        { enableHighAccuracy: true, timeout: 20000, maximumAge: 30000 }
+      );
+
+      return () => {
+        navigator.geolocation.clearWatch(watchId);
+      };
+    }
+  }, [user?.id, updateUserLocation]);
 
   const generateOtp = (email: string): string => {
     const code = String(Math.floor(100000 + Math.random() * 900000));
@@ -199,6 +264,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = () => {
+    if (user) {
+      // Mark offline on logout
+      setUsers(prev => {
+        const next = prev.map(u => u.id === user.id ? { ...u, is_online: false } : u);
+        localStorage.setItem('recovery_all_users', JSON.stringify(next));
+        return next;
+      });
+    }
     setUser(null);
     setPendingEmail(null);
     setOtpSession(null);
@@ -248,7 +321,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       user, users,
       login, verifyOtp, pendingEmail, generateOtp,
       logout,
-      addUser, updateUser, deleteUser
+      addUser, updateUser, deleteUser,
+      updateUserLocation
     }}>
       {children}
     </AuthContext.Provider>

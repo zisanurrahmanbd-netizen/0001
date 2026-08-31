@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -18,8 +18,8 @@ export const Login: React.FC = () => {
   const { branding } = useBranding();
   const { t } = useLanguage();
 
-  // ── Credentials step ─────────────────────────────────────────────────────
-  const [email, setEmail]               = useState('zisanurrahmanbd@gmail.com');
+  // ── Credentials step (Blank by default - no auto-fill) ─────────────────────
+  const [email, setEmail]               = useState('');
   const [password, setPassword]         = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
@@ -175,7 +175,7 @@ export const Login: React.FC = () => {
 
           {/* ── STEP 1: Credentials ─────────────────────────────────────── */}
           {step === 'credentials' && (
-            <form onSubmit={handleCredentials} className="space-y-4">
+            <form onSubmit={handleCredentials} className="space-y-4" autoComplete="off">
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wider">
                   {t('login.email', 'Email Address')}
@@ -187,6 +187,7 @@ export const Login: React.FC = () => {
                   <input
                     type="email"
                     required
+                    autoComplete="off"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="name@example.com"
@@ -206,6 +207,7 @@ export const Login: React.FC = () => {
                   <input
                     type={showPassword ? 'text' : 'password'}
                     required
+                    autoComplete="new-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"

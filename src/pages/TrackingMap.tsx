@@ -1,12 +1,12 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { useAuth, DEMO_USERS } from '../context/AuthContext';
+﻿import React, { useEffect, useRef, useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { User } from '../types';
 import { MapPin, Users, Phone, Navigation, RefreshCw } from 'lucide-react';
 import L from 'leaflet';
 
 export const TrackingMap: React.FC = () => {
-  const { user } = useAuth();
+  const { user, users } = useAuth();
   const { t } = useLanguage();
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
@@ -16,7 +16,7 @@ export const TrackingMap: React.FC = () => {
 
   const loadAgents = () => {
     setIsRefreshing(true);
-    const fieldAgents = DEMO_USERS.filter(u => u.role === 'agent');
+    const fieldAgents = users.filter(u => u.role === 'agent');
     setAgents(fieldAgents);
     setTimeout(() => setIsRefreshing(false), 400);
   };
@@ -63,7 +63,7 @@ export const TrackingMap: React.FC = () => {
                 <span style="color: #666;">ID: ${agent.employee_id}</span><br/>
                 <span>Phone: ${agent.phone || 'N/A'}</span><br/>
                 <span style="color: ${isOnline ? '#059669' : '#dc2626'}; font-weight: bold;">
-                  ${isOnline ? '● Online & Tracking' : '○ Offline'}
+                  ${isOnline ? 'â— Online & Tracking' : 'â—‹ Offline'}
                 </span>
               </div>
             `);
@@ -96,7 +96,7 @@ export const TrackingMap: React.FC = () => {
           className="px-3.5 py-2 rounded-xl bg-slate-900 dark:bg-slate-800 text-white font-bold text-xs hover:bg-slate-800 flex items-center gap-2 transition-all border border-slate-700/50"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-          <span>{t('top.switch_lang') === 'English' ? 'জিপিএস রিফ্রেশ করুন' : 'Refresh GPS Pings'}</span>
+          <span>{t('top.switch_lang') === 'English' ? 'à¦œà¦¿à¦ªà¦¿à¦à¦¸ à¦°à¦¿à¦«à§à¦°à§‡à¦¶ à¦•à¦°à§à¦¨' : 'Refresh GPS Pings'}</span>
         </button>
       </div>
 
@@ -121,7 +121,7 @@ export const TrackingMap: React.FC = () => {
                 </div>
                 <div className="text-[11px] text-slate-500 flex items-center justify-between">
                   <span>{a.employee_id}</span>
-                  <span className="font-mono">{a.is_online ? (t('top.switch_lang') === 'English' ? 'লাইভ ট্র্যাকিং' : 'Live Ping') : (t('top.switch_lang') === 'English' ? 'অফলাইন' : 'Offline')}</span>
+                  <span className="font-mono">{a.is_online ? (t('top.switch_lang') === 'English' ? 'à¦²à¦¾à¦‡à¦­ à¦Ÿà§à¦°à§à¦¯à¦¾à¦•à¦¿à¦‚' : 'Live Ping') : (t('top.switch_lang') === 'English' ? 'à¦…à¦«à¦²à¦¾à¦‡à¦¨' : 'Offline')}</span>
                 </div>
               </div>
             ))}

@@ -1,17 +1,17 @@
-import React, { useState } from 'react';
-import { useAuth, DEMO_USERS } from '../context/AuthContext';
+﻿import React, { useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { dataService } from '../services/dataService';
 import { TrendingUp, Download, Award, Users, Search } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 export const AgentPerformancePage: React.FC = () => {
-  const { user } = useAuth();
+  const { user, users } = useAuth();
   const { t } = useLanguage();
   const [managerFilter, setManagerFilter] = useState('all');
 
-  const agents = DEMO_USERS.filter(u => u.role === 'agent');
-  const allCases = dataService.getCases(user || DEMO_USERS[0]);
+  const agents = users.filter(u => u.role === 'agent');
+  const allCases = dataService.getCases(user!);
 
   // Aggregate agent metrics
   const performanceData = agents.map((agent, index) => {
@@ -81,14 +81,14 @@ export const AgentPerformancePage: React.FC = () => {
                 idx === 1 ? 'bg-slate-400/20 text-slate-700 dark:text-slate-300' :
                 'bg-orange-500/20 text-orange-600 dark:text-orange-300'
               }`}>
-                {idx === 0 ? '🥇 1st Rank' : idx === 1 ? '🥈 2nd Rank' : '🥉 3rd Rank'}
+                {idx === 0 ? 'ðŸ¥‡ 1st Rank' : idx === 1 ? 'ðŸ¥ˆ 2nd Rank' : 'ðŸ¥‰ 3rd Rank'}
               </span>
               <Award className="w-5 h-5 text-amber-500" />
             </div>
 
             <div className="mt-3">
               <h3 className="font-extrabold text-slate-900 dark:text-white text-base">{top.name}</h3>
-              <p className="text-xs text-slate-500">{top.employeeId} • {top.managerName}</p>
+              <p className="text-xs text-slate-500">{top.employeeId} â€¢ {top.managerName}</p>
               <div className="mt-3 pt-3 border-t border-slate-200/40 dark:border-slate-800/40 flex items-center justify-between">
                 <div>
                   <span className="text-[10px] uppercase font-bold text-slate-400">{t('perf.total_collected', 'Total Recovered')}</span>

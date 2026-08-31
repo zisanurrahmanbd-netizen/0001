@@ -13,7 +13,7 @@ interface NavbarProps {
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ onSearch, onMenuToggle }) => {
-  const { user, logout, switchUser, users } = useAuth();
+  const { user, logout, users } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { t } = useLanguage();
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -107,37 +107,17 @@ export const Navbar: React.FC<NavbarProps> = ({ onSearch, onMenuToggle }) => {
                 <div className="p-2 border-b border-slate-100 dark:border-slate-800">
                   <p className="text-xs font-bold text-slate-800 dark:text-slate-200">{user?.name}</p>
                   <p className="text-[11px] text-slate-400 truncate">{user?.email}</p>
-                  <span className="inline-block mt-1 text-[10px] font-bold uppercase px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-600 dark:text-emerald-300">
-                    {user?.role}
-                  </span>
-                </div>
-
-                <div className="py-2">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-2">
-                    Quick Persona Switch
-                  </span>
-                  <div className="space-y-1 mt-1">
-                    {users.slice(0, 4).map((u) => (
-                      <button
-                        key={u.id}
-                        onClick={() => {
-                          switchUser(u.email);
-                          setShowUserMenu(false);
-                        }}
-                        className={`w-full text-left px-2 py-1.5 rounded-xl text-xs flex items-center justify-between ${
-                          u.id === user?.id
-                            ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold'
-                            : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
-                        }`}
-                      >
-                        <span className="truncate">{u.name}</span>
-                        <span className="text-[10px] uppercase text-slate-400">{u.role}</span>
-                      </button>
-                    ))}
+                  <div className="flex items-center gap-2 mt-1.5">
+                    <span className="inline-block text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-600 dark:text-emerald-300">
+                      {user?.role}
+                    </span>
+                    <span className="text-[10px] text-slate-400">
+                      {users.length} {users.length === 1 ? 'user' : 'users'} in system
+                    </span>
                   </div>
                 </div>
 
-                <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+                <div className="pt-2 border-t border-slate-100 dark:border-slate-800 mt-1">
                   <button
                     onClick={logout}
                     className="w-full flex items-center gap-2 px-2 py-1.5 rounded-xl text-xs font-bold text-rose-500 hover:bg-rose-500/10 transition-all"
@@ -148,6 +128,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onSearch, onMenuToggle }) => {
                 </div>
               </div>
             )}
+
           </div>
         </div>
       </header>

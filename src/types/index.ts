@@ -14,6 +14,7 @@ export interface User {
   last_longitude?: number | null;
   last_ping_at?: string | null;
   is_online?: boolean;
+  password?: string; // stored locally for auth — never synced to any remote
 }
 
 export interface Bank {

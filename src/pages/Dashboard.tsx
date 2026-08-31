@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth, DEMO_USERS } from '../context/AuthContext';
+﻿import React, { useState, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { dataService, PtpAlertItem } from '../services/dataService';
 import { StatusBadge } from '../components/StatusBadge';
@@ -31,7 +31,7 @@ interface DashboardProps {
 export const Dashboard: React.FC<DashboardProps> = ({ onSelectCase, onNavigate }) => {
   const { user } = useAuth();
   const { t } = useLanguage();
-  const activeUser = user || DEMO_USERS[0];
+  const activeUser = user!;
   const [metrics, setMetrics] = useState<any>(() => dataService.getDashboardMetrics(activeUser));
   const [cases, setCases] = useState<any[]>(() => dataService.getCases(activeUser));
 

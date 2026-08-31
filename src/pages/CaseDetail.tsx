@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth, DEMO_USERS } from '../context/AuthContext';
+﻿import React, { useState, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
 import { usePermissions } from '../context/PermissionsContext';
 import { useLanguage } from '../context/LanguageContext';
 import { dataService } from '../services/dataService';
@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 
 export const CaseDetail: React.FC<{ caseId: number; onBack: () => void }> = ({ caseId, onBack }) => {
-  const { user } = useAuth();
+  const { user, users } = useAuth();
   const { can } = usePermissions();
   const { t } = useLanguage();
   const [caseItem, setCaseItem] = useState<CaseFile | undefined>();
@@ -143,7 +143,7 @@ export const CaseDetail: React.FC<{ caseId: number; onBack: () => void }> = ({ c
     reload();
   };
 
-  const agents = DEMO_USERS.filter(u => u.role === 'agent');
+  const agents = users.filter(u => u.role === 'agent');
 
   return (
     <div className="space-y-6">
@@ -227,7 +227,7 @@ export const CaseDetail: React.FC<{ caseId: number; onBack: () => void }> = ({ c
                 <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
                   caseItem.present_address_visited ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20' : 'bg-slate-200 dark:bg-slate-800 text-slate-400'
                 }`}>
-                  {caseItem.present_address_visited ? (t('top.switch_lang') === 'English' ? '✓ ভিজিট সম্পন্ন' : '✓ Visited') : (t('top.switch_lang') === 'English' ? 'ভিজিট বাকি' : 'Pending Visit')}
+                  {caseItem.present_address_visited ? (t('top.switch_lang') === 'English' ? 'âœ“ à¦­à¦¿à¦œà¦¿à¦Ÿ à¦¸à¦®à§à¦ªà¦¨à§à¦¨' : 'âœ“ Visited') : (t('top.switch_lang') === 'English' ? 'à¦­à¦¿à¦œà¦¿à¦Ÿ à¦¬à¦¾à¦•à¦¿' : 'Pending Visit')}
                 </span>
               </div>
 
@@ -242,7 +242,7 @@ export const CaseDetail: React.FC<{ caseId: number; onBack: () => void }> = ({ c
                 <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
                   caseItem.permanent_address_visited ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20' : 'bg-slate-200 dark:bg-slate-800 text-slate-400'
                 }`}>
-                  {caseItem.permanent_address_visited ? (t('top.switch_lang') === 'English' ? '✓ ভিজিট সম্পন্ন' : '✓ Visited') : (t('top.switch_lang') === 'English' ? 'ভিজিট বাকি' : 'Pending Visit')}
+                  {caseItem.permanent_address_visited ? (t('top.switch_lang') === 'English' ? 'âœ“ à¦­à¦¿à¦œà¦¿à¦Ÿ à¦¸à¦®à§à¦ªà¦¨à§à¦¨' : 'âœ“ Visited') : (t('top.switch_lang') === 'English' ? 'à¦­à¦¿à¦œà¦¿à¦Ÿ à¦¬à¦¾à¦•à¦¿' : 'Pending Visit')}
                 </span>
               </div>
             </div>
@@ -304,7 +304,7 @@ export const CaseDetail: React.FC<{ caseId: number; onBack: () => void }> = ({ c
 
                       {/* Visited Address string */}
                       <div className="text-slate-800 dark:text-slate-200 font-medium flex items-start gap-1.5">
-                        <span className="text-slate-400 font-bold">{t('cases.status') === 'অবস্থা' ? 'ঠিকানা:' : 'Address:'}</span>
+                        <span className="text-slate-400 font-bold">{t('cases.status') === 'à¦…à¦¬à¦¸à§à¦¥à¦¾' ? 'à¦ à¦¿à¦•à¦¾à¦¨à¦¾:' : 'Address:'}</span>
                         <span>{addressVisited || 'Address record on file'}</span>
                       </div>
 
@@ -315,7 +315,7 @@ export const CaseDetail: React.FC<{ caseId: number; onBack: () => void }> = ({ c
                             Lat: {ci.latitude.toFixed(6)}, Lng: {ci.longitude.toFixed(6)}
                           </span>
                           <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
-                            ({t('map.accuracy', 'Accuracy')}: ±{ci.accuracy || 8}m)
+                            ({t('map.accuracy', 'Accuracy')}: Â±{ci.accuracy || 8}m)
                           </span>
                         </div>
 
@@ -380,7 +380,7 @@ export const CaseDetail: React.FC<{ caseId: number; onBack: () => void }> = ({ c
                 <Navigation className="w-4 h-4 text-purple-500 animate-pulse" />
                 <span>{t('detail.gps_checkin', 'GPS Field Visit Check-In')}</span>
               </h3>
-              <button type="button" onClick={() => setShowCheckIn(false)} className="text-slate-400 hover:text-white">✕</button>
+              <button type="button" onClick={() => setShowCheckIn(false)} className="text-slate-400 hover:text-white">âœ•</button>
             </div>
 
             {/* GPS Signal Status Badge */}
@@ -392,7 +392,7 @@ export const CaseDetail: React.FC<{ caseId: number; onBack: () => void }> = ({ c
                 </span>
                 {gpsCoords && (
                   <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
-                    ±{gpsCoords.accuracy || 6}m {t('map.accuracy', 'Precision')}
+                    Â±{gpsCoords.accuracy || 6}m {t('map.accuracy', 'Precision')}
                   </span>
                 )}
               </div>
@@ -487,9 +487,9 @@ export const CaseDetail: React.FC<{ caseId: number; onBack: () => void }> = ({ c
             <h3 className="font-bold text-sm text-slate-900 dark:text-white">{t('detail.record_payment', 'Record Payment')}</h3>
             <input type="number" required value={colAmt} onChange={e => setColAmt(e.target.value)} placeholder="Amount (BDT)" className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl font-bold" />
             <select value={colMethod} onChange={e => setColMethod(e.target.value as any)} className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl">
-              <option value="cash">{t('top.switch_lang') === 'English' ? 'নগদ (Cash)' : 'Cash'}</option>
-              <option value="bank_deposit">{t('top.switch_lang') === 'English' ? 'ব্যাংক জমা' : 'Bank Deposit'}</option>
-              <option value="cheque">{t('top.switch_lang') === 'English' ? 'চেক' : 'Cheque'}</option>
+              <option value="cash">{t('top.switch_lang') === 'English' ? 'à¦¨à¦—à¦¦ (Cash)' : 'Cash'}</option>
+              <option value="bank_deposit">{t('top.switch_lang') === 'English' ? 'à¦¬à§à¦¯à¦¾à¦‚à¦• à¦œà¦®à¦¾' : 'Bank Deposit'}</option>
+              <option value="cheque">{t('top.switch_lang') === 'English' ? 'à¦šà§‡à¦•' : 'Cheque'}</option>
             </select>
             <input type="text" value={colRec} onChange={e => setColRec(e.target.value)} placeholder="Receipt # (optional)" className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl" />
             <div className="flex justify-end gap-2 pt-2">
@@ -506,10 +506,10 @@ export const CaseDetail: React.FC<{ caseId: number; onBack: () => void }> = ({ c
           <form onSubmit={handleRemark} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-3xl max-w-sm w-full space-y-3 text-xs shadow-2xl">
             <h3 className="font-bold text-sm text-slate-900 dark:text-white">{t('detail.log_remark', 'Log Contact Remark / PTP')}</h3>
             <select value={remContact} onChange={e => setRemContact(e.target.value as any)} className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl">
-              <option value="contacted">{t('top.switch_lang') === 'English' ? 'গ্রাহকের সাথে কথা হয়েছে' : 'Customer Contacted'}</option>
-              <option value="uncontacted">{t('top.switch_lang') === 'English' ? 'যোগাযোগ সম্ভব হয়নি' : 'Unreachable'}</option>
-              <option value="door_locked">{t('top.switch_lang') === 'English' ? 'দরজায় তালাবদ্ধ' : 'Door Locked'}</option>
-              <option value="shifted">{t('top.switch_lang') === 'English' ? 'ঠিকানা পরিবর্তন করেছে' : 'Shifted'}</option>
+              <option value="contacted">{t('top.switch_lang') === 'English' ? 'à¦—à§à¦°à¦¾à¦¹à¦•à§‡à¦° à¦¸à¦¾à¦¥à§‡ à¦•à¦¥à¦¾ à¦¹à§Ÿà§‡à¦›à§‡' : 'Customer Contacted'}</option>
+              <option value="uncontacted">{t('top.switch_lang') === 'English' ? 'à¦¯à§‹à¦—à¦¾à¦¯à§‹à¦— à¦¸à¦®à§à¦­à¦¬ à¦¹à§Ÿà¦¨à¦¿' : 'Unreachable'}</option>
+              <option value="door_locked">{t('top.switch_lang') === 'English' ? 'à¦¦à¦°à¦œà¦¾à§Ÿ à¦¤à¦¾à¦²à¦¾à¦¬à¦¦à§à¦§' : 'Door Locked'}</option>
+              <option value="shifted">{t('top.switch_lang') === 'English' ? 'à¦ à¦¿à¦•à¦¾à¦¨à¦¾ à¦ªà¦°à¦¿à¦¬à¦°à§à¦¤à¦¨ à¦•à¦°à§‡à¦›à§‡' : 'Shifted'}</option>
             </select>
             <div className="grid grid-cols-2 gap-2">
               <input type="number" value={remPtpAmt} onChange={e => setRemPtpAmt(e.target.value)} placeholder="PTP Amount" className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl" />

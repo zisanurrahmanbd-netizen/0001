@@ -1,120 +1,56 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, UserRole } from '../types';
+﻿import React, { createContext, useContext, useState, useEffect } from 'react';
+import { User } from '../types';
 
-export const DEMO_USERS: User[] = [
-  {
-    id: 1,
-    name: 'System Administrator',
-    email: 'admin@recovery.local',
-    role: 'admin',
-    employee_id: 'EMP-001',
-    phone: '01700-000001',
-    status: 'active',
-    is_online: true,
-  },
-  {
-    id: 2,
-    name: 'Shafiqur Rahman (Dhaka Team)',
-    email: 'manager.dhaka@recovery.local',
-    role: 'manager',
-    employee_id: 'EMP-101',
-    phone: '01711-222001',
-    status: 'active',
-    is_online: true,
-  },
-  {
-    id: 3,
-    name: 'Kamal Hossain (CTG Team)',
-    email: 'manager.ctg@recovery.local',
-    role: 'manager',
-    employee_id: 'EMP-102',
-    phone: '01711-222002',
-    status: 'active',
-    is_online: true,
-  },
-  {
-    id: 4,
-    name: 'Md. Abdur Rahim',
-    email: 'agent.rahim@recovery.local',
-    role: 'agent',
-    employee_id: 'AGT-001',
-    phone: '01812-300001',
-    manager_id: 2,
-    manager_name: 'Shafiqur Rahman (Dhaka Team)',
-    status: 'active',
-    last_latitude: 23.7945,
-    last_longitude: 90.4088,
-    last_ping_at: new Date().toISOString(),
-    is_online: true,
-  },
-  {
-    id: 5,
-    name: 'Md. Karim Uddin',
-    email: 'agent.karim@recovery.local',
-    role: 'agent',
-    employee_id: 'AGT-002',
-    phone: '01812-300002',
-    manager_id: 2,
-    manager_name: 'Shafiqur Rahman (Dhaka Team)',
-    status: 'active',
-    last_latitude: 23.7781,
-    last_longitude: 90.4172,
-    last_ping_at: new Date().toISOString(),
-    is_online: true,
-  },
-  {
-    id: 6,
-    name: 'Tanvir Ahmed',
-    email: 'agent.tanvir@recovery.local',
-    role: 'agent',
-    employee_id: 'AGT-003',
-    phone: '01812-300003',
-    manager_id: 2,
-    manager_name: 'Shafiqur Rahman (Dhaka Team)',
-    status: 'active',
-    last_latitude: 23.7465,
-    last_longitude: 90.3760,
-    last_ping_at: new Date().toISOString(),
-    is_online: true,
-  },
-  {
-    id: 7,
-    name: 'Faisal Mahmud',
-    email: 'agent.faisal@recovery.local',
-    role: 'agent',
-    employee_id: 'AGT-004',
-    phone: '01612-400001',
-    manager_id: 3,
-    manager_name: 'Kamal Hossain (CTG Team)',
-    status: 'active',
-    last_latitude: 22.3569,
-    last_longitude: 91.7832,
-    last_ping_at: new Date().toISOString(),
-    is_online: true,
-  },
-  {
-    id: 8,
-    name: 'Sultana Begum',
-    email: 'agent.sultana@recovery.local',
-    role: 'agent',
-    employee_id: 'AGT-005',
-    phone: '01612-400002',
-    manager_id: 3,
-    manager_name: 'Kamal Hossain (CTG Team)',
-    status: 'active',
-    last_latitude: 22.3350,
-    last_longitude: 91.8325,
-    last_ping_at: new Date(Date.now() - 3600000).toISOString(),
-    is_online: false,
+// Real production admin only - all demo accounts permanently removed
+const REAL_ADMIN: User = {
+  id: 1,
+  name: 'Zisan Ur Rahman',
+  email: 'zisanurrahmanbd@gmail.com',
+  role: 'admin',
+  employee_id: 'ADMIN-001',
+  phone: '01608800026',
+  status: 'active',
+  is_online: true,
+  password: '@01608800026',
+};
+
+const USERS_VERSION = '5.0_real_users_only';
+
+function getInitialUsers(): User[] {
+  const version = localStorage.getItem('recovery_users_version');
+  if (version !== USERS_VERSION) {
+    localStorage.removeItem('recovery_all_users');
+    localStorage.setItem('recovery_users_version', USERS_VERSION);
+    const initial = [REAL_ADMIN];
+    localStorage.setItem('recovery_all_users', JSON.stringify(initial));
+    return initial;
   }
-];
+  try {
+    const saved = localStorage.getItem('recovery_all_users');
+    if (saved) {
+      const parsed: User[] = JSON.parse(saved);
+      const hasAdmin = parsed.some(u => u.email === REAL_ADMIN.email);
+      if (!hasAdmin) return [REAL_ADMIN, ...parsed];
+      return parsed;
+    }
+  } catch (_) {}
+  return [REAL_ADMIN];
+}
+
+interface OtpSession {
+  code: string;
+  email: string;
+  expiresAt: number;
+}
 
 interface AuthContextType {
   user: User | null;
   users: User[];
-  login: (email: string, pass: string) => { success: boolean; error?: string };
+  login: (email: string, pass: string) => { result: 'ok' | 'otp_required' | 'error'; error?: string };
+  verifyOtp: (email: string, code: string) => { success: boolean; error?: string };
+  pendingEmail: string | null;
+  generateOtp: (email: string) => string;
   logout: () => void;
-  switchUser: (email: string) => boolean;
   addUser: (user: Omit<User, 'id'>) => User;
   updateUser: (id: number, user: Partial<User>) => void;
   deleteUser: (id: number) => void;
@@ -123,24 +59,26 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [users, setUsers] = useState<User[]>(() => {
-    const saved = localStorage.getItem('recovery_all_users');
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) { return DEMO_USERS; }
-    }
-    return DEMO_USERS;
+  const [users, setUsers] = useState<User[]>(getInitialUsers);
+  const [user, setUser] = useState<User | null>(() => {
+    try {
+      const saved = localStorage.getItem('recovery_auth_user');
+      if (saved) {
+        const parsed: User = JSON.parse(saved);
+        if (parsed?.status === 'inactive') return null;
+        return parsed;
+      }
+    } catch (_) {}
+    return null;
   });
 
-  const [user, setUser] = useState<User | null>(() => {
-    const saved = localStorage.getItem('recovery_auth_user');
-    if (saved) {
-      try { 
-        const parsed = JSON.parse(saved);
-        if (parsed && parsed.status === 'inactive') return null;
-        return parsed;
-      } catch (e) { return null; }
-    }
-    return DEMO_USERS[0];
+  const [otpSession, setOtpSession] = useState<OtpSession | null>(null);
+  const [pendingEmail, setPendingEmail] = useState<string | null>(null);
+  const [verifiedDevices, setVerifiedDevices] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem('recovery_verified_devices');
+      return new Set(JSON.parse(saved || '[]'));
+    } catch (_) { return new Set(); }
   });
 
   useEffect(() => {
@@ -167,45 +105,86 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       }
-    } catch (e) {}
+    } catch (_) {}
     return users;
   };
 
-  const login = (email: string, pass: string): { success: boolean; error?: string } => {
+  const generateOtp = (email: string): string => {
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    const session: OtpSession = {
+      code,
+      email: email.toLowerCase(),
+      expiresAt: Date.now() + 10 * 60 * 1000,
+    };
+    setOtpSession(session);
+    setPendingEmail(email.toLowerCase());
+    return code;
+  };
+
+  const login = (email: string, pass: string): { result: 'ok' | 'otp_required' | 'error'; error?: string } => {
     const list = getLatestUsers();
     const found = list.find(u => u.email.toLowerCase() === email.toLowerCase());
+
     if (!found) {
-      return { success: false, error: 'User account not found with this email address.' };
+      return { result: 'error', error: 'No account found with this email address.' };
     }
     if (found.status === 'inactive') {
-      return { 
-        success: false, 
-        error: '⚠️ Account Deactivated: This user account has been disabled by the Administrator. Access is blocked.' 
-      };
+      return { result: 'error', error: 'This account has been deactivated by the Administrator.' };
     }
-    if (pass === 'password123' || pass === 'password' || pass.length >= 4) {
-      setUser(found);
-      return { success: true };
+
+    const correctPassword = found.password || '';
+    if (!correctPassword) {
+      return { result: 'error', error: 'Account password not configured. Contact Administrator.' };
     }
-    return { success: false, error: 'Invalid password. Please check your credentials.' };
+    if (pass !== correctPassword) {
+      return { result: 'error', error: 'Incorrect password. Please try again.' };
+    }
+
+    const deviceKey = `${found.email}:${navigator.userAgent.slice(0, 60)}`;
+    if (!verifiedDevices.has(deviceKey)) {
+      setPendingEmail(found.email.toLowerCase());
+      return { result: 'otp_required' };
+    }
+
+    setUser(found);
+    return { result: 'ok' };
+  };
+
+  const verifyOtp = (email: string, code: string): { success: boolean; error?: string } => {
+    if (!otpSession) {
+      return { success: false, error: 'No OTP session active. Please request a new code.' };
+    }
+    if (otpSession.email !== email.toLowerCase()) {
+      return { success: false, error: 'OTP email mismatch.' };
+    }
+    if (Date.now() > otpSession.expiresAt) {
+      setOtpSession(null);
+      return { success: false, error: 'OTP expired. Please request a new code.' };
+    }
+    if (code.trim() !== otpSession.code) {
+      return { success: false, error: 'Incorrect code. Please check your email and try again.' };
+    }
+
+    const list = getLatestUsers();
+    const found = list.find(u => u.email.toLowerCase() === email.toLowerCase());
+    if (!found) return { success: false, error: 'User not found.' };
+
+    const deviceKey = `${found.email}:${navigator.userAgent.slice(0, 60)}`;
+    const newVerified = new Set(verifiedDevices);
+    newVerified.add(deviceKey);
+    setVerifiedDevices(newVerified);
+    localStorage.setItem('recovery_verified_devices', JSON.stringify(Array.from(newVerified)));
+
+    setOtpSession(null);
+    setPendingEmail(null);
+    setUser(found);
+    return { success: true };
   };
 
   const logout = () => {
     setUser(null);
-  };
-
-  const switchUser = (email: string): boolean => {
-    const list = getLatestUsers();
-    const found = list.find(u => u.email.toLowerCase() === email.toLowerCase());
-    if (found) {
-      if (found.status === 'inactive') {
-        alert(`Access Denied: Account "${found.name}" is currently deactivated by the Administrator.`);
-        return false;
-      }
-      setUser(found);
-      return true;
-    }
-    return false;
+    setPendingEmail(null);
+    setOtpSession(null);
   };
 
   const addUser = (newUser: Omit<User, 'id'>): User => {
@@ -248,7 +227,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, users, login, logout, switchUser, addUser, updateUser, deleteUser }}>
+    <AuthContext.Provider value={{
+      user, users,
+      login, verifyOtp, pendingEmail, generateOtp,
+      logout,
+      addUser, updateUser, deleteUser
+    }}>
       {children}
     </AuthContext.Provider>
   );

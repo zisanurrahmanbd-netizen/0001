@@ -1,5 +1,5 @@
-import React from 'react';
-import { useAuth, DEMO_USERS } from '../context/AuthContext';
+﻿import React from 'react';
+import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { dataService } from '../services/dataService';
 import { CalendarClock, AlertTriangle, CheckCircle2 } from 'lucide-react';
@@ -7,7 +7,7 @@ import { CalendarClock, AlertTriangle, CheckCircle2 } from 'lucide-react';
 export const ExpiryTrackerPage: React.FC = () => {
   const { user } = useAuth();
   const { t } = useLanguage();
-  const cases = dataService.getCases(user || DEMO_USERS[0]);
+  const cases = dataService.getCases(user!);
   const banks = dataService.getBanks();
 
   const now = new Date();
@@ -62,7 +62,7 @@ export const ExpiryTrackerPage: React.FC = () => {
               <tr>
                 <th className="py-3 px-4">{t('cases.bank_product', 'Partner Bank')}</th>
                 <th className="py-3 px-4 text-center">{t('expiry.active', 'Active Pipeline')}</th>
-                <th className="py-3 px-4 text-center text-amber-500">{t('expiry.expiring_7', 'Expiring ≤7 Days')}</th>
+                <th className="py-3 px-4 text-center text-amber-500">{t('expiry.expiring_7', 'Expiring â‰¤7 Days')}</th>
                 <th className="py-3 px-4 text-center text-blue-500">{t('expiry.expiring_30', 'Expiring 8-30 Days')}</th>
                 <th className="py-3 px-4 text-center text-rose-500">{t('expiry.expired', 'Expired Mandates')}</th>
                 <th className="py-3 px-4 text-center text-emerald-500">{t('status.settled', 'Settled Accounts')}</th>

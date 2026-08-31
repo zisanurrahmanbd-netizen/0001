@@ -2,26 +2,55 @@
 
 export async function sendOtpToEmail(targetEmail: string, otpCode: string, systemName = 'Bank & MNC Recovery System'): Promise<{ success: boolean; channel?: string }> {
   let sent = false;
+  const cleanEmail = targetEmail.trim().toLowerCase();
 
-  // Channel 1: Supabase Native Auth OTP
+  // ── Channel 1: Supabase Native Auth OTP (Instant Official Email) ─────────────
+  // Setting shouldCreateUser: true allows Supabase to dispatch the 6-digit OTP to any user immediately
   try {
     const { error } = await supabase.auth.signInWithOtp({
-      email: targetEmail,
+      email: cleanEmail,
       options: {
-        shouldCreateUser: false
+        shouldCreateUser: true,
       }
     });
     if (!error) {
-      console.log('OTP dispatched via Supabase Auth Mailer');
+      console.log('OTP dispatched via Supabase Auth Mailer to:', cleanEmail);
+      sent = true;
+    } else {
+      console.warn('Supabase Auth OTP dispatch notice:', error.message);
+    }
+  } catch (err) {
+    console.warn('Supabase Auth OTP dispatch catch:', err);
+  }
+
+  // ── Channel 2: Web3Forms Instant Direct Dispatch (Zero activation needed) ─────
+  try {
+    const res = await fetch('https://api.web3forms.com/submit', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({
+        access_key: '67c87c46-f94d-4952-bfb8-9366f075d71c',
+        subject: `🔐 Your Security Verification Code: ${otpCode} - ${systemName}`,
+        from_name: systemName,
+        email: cleanEmail,
+        to_email: cleanEmail,
+        message: `Hello,\n\nYour 6-digit verification code to sign into ${systemName} is:\n\n👉  ${otpCode}  👈\n\nThis code is valid for 10 minutes.\nIf you did not request this code, please ignore this email.`,
+      })
+    });
+    if (res.ok) {
+      console.log('OTP dispatched via Web3Forms Mailer');
       sent = true;
     }
   } catch (err) {
-    console.warn('Supabase Auth OTP dispatch note:', err);
+    console.warn('Web3Forms dispatch note:', err);
   }
 
-  // Channel 2: FormSubmit Direct Transactional Mailer (Sends formatted OTP straight to recipient Gmail)
+  // ── Channel 3: FormSubmit Direct Token Dispatch ─────────────────────────────
   try {
-    const res = await fetch(`https://formsubmit.co/ajax/${encodeURIComponent(targetEmail)}`, {
+    const res = await fetch(`https://formsubmit.co/ajax/${encodeURIComponent(cleanEmail)}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -32,18 +61,17 @@ export async function sendOtpToEmail(targetEmail: string, otpCode: string, syste
         _template: 'table',
         _captcha: 'false',
         System: systemName,
-        Recipient: targetEmail,
+        Recipient: cleanEmail,
         Security_Code: otpCode,
         Valid_For: '10 Minutes',
-        Message: `Use the 6-digit code above to complete your login verification. If you did not request this, please secure your account immediately.`
+        Message: `Use the 6-digit verification code: ${otpCode} to complete your 2-step login.`
       })
     });
     if (res.ok) {
-      console.log('OTP dispatched via Transactional Mailer');
       sent = true;
     }
   } catch (err) {
-    console.warn('Direct Mailer note:', err);
+    console.warn('FormSubmit note:', err);
   }
 
   return { success: sent, channel: sent ? 'email' : 'pending' };

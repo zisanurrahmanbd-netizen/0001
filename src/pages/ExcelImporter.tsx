@@ -366,72 +366,118 @@ export const ExcelImporterPage: React.FC = () => {
           </div>
         </div>
 
-        {!inspectResult ? (
-          <label
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={handleFileDrop}
-            className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl hover:border-emerald-500 cursor-pointer bg-slate-50 dark:bg-slate-950 transition-all text-center"
-          >
-            <FileSpreadsheet className="w-10 h-10 text-emerald-500 mb-2 animate-bounce" />
-            <p className="font-bold text-sm text-slate-800 dark:text-slate-200">
-              {t("import.upload_box", "Drag and drop .xlsx file here or browse device")}
-            </p>
-            <p className="text-xs text-slate-400 mt-1">
-              Supports One Bank, DBBL, Asian Paints, and customized workbooks with AGENT_NAME
-            </p>
-            <input type="file" accept=".xlsx,.xls" onChange={handleFileDrop} className="hidden" />
-          </label>
-        ) : (
-          <div className="space-y-4">
+        {/* ─── STEP 1: Select Bank & File Type + Download Format ─── */}
+        <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-emerald-500/10 border border-blue-500/30 dark:border-blue-500/20 space-y-3">
+          <div className="flex items-center gap-2">
+            <Building2 className="w-4 h-4 text-blue-500 flex-shrink-0" />
+            <span className="text-xs font-extrabold text-slate-900 dark:text-white">
+              Step 1 — Select Bank & File Type:
+            </span>
+          </div>
 
-            {/* ─── "I am uploading a file for this bank/product" selector ─── */}
-            <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-emerald-500/10 border border-blue-500/30 dark:border-blue-500/20 space-y-3">
-              <div className="flex items-center gap-2">
-                <Building2 className="w-4 h-4 text-blue-500 flex-shrink-0" />
-                <span className="text-xs font-extrabold text-slate-900 dark:text-white">
-                  I am uploading a file for:
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+            {/* Select Bank */}
+            <div>
+              <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1">
+                🏦 Partner Bank / Institution
+              </label>
+              <select
+                value={selectedBankId}
+                onChange={(e) => handleBankChange(Number(e.target.value))}
+                className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+              >
+                {banks.map(b => (
+                  <option key={b.id} value={b.id}>{b.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Select Product */}
+            <div>
+              <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1">
+                💳 Product / Portfolio Type
+              </label>
+              <select
+                value={selectedProductId}
+                onChange={(e) => setSelectedProductId(Number(e.target.value))}
+                className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white font-bold focus:outline-none focus:ring-2 focus:ring-purple-500/40"
+              >
+                {availableProducts.map(p => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Download Format Button */}
+            <div className="flex flex-col justify-end">
+              <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1">
+                📥 Step 2 — Download & Fill Format
+              </label>
+              <button
+                onClick={() => {
+                  const bank = banks.find(b => b.id === selectedBankId);
+                  const prod = allProducts.find(p => p.id === selectedProductId);
+                  if (bank && prod) {
+                    // Find matching prebuilt template
+                    const matchingKey = Object.keys(templates).find(k =>
+                      templates[k].bankName.toLowerCase().includes(bank.code.toLowerCase()) ||
+                      bank.name.toLowerCase().includes(templates[k].bankName.split(' ')[0].toLowerCase())
+                    );
+                    const tpl = matchingKey ? templates[matchingKey] : null;
+                    TemplateService.generateAndDownload(
+                      bank.name,
+                      prod.name,
+                      tpl?.headers || standardHeaderFormat.map(h => h.key),
+                      tpl?.sampleRow ? [tpl.sampleRow] : []
+                    );
+                  }
+                }}
+                className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-600/30 flex items-center justify-center gap-2 transition-all"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Download Format (.xlsx)</span>
+              </button>
+            </div>
+          </div>
+
+          <p className="text-[10px] text-slate-400 flex items-start gap-1.5 pt-1 border-t border-blue-500/10">
+            <Info className="w-3 h-3 text-blue-400 flex-shrink-0 mt-0.5" />
+            <span>Select the bank and file type → Download the format → Fill in recovery data → Upload the filled file below. The system will auto-recognize the columns and organize all cases under the correct bank, product, and agent.</span>
+          </p>
+        </div>
+
+        {/* ─── STEP 3: Upload Filled File ─── */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 text-xs font-extrabold text-slate-700 dark:text-slate-300">
+            <Upload className="w-4 h-4 text-emerald-500" />
+            <span>Step 3 — Upload the Filled Format File:</span>
+          </div>
+
+          {!inspectResult ? (
+            <label
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={handleFileDrop}
+              className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl hover:border-emerald-500 cursor-pointer bg-slate-50 dark:bg-slate-950 transition-all text-center"
+            >
+              <FileSpreadsheet className="w-10 h-10 text-emerald-500 mb-2 animate-bounce" />
+              <p className="font-bold text-sm text-slate-800 dark:text-slate-200">
+                {t("import.upload_box", "Drag and drop .xlsx file here or browse device")}
+              </p>
+              <p className="text-xs text-slate-400 mt-1">
+                Upload the filled format for <span className="font-bold text-blue-400">{banks.find(b => b.id === selectedBankId)?.name}</span> — <span className="font-bold text-purple-400">{availableProducts.find(p => p.id === selectedProductId)?.name}</span>
+              </p>
+              <input type="file" accept=".xlsx,.xls" onChange={handleFileDrop} className="hidden" />
+            </label>
+          ) : (
+            <div className="space-y-4">
+
+              {/* Confirmation: Selected bank/product summary */}
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs">
+                <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                <span className="text-slate-700 dark:text-slate-300">
+                  Ingesting into: <span className="font-extrabold text-emerald-600 dark:text-emerald-400">{banks.find(b => b.id === selectedBankId)?.name}</span> → <span className="font-extrabold text-purple-500">{availableProducts.find(p => p.id === selectedProductId)?.name}</span>
                 </span>
               </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                {/* Select Bank */}
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1">
-                    Partner Bank / Institution
-                  </label>
-                  <select
-                    value={selectedBankId}
-                    onChange={(e) => handleBankChange(Number(e.target.value))}
-                    className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/40"
-                  >
-                    {banks.map(b => (
-                      <option key={b.id} value={b.id}>🏦 {b.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Select Product / Portfolio */}
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1">
-                    Product / Portfolio Type
-                  </label>
-                  <select
-                    value={selectedProductId}
-                    onChange={(e) => setSelectedProductId(Number(e.target.value))}
-                    className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white font-bold focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                  >
-                    {availableProducts.map(p => (
-                      <option key={p.id} value={p.id}>💳 {p.name}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <p className="text-[10px] text-slate-400 flex items-center gap-1">
-                <Info className="w-3 h-3 text-blue-400 flex-shrink-0" />
-                All imported cases will be categorized under the bank and product you select above. New banks can be added from the Partner Banks section.
-              </p>
-            </div>
 
             {/* Sheet Selector */}
             <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
@@ -545,9 +591,10 @@ export const ExcelImporterPage: React.FC = () => {
                 )}
               </button>
             </div>
-          </div>
-        )}
-      </div>
+            </div>
+          )}
+        </div>{/* end step-3 space-y-3 */}
+      </div>{/* end main section card */}
 
       {/* MODAL: Edit / Customize Template Format */}
       {showBuilderModal && (

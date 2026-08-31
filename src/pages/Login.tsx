@@ -57,7 +57,7 @@ export const Login: React.FC = () => {
     setLoading(true);
 
     const cleanEmail = email.trim().toLowerCase();
-    const res = login(cleanEmail, password);
+    const res = await login(cleanEmail, password);
     setLoading(false);
 
     if (res.result === 'ok') {

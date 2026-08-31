@@ -17,8 +17,12 @@ import {
   Building2,
   X,
   Lock,
-  Power
+  Power,
+  AlertTriangle,
+  UserX,
+  UserPlus
 } from 'lucide-react';
+import { dataService } from '../services/dataService';
 
 export const TeamManagementPage: React.FC = () => {
   const { users, addUser, updateUser, deleteUser, user: currentUser } = useAuth();
@@ -46,6 +50,7 @@ export const TeamManagementPage: React.FC = () => {
   });
 
   const managers = users.filter(u => u.role === 'manager');
+  const unregisteredAgents = dataService.getUnregisteredAgents(users);
 
   const filtered = users.filter(u => {
     const matchesRole = roleFilter === 'all' || u.role === roleFilter;
@@ -65,6 +70,21 @@ export const TeamManagementPage: React.FC = () => {
       employee_id: `AGT-00${users.length + 1}`,
       manager_id: managers[0]?.id || 2,
       password: '',
+      status: 'active',
+    });
+    setShowAddModal(true);
+  };
+
+  const openAddModalForAgent = (agentName: string) => {
+    const cleanEmail = `${agentName.toLowerCase().replace(/[^a-z0-9]/g, '')}@recovery.com`;
+    setFormData({
+      name: agentName,
+      email: cleanEmail,
+      phone: '',
+      role: 'agent',
+      employee_id: `AGT-00${users.length + 1}`,
+      manager_id: managers[0]?.id || 2,
+      password: '@Pass2026',
       status: 'active',
     });
     setShowAddModal(true);
@@ -172,6 +192,49 @@ export const TeamManagementPage: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Unregistered Agents Alert Banner */}
+      {unregisteredAgents.length > 0 && (
+        <div className="p-5 rounded-3xl bg-amber-500/10 border border-amber-500/30 shadow-sm space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2 text-amber-700 dark:text-amber-300 font-extrabold text-sm">
+              <AlertTriangle className="w-5 h-5 text-amber-500 animate-pulse flex-shrink-0" />
+              <span>{unregisteredAgents.length} Agent(s) from uploaded files need user accounts:</span>
+            </div>
+            <span className="text-[11px] text-amber-600 dark:text-amber-400 font-bold px-2.5 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/30">
+              Auto-detected from recovery workbooks
+            </span>
+          </div>
+          <p className="text-xs text-slate-600 dark:text-slate-300">
+            These agent names were assigned to files in your imported Excel workbooks, but their login accounts have not been created yet. Click <b>"Create Account"</b> below to register them. Once created, the system will auto-link them and remove this notification.
+          </p>
+          <div className="flex flex-wrap gap-2.5 pt-1">
+            {unregisteredAgents.map((ag, i) => (
+              <div 
+                key={i} 
+                className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-amber-500/30 flex items-center justify-between gap-4 shadow-sm"
+              >
+                <div>
+                  <p className="font-extrabold text-xs text-slate-900 dark:text-white flex items-center gap-1.5">
+                    <UserX className="w-3.5 h-3.5 text-amber-500" />
+                    <span>{ag.name}</span>
+                  </p>
+                  <p className="text-[10px] text-slate-500 mt-0.5 font-medium">
+                    {ag.fileCount} recovery file{ag.fileCount > 1 ? 's' : ''} assigned
+                  </p>
+                </div>
+                <button
+                  onClick={() => openAddModalForAgent(ag.name)}
+                  className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs shadow-sm flex items-center gap-1 transition-all"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Create Account</span>
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Filter & Search Bar */}
       <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">

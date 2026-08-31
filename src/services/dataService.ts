@@ -1,4 +1,4 @@
-﻿import { supabase } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
 import { Bank, Product, CaseFile, CheckIn, Collection, CaseRemark, BankContact, User } from '../types';
 
 export const INITIAL_BANKS: Bank[] = [
@@ -331,30 +331,117 @@ class DataService {
     };
   }
 
+  public deleteCase(id: number) {
+    this.cases = this.cases.filter(c => c.id !== id);
+    this.remarks = this.remarks.filter(r => r.case_file_id !== id);
+    this.checkIns = this.checkIns.filter(ci => ci.case_file_id !== id);
+    this.collections = this.collections.filter(col => col.case_file_id !== id);
+    this.saveState();
+  }
+
+  public deleteCases(ids: number[]) {
+    const idSet = new Set(ids);
+    this.cases = this.cases.filter(c => !idSet.has(c.id));
+    this.remarks = this.remarks.filter(r => !idSet.has(r.case_file_id));
+    this.checkIns = this.checkIns.filter(ci => !idSet.has(ci.case_file_id));
+    this.collections = this.collections.filter(col => !idSet.has(col.case_file_id));
+    this.saveState();
+  }
+
+  // Detect agents mentioned in uploaded files whose user accounts are not created yet
+  public getUnregisteredAgents(existingUsers: User[] = []): { name: string; fileCount: number; sampleFiles: string[] }[] {
+    const agentMap = new Map<string, { name: string; fileCount: number; sampleFiles: string[] }>();
+    
+    // Normalize existing user names and employee IDs
+    const normalizedUsers = existingUsers.map(u => ({
+      name: u.name.trim().toLowerCase(),
+      empId: (u.employee_id || '').trim().toLowerCase(),
+      email: (u.email || '').trim().toLowerCase(),
+    }));
+
+    this.cases.forEach(c => {
+      const rawName = (c.agent_name || c.extra_attributes?.['AGENT_NAME'] || c.extra_attributes?.['AGENT'] || '').trim();
+      if (!rawName) return;
+
+      const lowerName = rawName.toLowerCase();
+      const isRegistered = normalizedUsers.some(u => 
+        u.name === lowerName || 
+        (u.empId && u.empId === lowerName) ||
+        u.email.includes(lowerName)
+      );
+
+      if (!isRegistered) {
+        if (!agentMap.has(lowerName)) {
+          agentMap.set(lowerName, {
+            name: rawName,
+            fileCount: 0,
+            sampleFiles: []
+          });
+        }
+        const record = agentMap.get(lowerName)!;
+        record.fileCount += 1;
+        if (record.sampleFiles.length < 3) {
+          record.sampleFiles.push(c.file_number);
+        }
+      }
+    });
+
+    return Array.from(agentMap.values());
+  }
+
   public importCases(newCases: Partial<CaseFile>[]): number {
     let imported = 0;
+    
+    // Try to get registered users for automatic agent_id matching
+    let registeredUsers: User[] = [];
+    try {
+      const saved = localStorage.getItem('recovery_all_users');
+      if (saved) registeredUsers = JSON.parse(saved);
+    } catch (_) {}
+
     newCases.forEach(item => {
       const existing = this.cases.find(c => c.file_number === item.file_number);
+      const agentName = item.agent_name || item.extra_attributes?.['AGENT_NAME'] || item.extra_attributes?.['AGENT'] || '';
+      
+      // Auto-match assigned_agent_id if user exists
+      let matchedAgentId: number | null | undefined = item.assigned_agent_id;
+      if (!matchedAgentId && agentName) {
+        const found = registeredUsers.find(u => 
+          u.name.trim().toLowerCase() === agentName.trim().toLowerCase() ||
+          (u.employee_id && u.employee_id.trim().toLowerCase() === agentName.trim().toLowerCase())
+        );
+        if (found) matchedAgentId = found.id;
+      }
+
       if (existing) {
-        Object.assign(existing, item, { updated_at: new Date().toISOString() });
+        Object.assign(existing, item, { 
+          agent_name: agentName || existing.agent_name,
+          assigned_agent_id: matchedAgentId || existing.assigned_agent_id,
+          updated_at: new Date().toISOString() 
+        });
       } else {
         const fullCase: CaseFile = {
-          id: Date.now() + Math.floor(Math.random() * 1000),
+          id: Date.now() + Math.floor(Math.random() * 10000),
           file_number: item.file_number || `FILE-${Date.now()}`,
           bank_id: item.bank_id || 1,
           product_id: item.product_id || 1,
+          account_number: item.account_number || '',
           customer_name: item.customer_name || 'Customer Name',
           customer_phone: item.customer_phone || '',
+          customer_secondary_phone: item.customer_secondary_phone || '',
           customer_address_present: item.customer_address_present || '',
           customer_address_permanent: item.customer_address_permanent || '',
           present_address_visited: false,
           permanent_address_visited: false,
           outstanding_amount: Number(item.outstanding_amount) || 0,
           overdue_amount: Number(item.overdue_amount) || 0,
+          minimum_payment: item.minimum_payment,
           status: 'new',
+          assigned_agent_id: matchedAgentId,
+          agent_name: agentName,
           total_collected_amount: 0,
-          allocation_date: new Date().toISOString().split('T')[0],
-          expiry_date: new Date(Date.now() + 60 * 86400000).toISOString().split('T')[0],
+          allocation_date: item.allocation_date || new Date().toISOString().split('T')[0],
+          expiry_date: item.expiry_date || new Date(Date.now() + 60 * 86400000).toISOString().split('T')[0],
           extra_attributes: item.extra_attributes || {}
         };
         this.cases.push(fullCase);

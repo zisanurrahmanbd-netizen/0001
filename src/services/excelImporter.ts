@@ -96,11 +96,12 @@ export class ExcelImporter {
       const outstanding = Number(row['TOTAL_OUTSTANDING'] || row['OUTSTANDING_AMOUNT'] || row['TOTAL_OS'] || row['PRINCIPAL_OUTSTANDING'] || row['TOTAL_DUE'] || 0);
       const overdue = Number(row['OVERDUE_AMOUNT'] || row['MINIMUM_DUE'] || row['MIN_DUE'] || row['OVERDUE_90_PLUS'] || row['INTEREST_OVERDUE'] || 0);
       const minPay = Number(row['MINIMUM_DUE'] || row['MIN_DUE'] || row['EMI_AMOUNT'] || 0);
+      const agentName = row['AGENT_NAME'] || row['AGENT'] || row['AGENT_ID'] || row['OFFICER_NAME'] || row['RECOVERY_AGENT'] || '';
 
       // Collect all extra columns into extra_attributes
       const extraAttributes: Record<string, any> = {};
       Object.keys(row).forEach(key => {
-        if (!['FILE_NO', 'CARD_NO', 'CUSTOMER_NAME', 'MOBILE_NO', 'PRESENT_ADDRESS', 'PERMANENT_ADDRESS', 'TOTAL_OUTSTANDING', 'OVERDUE_AMOUNT'].includes(key)) {
+        if (!['FILE_NO', 'CARD_NO', 'CUSTOMER_NAME', 'MOBILE_NO', 'PRESENT_ADDRESS', 'PERMANENT_ADDRESS', 'TOTAL_OUTSTANDING', 'OVERDUE_AMOUNT', 'AGENT_NAME'].includes(key)) {
           extraAttributes[key] = row[key];
         }
       });
@@ -116,6 +117,7 @@ export class ExcelImporter {
         outstanding_amount: outstanding,
         overdue_amount: overdue,
         minimum_payment: minPay,
+        agent_name: String(agentName),
         bank_id: bankId,
         product_id: productId,
         extra_attributes: extraAttributes,

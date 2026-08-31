@@ -163,6 +163,17 @@ export const BankContactsPage: React.FC = () => {
 
       {/* Contacts Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {filtered.length === 0 && (
+          <div className="col-span-full py-16 flex flex-col items-center gap-3 text-slate-400">
+            <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+              <UserCheck className="w-8 h-8 text-slate-300 dark:text-slate-600" />
+            </div>
+            <div className="text-center">
+              <p className="font-semibold text-slate-500 dark:text-slate-400 text-sm">{t('contacts.no_records', 'No bank contacts found')}</p>
+              <p className="text-xs text-slate-400 mt-1">{t('contacts.no_records_hint', 'Add a new contact using the button above')}</p>
+            </div>
+          </div>
+        )}
         {filtered.map(contact => (
           <div
             key={contact.id}

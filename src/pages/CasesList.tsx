@@ -176,6 +176,21 @@ export const CasesList: React.FC<CasesListProps> = ({ onSelectCase, searchQuery 
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+              {filteredCases.length === 0 && (
+                <tr>
+                  <td colSpan={8} className="py-16 text-center">
+                    <div className="flex flex-col items-center gap-3 text-slate-400">
+                      <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                        <CheckCircle2 className="w-8 h-8 text-slate-300 dark:text-slate-600" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-slate-500 dark:text-slate-400 text-sm">{t('cases.no_records', 'No case files found')}</p>
+                        <p className="text-xs text-slate-400 mt-1">{t('cases.no_records_hint', 'Import cases via Excel or adjust your filters')}</p>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              )}
               {filteredCases.map(c => (
                 <tr key={c.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
                   <td className="py-3.5 px-4">

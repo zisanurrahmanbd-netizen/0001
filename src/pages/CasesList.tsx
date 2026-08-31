@@ -341,7 +341,7 @@ export const CasesList: React.FC<CasesListProps> = ({ onSelectCase, searchQuery 
                       </div>
                     </td>
                     <td className="py-3.5 px-4">
-                      <StatusBadge status={c.status} />
+                      <StatusBadge status={c.legal_status && c.legal_status !== "Normal Recovery" ? c.legal_status : c.status} />
                     </td>
                     <td className="py-3.5 px-4 font-mono text-slate-600 dark:text-slate-400 text-xs">
                       {c.expiry_date || "N/A"}

@@ -31,6 +31,96 @@ export interface PtpAlertItem {
   daysDiff: number;
 }
 
+function cleanNum(val: any): number {
+  if (typeof val === 'number') return isNaN(val) ? 0 : val;
+  if (!val) return 0;
+  const str = String(val).replace(/[^0-9.-]/g, '');
+  const n = parseFloat(str);
+  return isNaN(n) ? 0 : n;
+}
+
+function findAttr(attrs: Record<string, any> | undefined, keys: string[]): any {
+  if (!attrs) return undefined;
+  for (const k of keys) {
+    if (attrs[k] !== undefined && attrs[k] !== null && String(attrs[k]).trim() !== '') {
+      return attrs[k];
+    }
+  }
+  const normMap: Record<string, any> = {};
+  Object.keys(attrs).forEach(k => {
+    normMap[k.toUpperCase().replace(/[^A-Z0-9]/g, '')] = attrs[k];
+  });
+  for (const k of keys) {
+    const norm = k.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (normMap[norm] !== undefined && normMap[norm] !== null && String(normMap[norm]).trim() !== '') {
+      return normMap[norm];
+    }
+  }
+  return undefined;
+}
+
+export function enrichCase(c: CaseFile): CaseFile {
+  const attrs = c.extra_attributes || {};
+
+  // 1. Outstanding Amount
+  let outstanding = c.outstanding_amount || 0;
+  if (outstanding === 0) {
+    const rawOut = findAttr(attrs, ['OUTSTANDING', 'TOTAL_OUTSTANDING', 'OUTSTANDING_AMOUNT', 'TOTAL_OS', 'OS_AMOUNT', 'BALANCE', 'POS', 'PRINCIPAL_OUTSTANDING']);
+    if (rawOut) outstanding = cleanNum(rawOut);
+  }
+
+  // 2. Overdue Amount
+  let overdue = c.overdue_amount || 0;
+  if (overdue === 0) {
+    const rawOd = findAttr(attrs, ['OVERDUE', 'OVERDUE_AMOUNT', 'OVERDUE_90_PLUS', 'INTEREST_OVERDUE', 'MINIMUM_DUE', 'MIN_DUE']);
+    if (rawOd) overdue = cleanNum(rawOd);
+  }
+
+  // 3. EMI / Minimum Payment
+  let emi = c.minimum_payment || 0;
+  if (!emi) {
+    const rawEmi = findAttr(attrs, ['EMI', 'EMI_AMOUNT', 'MINIMUM_DUE', 'MIN_DUE', 'MONTHLY_INSTALLMENT']);
+    if (rawEmi) emi = cleanNum(rawEmi);
+  }
+
+  // 4. Account / Loan Number
+  let accountNo = c.account_number || '';
+  if (!accountNo) {
+    const rawAcc = findAttr(attrs, ['LOAN_ACCOUNT', 'LOAN_ACC', 'ACCOUNT_NO', 'ACCOUNT_NUMBER', 'CARD_NO', 'CARD_NUMBER', 'ACC_NO', 'DEALER_CODE', 'A/C', 'A/C_NO', 'CONTRACT_NO']);
+    if (rawAcc) accountNo = String(rawAcc);
+  }
+
+  // 5. Allocation Date
+  let allocDate = c.allocation_date;
+  const rawAlloc = findAttr(attrs, ['DATE_OF_ALLOCATION', 'ALLOCATION_DATE', 'ALLOC_DATE', 'DATE_ALLOCATED']);
+  if (rawAlloc) allocDate = String(rawAlloc);
+
+  // 6. Expiry Date
+  let expDate = c.expiry_date;
+  const rawExp = findAttr(attrs, ['WORK_ORDER_EXPIRY_DATE', 'EXPIRY_DATE', 'EXPIRY', 'EXPIRE_DATE']);
+  if (rawExp) expDate = String(rawExp);
+
+  // 7. Bank Classification Status (e.g. DF, BL, SS, SMA, STD)
+  let bankStatus = c.legal_status;
+  const rawStat = findAttr(attrs, ['STATUS', 'LOAN_STATUS', 'CLASSIFICATION', 'BUCKET', 'DPD_STATUS', 'LAP_STATUS']);
+  if (rawStat) {
+    bankStatus = String(rawStat);
+  }
+
+  return {
+    ...c,
+    outstanding_amount: outstanding,
+    overdue_amount: overdue,
+    minimum_payment: emi,
+    account_number: accountNo,
+    allocation_date: allocDate,
+    expiry_date: expDate,
+    legal_status: bankStatus,
+    bank: INITIAL_BANKS.find(b => b.id === c.bank_id),
+    product: INITIAL_PRODUCTS.find(p => p.id === c.product_id),
+  };
+}
+
 class DataService {
   private cases: CaseFile[] = [];
   private remarks: CaseRemark[] = [];
@@ -124,21 +214,13 @@ class DataService {
       list = list.filter(c => c.assigned_agent_id === user.id);
     }
 
-    return list.map(c => ({
-      ...c,
-      bank: INITIAL_BANKS.find(b => b.id === c.bank_id),
-      product: INITIAL_PRODUCTS.find(p => p.id === c.product_id),
-    }));
+    return list.map(c => enrichCase(c));
   }
 
   public getCaseById(id: number): CaseFile | undefined {
     const item = this.cases.find(c => c.id === id);
     if (!item) return undefined;
-    return {
-      ...item,
-      bank: INITIAL_BANKS.find(b => b.id === item.bank_id),
-      product: INITIAL_PRODUCTS.find(p => p.id === item.product_id),
-    };
+    return enrichCase(item);
   }
 
   public reassignCase(caseId: number, agentId: number) {

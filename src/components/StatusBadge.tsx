@@ -15,12 +15,22 @@ export const StatusBadge: React.FC<{ status: CaseStatus | string }> = ({ status 
     untraceable: { bg: 'bg-slate-500/10 dark:bg-slate-800/60', text: 'text-slate-600 dark:text-slate-400', border: 'border-slate-500/20', label: t('status.untraceable', 'Untraceable') },
     settled: { bg: 'bg-emerald-500/10 dark:bg-emerald-950/60', text: 'text-emerald-600 dark:text-emerald-400', border: 'border-emerald-500/20', label: t('status.settled', 'Settled') },
     closed: { bg: 'bg-zinc-500/10 dark:bg-zinc-900', text: 'text-zinc-500', border: 'border-zinc-700', label: t('status.closed', 'Closed') },
+
+    // Bank Credit / Loan Classifications
+    df: { bg: 'bg-red-500/10 dark:bg-red-950/60', text: 'text-red-600 dark:text-red-400 font-black', border: 'border-red-500/30', label: 'DF (Doubtful)' },
+    bl: { bg: 'bg-rose-600/15 dark:bg-rose-950/80', text: 'text-rose-600 dark:text-rose-300 font-black', border: 'border-rose-500/40', label: 'BL (Bad & Loss)' },
+    ss: { bg: 'bg-amber-500/10 dark:bg-amber-950/60', text: 'text-amber-600 dark:text-amber-400 font-bold', border: 'border-amber-500/30', label: 'SS (Substandard)' },
+    sma: { bg: 'bg-yellow-500/10 dark:bg-yellow-950/60', text: 'text-yellow-600 dark:text-yellow-400 font-bold', border: 'border-yellow-500/30', label: 'SMA' },
+    std: { bg: 'bg-emerald-500/10 dark:bg-emerald-950/60', text: 'text-emerald-600 dark:text-emerald-400 font-bold', border: 'border-emerald-500/30', label: 'STD (Standard)' },
+    uc: { bg: 'bg-blue-500/10 dark:bg-blue-950/60', text: 'text-blue-600 dark:text-blue-400 font-bold', border: 'border-blue-500/30', label: 'UC' },
+    npl: { bg: 'bg-red-600/15 dark:bg-red-950/80', text: 'text-red-600 dark:text-red-300 font-black', border: 'border-red-500/40', label: 'NPL' },
   };
 
-  const c = configs[status] || { bg: 'bg-slate-800', text: 'text-slate-300', border: 'border-slate-700', label: status };
+  const statusKey = String(status || '').toLowerCase().trim();
+  const c = configs[statusKey] || { bg: 'bg-slate-100 dark:bg-slate-800', text: 'text-slate-700 dark:text-slate-300 font-bold', border: 'border-slate-300 dark:border-slate-700', label: String(status) };
 
   return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${c.bg} ${c.text} ${c.border}`}>
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border shadow-2xs ${c.bg} ${c.text} ${c.border}`}>
       {c.label}
     </span>
   );

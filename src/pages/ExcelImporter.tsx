@@ -383,69 +383,24 @@ export const ExcelImporterPage: React.FC = () => {
           </label>
         ) : (
           <div className="space-y-4">
-            {/* Bank, Product & Sheet Selection Bar */}
-            <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-emerald-500/10 border border-blue-500/30 dark:border-blue-500/20 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-extrabold text-slate-900 dark:text-white flex items-center gap-1.5">
-                  <Building2 className="w-4 h-4 text-blue-500" />
-                  <span>Target Institution & Portfolio Assignment</span>
-                </span>
-                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
-                  Auto-Mapped
-                </span>
+            {/* Sheet Selector */}
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+              <div>
+                <span className="text-slate-400 uppercase font-bold text-[10px]">Loaded File</span>
+                <p className="font-bold text-slate-900 dark:text-white">{inspectResult.fileName}</p>
               </div>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                {/* 1. Select Bank */}
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
-                    <Building2 className="w-3 h-3 text-blue-500" />
-                    <span>Select Partner Bank:</span>
-                  </label>
-                  <select
-                    value={selectedBankId}
-                    onChange={(e) => handleBankChange(Number(e.target.value))}
-                    className="w-full p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/40 shadow-xs"
-                  >
-                    {banks.map(b => (
-                      <option key={b.id} value={b.id}>{b.name}</option>
-                    ))}
-                  </select>
-                </div>
 
-                {/* 2. Select Product */}
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
-                    <CreditCard className="w-3 h-3 text-purple-500" />
-                    <span>Select Portfolio / Product:</span>
-                  </label>
-                  <select
-                    value={selectedProductId}
-                    onChange={(e) => setSelectedProductId(Number(e.target.value))}
-                    className="w-full p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white font-bold focus:outline-none focus:ring-2 focus:ring-purple-500/40 shadow-xs"
-                  >
-                    {availableProducts.map(p => (
-                      <option key={p.id} value={p.id}>{p.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* 3. Select Worksheet */}
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
-                    <FileSpreadsheet className="w-3 h-3 text-emerald-500" />
-                    <span>Select Worksheet:</span>
-                  </label>
-                  <select
-                    value={selectedSheet}
-                    onChange={(e) => handleSelectSheet(e.target.value)}
-                    className="w-full p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500/40 shadow-xs"
-                  >
-                    {inspectResult.sheets.map(s => (
-                      <option key={s.name} value={s.name}>{s.name} ({s.rowCount} rows)</option>
-                    ))}
-                  </select>
-                </div>
+              <div className="flex items-center gap-2">
+                <span className="text-slate-400 font-medium">{t("import.select_sheet", "Select Worksheet")}:</span>
+                <select
+                  value={selectedSheet}
+                  onChange={(e) => handleSelectSheet(e.target.value)}
+                  className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+                >
+                  {inspectResult.sheets.map(s => (
+                    <option key={s.name} value={s.name}>{s.name} ({s.rowCount} rows)</option>
+                  ))}
+                </select>
               </div>
             </div>
 
@@ -534,7 +489,7 @@ export const ExcelImporterPage: React.FC = () => {
                 ) : (
                   <>
                     <Check className="w-4 h-4" />
-                    <span>Confirm & Ingest to {banks.find(b => b.id === selectedBankId)?.name || "Bank"}</span>
+                    <span>{t("top.switch_lang") === "English" ? "ইমপোর্ট সম্পন্ন করুন" : "Confirm & Ingest Cases"}</span>
                     <ArrowRight className="w-4 h-4" />
                   </>
                 )}

@@ -5,16 +5,6 @@ export const INITIAL_BANKS: Bank[] = [
   { id: 1, name: 'One Bank Limited', code: 'ONE', is_active: true },
   { id: 2, name: 'Dutch-Bangla Bank Limited', code: 'DBBL', is_active: true },
   { id: 3, name: 'Asian Paints Bangladesh', code: 'APB', is_active: true },
-  { id: 4, name: 'BRAC Bank Limited', code: 'BBL', is_active: true },
-  { id: 5, name: 'The City Bank Limited', code: 'CBL', is_active: true },
-  { id: 6, name: 'Eastern Bank PLC (EBL)', code: 'EBL', is_active: true },
-  { id: 7, name: 'Standard Chartered Bank', code: 'SCB', is_active: true },
-  { id: 8, name: 'Mutual Trust Bank (MTB)', code: 'MTB', is_active: true },
-  { id: 9, name: 'Prime Bank PLC', code: 'PRIME', is_active: true },
-  { id: 10, name: 'Dhaka Bank PLC', code: 'DHAKA', is_active: true },
-  { id: 11, name: 'United Commercial Bank (UCB)', code: 'UCB', is_active: true },
-  { id: 12, name: 'Premier Bank PLC', code: 'PREMIER', is_active: true },
-  { id: 13, name: 'Corporate & MNC Portfolio', code: 'MNC', is_active: true },
 ];
 
 export const INITIAL_PRODUCTS: Product[] = [
@@ -23,18 +13,6 @@ export const INITIAL_PRODUCTS: Product[] = [
   { id: 3, bank_id: 2, name: 'NEXUS Credit Card', code: 'DBBL-CC', commission_rate: 12.0 },
   { id: 4, bank_id: 2, name: 'Agent Banking Loan', code: 'DBBL-ABL', commission_rate: 8.0 },
   { id: 5, bank_id: 3, name: 'Dealer Recovery', code: 'APB-DR', commission_rate: 5.0 },
-  { id: 6, bank_id: 4, name: 'Credit Card', code: 'BBL-CC', commission_rate: 14.0 },
-  { id: 7, bank_id: 4, name: 'SME & Retail Loan', code: 'BBL-SME', commission_rate: 9.0 },
-  { id: 8, bank_id: 5, name: 'American Express Card', code: 'CBL-AMEX', commission_rate: 15.0 },
-  { id: 9, bank_id: 5, name: 'Retail Loan', code: 'CBL-RL', commission_rate: 10.0 },
-  { id: 10, bank_id: 6, name: 'Credit Card', code: 'EBL-CC', commission_rate: 13.0 },
-  { id: 11, bank_id: 7, name: 'Credit Card & PL', code: 'SCB-CC', commission_rate: 16.0 },
-  { id: 12, bank_id: 8, name: 'Retail Loan & Card', code: 'MTB-RL', commission_rate: 11.0 },
-  { id: 13, bank_id: 9, name: 'Retail Loan', code: 'PRIME-RL', commission_rate: 10.0 },
-  { id: 14, bank_id: 10, name: 'Credit Card & Loan', code: 'DHAKA-CC', commission_rate: 12.0 },
-  { id: 15, bank_id: 11, name: 'Retail & Card Portfolio', code: 'UCB-RC', commission_rate: 12.0 },
-  { id: 16, bank_id: 12, name: 'Consumer Loan', code: 'PREMIER-CL', commission_rate: 11.0 },
-  { id: 17, bank_id: 13, name: 'Corporate Debt Recovery', code: 'MNC-CDR', commission_rate: 7.0 },
 ];
 
 // Clean Production Initial State (All Sample Mock Data Deleted Permanently)

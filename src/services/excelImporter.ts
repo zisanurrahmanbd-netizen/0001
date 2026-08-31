@@ -66,6 +66,57 @@ export function formatExcelDate(val: any, headerName?: string): any {
   return val;
 }
 
+function cleanNumber(val: any): number {
+  if (typeof val === 'number') return isNaN(val) ? 0 : val;
+  if (!val) return 0;
+  const str = String(val).replace(/[^0-9.-]/g, '');
+  const n = parseFloat(str);
+  return isNaN(n) ? 0 : n;
+}
+
+function findRowValue(row: Record<string, any>, candidateKeys: string[]): any {
+  if (!row) return undefined;
+
+  // 1. Direct match (case-sensitive)
+  for (const k of candidateKeys) {
+    if (row[k] !== undefined && row[k] !== null && String(row[k]).trim() !== '') {
+      return row[k];
+    }
+  }
+
+  // 2. Case-insensitive and normalized match (ignoring spaces, underscores, dots, hyphens, slashes)
+  const normalizedRowKeys: { origKey: string; normKey: string }[] = Object.keys(row).map(k => ({
+    origKey: k,
+    normKey: k.toUpperCase().replace(/[^A-Z0-9]/g, '')
+  }));
+
+  for (const c of candidateKeys) {
+    const normCandidate = c.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const found = normalizedRowKeys.find(item => item.normKey === normCandidate);
+    if (found) {
+      const val = row[found.origKey];
+      if (val !== undefined && val !== null && String(val).trim() !== '') {
+        return val;
+      }
+    }
+  }
+
+  // 3. Substring key matching
+  for (const c of candidateKeys) {
+    const normCandidate = c.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (normCandidate.length < 3) continue;
+    const found = normalizedRowKeys.find(item => item.normKey.includes(normCandidate) || (item.normKey.length >= 3 && normCandidate.includes(item.normKey)));
+    if (found) {
+      const val = row[found.origKey];
+      if (val !== undefined && val !== null && String(val).trim() !== '') {
+        return val;
+      }
+    }
+  }
+
+  return undefined;
+}
+
 export class ExcelImporter {
   public static async inspectFile(file: File): Promise<{ workbook: XLSX.WorkBook; result: InspectResult }> {
     const buffer = await file.arrayBuffer();
@@ -138,43 +189,83 @@ export class ExcelImporter {
     const jsonRows: Record<string, any>[] = XLSX.utils.sheet_to_json(sheet);
     
     return jsonRows.map((row, idx) => {
-      // Find aliases for file number
-      const fileNumber = row['FILE_NO'] || row['FILE_NUMBER'] || row['CASE_NO'] || row['SL'] || `IMP-${Date.now()}-${idx + 1}`;
-      const accountNum = row['CARD_NO'] || row['CARD_NUMBER'] || row['ACCOUNT_NO'] || row['ACCOUNT_NUMBER'] || row['DEALER_CODE'] || '';
-      const customerName = row['CUSTOMER_NAME'] || row['CLIENT_NAME'] || row['BORROWER_NAME'] || row['PROPRIETOR_NAME'] || row['NAME'] || 'Unknown Customer';
-      const phone = row['MOBILE_NO'] || row['CONTACT_NO_1'] || row['PHONE_NUMBER'] || row['PHONE'] || '';
-      const secPhone = row['PHONE_OFFICE'] || row['CONTACT_NO_2'] || row['OFFICE_PHONE'] || '';
-      const presentAddr = row['PRESENT_ADDRESS'] || row['SHOP_ADDRESS'] || row['ADDRESS'] || '';
-      const permAddr = row['PERMANENT_ADDRESS'] || row['WAREHOUSE_ADDRESS'] || '';
-      const outstanding = Number(row['TOTAL_OUTSTANDING'] || row['OUTSTANDING_AMOUNT'] || row['TOTAL_OS'] || row['PRINCIPAL_OUTSTANDING'] || row['TOTAL_DUE'] || 0);
-      const overdue = Number(row['OVERDUE_AMOUNT'] || row['MINIMUM_DUE'] || row['MIN_DUE'] || row['OVERDUE_90_PLUS'] || row['INTEREST_OVERDUE'] || 0);
-      const minPay = Number(row['MINIMUM_DUE'] || row['MIN_DUE'] || row['EMI_AMOUNT'] || 0);
-      const agentName = row['AGENT_NAME'] || row['AGENT'] || row['AGENT_ID'] || row['OFFICER_NAME'] || row['RECOVERY_AGENT'] || '';
+      // 1. File Number / Case Identifier
+      const rawFileNo = findRowValue(row, ['FILE_NO', 'FILE_NUMBER', 'CASE_NO', 'CASE_NUMBER', 'SL', 'SERIAL', 'ID', 'LOAN_ID', 'NT', 'APPLICATION_NO']);
+      const fileNumber = rawFileNo ? String(rawFileNo).trim() : `IMP-${Date.now()}-${idx + 1}`;
 
-      const rawExpiry = row['EXPIRY_DATE'] || row['WORK_ORDER_EXPIRY_DATE'] || row['EXPIRY'] || row['EXPIRE_DATE'] || '';
-      const formattedExpiry = rawExpiry ? String(formatExcelDate(rawExpiry, 'EXPIRY_DATE')) : '';
+      // 2. Account Number / Card Number
+      const rawAccount = findRowValue(row, ['CARD_NO', 'CARD_NUMBER', 'ACCOUNT_NO', 'ACCOUNT_NUMBER', 'ACC_NO', 'ACCOUNT', 'DEALER_CODE', 'LOAN_ACC', 'LOAN_ACCOUNT', 'A/C', 'A/C_NO', 'CONTRACT_NO', 'AGREEMENT_NO', 'CLIENT_ID']);
+      const accountNum = rawAccount ? String(rawAccount).trim() : '';
 
-      // Collect all extra columns into extra_attributes, formatting date columns properly
+      // 3. Customer / Borrower Name
+      const rawCustomer = findRowValue(row, ['CUSTOMER_NAME', 'CLIENT_NAME', 'BORROWER_NAME', 'PROPRIETOR_NAME', 'NAME', 'CUSTOMER', 'BORROWER', 'CLIENT', 'DEALER_NAME', 'SHOP_NAME', 'ACCOUNT_NAME']);
+      const customerName = rawCustomer ? String(rawCustomer).trim() : 'Customer Name';
+
+      // 4. Primary Phone
+      const rawPhone = findRowValue(row, ['MOBILE_NO', 'MOBILE', 'PHONE', 'CONTACT_NO', 'CONTACT_NO_1', 'PHONE_NUMBER', 'CELL_NO', 'MOBILE_NUMBER', 'TEL', 'PHONE_RES', 'PRIMARY_PHONE']);
+      const phone = rawPhone ? String(rawPhone).trim() : '';
+
+      // 5. Secondary Phone / Office Phone
+      const rawSecPhone = findRowValue(row, ['PHONE_OFFICE', 'OFFICE_PHONE', 'CONTACT_NO_2', 'ALT_PHONE', 'SECONDARY_PHONE', 'EMERGENCY_CONTACT', 'OFFICE_MOBILE', 'RES_PHONE']);
+      const secPhone = rawSecPhone ? String(rawSecPhone).trim() : '';
+
+      // 6. Present Residence Address
+      const rawPresAddr = findRowValue(row, ['PRESENT_ADDRESS', 'SHOP_ADDRESS', 'ADDRESS', 'RESIDENCE_ADDRESS', 'CURRENT_ADDRESS', 'PRESENT_ADDR', 'RESIDENCE', 'LOCATION', 'CLIENT_ADDRESS']);
+      const presentAddr = rawPresAddr ? String(rawPresAddr).trim() : '';
+
+      // 7. Permanent Origin Address
+      const rawPermAddr = findRowValue(row, ['PERMANENT_ADDRESS', 'WAREHOUSE_ADDRESS', 'PERM_ADDRESS', 'PERMANENT_ADDR', 'ORIGIN_ADDRESS', 'VILLAGE_ADDRESS']);
+      const permAddr = rawPermAddr ? String(rawPermAddr).trim() : '';
+
+      // 8. Outstanding Amount (BDT)
+      const rawOutstanding = findRowValue(row, ['OUTSTANDING', 'TOTAL_OUTSTANDING', 'OUTSTANDING_AMOUNT', 'TOTAL_OS', 'OS_AMOUNT', 'PRINCIPAL_OUTSTANDING', 'TOTAL_DUE', 'CURRENT_OUTSTANDING', 'NET_OUTSTANDING', 'BALANCE', 'POS', 'TOS']);
+      const outstanding = cleanNumber(rawOutstanding);
+
+      // 9. Overdue Amount (BDT)
+      const rawOverdue = findRowValue(row, ['OVERDUE', 'OVERDUE_AMOUNT', 'OVERDUE_90_PLUS', 'INTEREST_OVERDUE', 'OD_AMOUNT', 'TOTAL_OVERDUE', 'MINIMUM_DUE', 'MIN_DUE']);
+      const overdue = cleanNumber(rawOverdue);
+
+      // 10. Minimum Payment / EMI
+      const rawEmi = findRowValue(row, ['EMI', 'EMI_AMOUNT', 'MINIMUM_DUE', 'MIN_DUE', 'MONTHLY_INSTALLMENT', 'INSTALLMENT_AMOUNT']);
+      const minPay = cleanNumber(rawEmi);
+
+      // 11. Agent Name
+      const rawAgent = findRowValue(row, ['AGENT_NAME', 'AGENT', 'AGENT_ID', 'OFFICER_NAME', 'RECOVERY_AGENT', 'FIELD_EXECUTIVE', 'FO_NAME', 'ASSIGNED_AGENT', 'EXECUTIVE_NAME']);
+      const agentName = rawAgent ? String(rawAgent).trim() : '';
+
+      // 12. Allocation Date
+      const rawAlloc = findRowValue(row, ['DATE_OF_ALLOCATION', 'ALLOCATION_DATE', 'ALLOC_DATE', 'ASSIGN_DATE', 'START_DATE', 'DATE_ALLOCATED', 'ALLOCATED_ON']);
+      const formattedAlloc = rawAlloc ? String(formatExcelDate(rawAlloc, 'DATE_OF_ALLOCATION')) : new Date().toISOString().split('T')[0];
+
+      // 13. Expiry Date
+      const rawExpiry = findRowValue(row, ['WORK_ORDER_EXPIRY_DATE', 'EXPIRY_DATE', 'EXPIRY', 'EXPIRE_DATE', 'END_DATE', 'CONTRACT_EXPIRY', 'WO_EXPIRY_DATE', 'VALIDITY_DATE']);
+      const formattedExpiry = rawExpiry ? String(formatExcelDate(rawExpiry, 'WORK_ORDER_EXPIRY_DATE')) : new Date(Date.now() + 60 * 86400000).toISOString().split('T')[0];
+
+      // 14. Status / Classification
+      const rawStatus = findRowValue(row, ['LEGAL_STATUS', 'STATUS', 'CLASSIFICATION', 'BUCKET', 'DPD_STATUS', 'LAP_STATUS']);
+      const legalStatus = rawStatus ? String(rawStatus).trim() : 'Normal Recovery';
+
+      // 15. Collect ALL columns into extra_attributes, converting dates & formatting
       const extraAttributes: Record<string, any> = {};
       Object.keys(row).forEach(key => {
-        if (!['FILE_NO', 'CARD_NO', 'CUSTOMER_NAME', 'MOBILE_NO', 'PRESENT_ADDRESS', 'PERMANENT_ADDRESS', 'TOTAL_OUTSTANDING', 'OVERDUE_AMOUNT', 'AGENT_NAME'].includes(key)) {
-          extraAttributes[key] = formatExcelDate(row[key], key);
-        }
+        extraAttributes[key] = formatExcelDate(row[key], key);
       });
 
       return {
-        file_number: String(fileNumber),
-        account_number: String(accountNum),
-        customer_name: String(customerName),
-        customer_phone: String(phone),
-        customer_secondary_phone: String(secPhone),
-        customer_address_present: String(presentAddr),
-        customer_address_permanent: String(permAddr),
+        file_number: fileNumber,
+        account_number: accountNum,
+        customer_name: customerName,
+        customer_phone: phone,
+        customer_secondary_phone: secPhone,
+        customer_address_present: presentAddr,
+        customer_address_permanent: permAddr,
         outstanding_amount: outstanding,
         overdue_amount: overdue,
         minimum_payment: minPay,
-        agent_name: String(agentName),
-        expiry_date: formattedExpiry || undefined,
+        agent_name: agentName,
+        allocation_date: formattedAlloc,
+        expiry_date: formattedExpiry,
+        legal_status: legalStatus,
         bank_id: bankId,
         product_id: productId,
         extra_attributes: extraAttributes,

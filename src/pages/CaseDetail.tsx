@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { usePermissions } from '../context/PermissionsContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -9,7 +9,8 @@ import { CaseFile, CheckIn, Collection, CaseRemark } from '../types';
 import { 
   ArrowLeft, MapPin, Phone, Coins, Calendar, Clock, 
   MessageSquare, Receipt, Navigation, UserCheck, Building2,
-  ExternalLink, CheckCircle2, Compass
+  ExternalLink, CheckCircle2, Compass, CreditCard, FileSpreadsheet,
+  User as UserIcon, ShieldCheck
 } from 'lucide-react';
 
 export const CaseDetail: React.FC<{ caseId: number; onBack: () => void }> = ({ caseId, onBack }) => {
@@ -182,7 +183,21 @@ export const CaseDetail: React.FC<{ caseId: number; onBack: () => void }> = ({ c
           <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-4 shadow-sm">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
               <div>
-                <span className="text-xs font-mono text-emerald-600 dark:text-emerald-400 font-extrabold">{caseItem.file_number}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-mono text-emerald-600 dark:text-emerald-400 font-extrabold">{caseItem.file_number}</span>
+                  {caseItem.agent_name && (
+                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[10px] font-bold flex items-center gap-1">
+                      <UserIcon className="w-3 h-3" />
+                      <span>Agent: {caseItem.agent_name}</span>
+                    </span>
+                  )}
+                  {(caseItem.extra_attributes?.['COLLECTOR'] || caseItem.extra_attributes?.['C.S'] || caseItem.extra_attributes?.['CS'] || caseItem.extra_attributes?.['SUPERVISOR']) && (
+                    <span className="px-2.5 py-0.5 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 text-[10px] font-bold flex items-center gap-1">
+                      <ShieldCheck className="w-3 h-3" />
+                      <span>Collector/CS: {String(caseItem.extra_attributes?.['COLLECTOR'] || caseItem.extra_attributes?.['C.S'] || caseItem.extra_attributes?.['CS'] || caseItem.extra_attributes?.['SUPERVISOR'])}</span>
+                    </span>
+                  )}
+                </div>
                 <h2 className="text-xl font-black text-slate-900 dark:text-white mt-0.5">{caseItem.customer_name}</h2>
               </div>
               <StatusBadge status={caseItem.status} />
@@ -191,26 +206,30 @@ export const CaseDetail: React.FC<{ caseId: number; onBack: () => void }> = ({ c
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
               <div className="p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl">
                 <span className="text-slate-400 font-bold text-[10px] uppercase">{t('cases.bank_product', 'Bank / Partner')}</span>
-                <p className="font-bold text-slate-800 dark:text-slate-200 truncate">{caseItem.bank?.name}</p>
-                <p className="text-slate-500 text-[11px] truncate">{caseItem.product?.name}</p>
+                <p className="font-bold text-slate-800 dark:text-slate-200 truncate">{caseItem.bank?.name || 'Bank'}</p>
+                <p className="text-slate-500 text-[11px] truncate">{caseItem.product?.name || caseItem.extra_attributes?.['PRODUCT'] || 'Portfolio'}</p>
               </div>
               <div className="p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl">
                 <span className="text-slate-400 font-bold text-[10px] uppercase">{t('detail.account_no', 'Account / Card #')}</span>
                 <p className="font-mono font-bold text-slate-800 dark:text-slate-200 truncate">{caseItem.account_number || 'N/A'}</p>
-                <p className="text-slate-500 text-[11px]">{t('detail.allocation_date', 'Allocated')}: {caseItem.allocation_date || 'N/A'}</p>
+                <p className="text-slate-500 text-[11px] font-mono font-semibold">Allocated: {caseItem.allocation_date || 'N/A'}</p>
               </div>
               <div className="p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl">
                 <span className="text-slate-400 font-bold text-[10px] uppercase">{t('detail.phone', 'Primary Contact')}</span>
-                <a href={'tel:' + caseItem.customer_phone} className="font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 hover:underline truncate">
-                  <Phone className="w-3 h-3" />
-                  <span>{caseItem.customer_phone || 'N/A'}</span>
-                </a>
+                {caseItem.customer_phone ? (
+                  <a href={'tel:' + caseItem.customer_phone} className="font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 hover:underline truncate">
+                    <Phone className="w-3 h-3" />
+                    <span>{caseItem.customer_phone}</span>
+                  </a>
+                ) : (
+                  <span className="text-slate-400 font-medium">N/A</span>
+                )}
                 <p className="text-slate-500 text-[11px]">Alt: {caseItem.customer_secondary_phone || 'None'}</p>
               </div>
               <div className="p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl">
                 <span className="text-slate-400 font-bold text-[10px] uppercase">{t('detail.expiry_date', 'Contract Expiry')}</span>
                 <p className="font-mono font-bold text-amber-600 dark:text-amber-400">{caseItem.expiry_date || 'N/A'}</p>
-                <p className="text-slate-500 text-[11px] truncate">{caseItem.legal_status || 'Normal Recovery'}</p>
+                <p className="text-slate-500 text-[11px] truncate font-semibold">{caseItem.legal_status || 'Normal Recovery'}</p>
               </div>
             </div>
 
@@ -227,7 +246,7 @@ export const CaseDetail: React.FC<{ caseId: number; onBack: () => void }> = ({ c
                 <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
                   caseItem.present_address_visited ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20' : 'bg-slate-200 dark:bg-slate-800 text-slate-400'
                 }`}>
-                  {caseItem.present_address_visited ? (t('top.switch_lang') === 'English' ? 'âœ“ à¦­à¦¿à¦œà¦¿à¦Ÿ à¦¸à¦®à§à¦ªà¦¨à§à¦¨' : 'âœ“ Visited') : (t('top.switch_lang') === 'English' ? 'à¦­à¦¿à¦œà¦¿à¦Ÿ à¦¬à¦¾à¦•à¦¿' : 'Pending Visit')}
+                  {caseItem.present_address_visited ? (t('top.switch_lang') === 'English' ? '✓ ভিজিট সম্পন্ন' : '✓ Visited') : (t('top.switch_lang') === 'English' ? 'ভিজিট বাকি' : 'Pending Visit')}
                 </span>
               </div>
 
@@ -242,10 +261,38 @@ export const CaseDetail: React.FC<{ caseId: number; onBack: () => void }> = ({ c
                 <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
                   caseItem.permanent_address_visited ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20' : 'bg-slate-200 dark:bg-slate-800 text-slate-400'
                 }`}>
-                  {caseItem.permanent_address_visited ? (t('top.switch_lang') === 'English' ? 'âœ“ à¦­à¦¿à¦œà¦¿à¦Ÿ à¦¸à¦®à§à¦ªà¦¨à§à¦¨' : 'âœ“ Visited') : (t('top.switch_lang') === 'English' ? 'à¦­à¦¿à¦œà¦¿à¦Ÿ à¦¬à¦¾à¦•à¦¿' : 'Pending Visit')}
+                  {caseItem.permanent_address_visited ? (t('top.switch_lang') === 'English' ? '✓ ভিজিট সম্পন্ন' : '✓ Visited') : (t('top.switch_lang') === 'English' ? 'ভিজিট বাকি' : 'Pending Visit')}
                 </span>
               </div>
             </div>
+
+            {/* EXTENDED BANK FILE ATTRIBUTES & CUSTOM DATA */}
+            {caseItem.extra_attributes && Object.keys(caseItem.extra_attributes).length > 0 && (
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-slate-50 to-slate-100/50 dark:from-slate-950 dark:to-slate-900 border border-slate-200/80 dark:border-slate-800 space-y-3 pt-3">
+                <div className="flex items-center justify-between border-b border-slate-200/60 dark:border-slate-800/60 pb-2">
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                    <FileSpreadsheet className="w-3.5 h-3.5 text-blue-500" />
+                    <span>Extended Bank File Details & Allocation Attributes</span>
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-mono">
+                    {Object.keys(caseItem.extra_attributes).length} Attributes Recorded
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+                  {Object.entries(caseItem.extra_attributes).map(([key, val], idx) => (
+                    <div key={idx} className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 shadow-xs">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase font-mono block truncate">
+                        {key.replace(/_/g, ' ')}
+                      </span>
+                      <span className="font-bold text-slate-800 dark:text-slate-200 font-mono text-[11px] block truncate mt-0.5">
+                        {String(val ?? 'N/A')}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* VERIFIED GPS PINPOINT VISIT RECORDS & EMBEDDED MAP */}
@@ -345,15 +392,34 @@ export const CaseDetail: React.FC<{ caseId: number; onBack: () => void }> = ({ c
 
         {/* Right Financials */}
         <div className="space-y-6">
-          <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-3">
-            <h3 className="text-sm font-bold flex items-center gap-2 text-slate-900 dark:text-white"><Coins className="w-4 h-4 text-emerald-500" /> {t('detail.financials', 'Financial Balances')}</h3>
-            <div className="p-4 bg-slate-50 dark:bg-slate-950 rounded-2xl">
-              <span className="text-[10px] font-bold text-slate-400 uppercase">{t('cases.outstanding', 'Outstanding')}</span>
-              <p className="text-2xl font-black font-mono">BDT {caseItem.outstanding_amount.toLocaleString()}</p>
-            </div>
-            <div className="p-4 bg-slate-50 dark:bg-slate-950 rounded-2xl">
-              <span className="text-[10px] font-bold text-slate-400 uppercase">{t('detail.collected_amount', 'Collected')}</span>
-              <p className="text-2xl font-black text-emerald-500 font-mono">BDT {caseItem.total_collected_amount.toLocaleString()}</p>
+          <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-4 shadow-sm">
+            <h3 className="text-sm font-bold flex items-center gap-2 text-slate-900 dark:text-white">
+              <Coins className="w-4 h-4 text-emerald-500" />
+              <span>{t('detail.financials', 'Financial Balances')}</span>
+            </h3>
+
+            <div className="space-y-2.5">
+              <div className="p-3.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl">
+                <span className="text-[10px] font-bold text-slate-400 uppercase">{t('cases.outstanding', 'Total Outstanding')}</span>
+                <p className="text-xl font-black font-mono text-slate-900 dark:text-white">BDT {caseItem.outstanding_amount.toLocaleString()}</p>
+              </div>
+
+              <div className="p-3.5 bg-rose-500/10 border border-rose-500/20 rounded-2xl">
+                <span className="text-[10px] font-bold text-rose-500 uppercase">{t('cases.overdue', 'Overdue Amount')}</span>
+                <p className="text-xl font-black font-mono text-rose-600 dark:text-rose-400">BDT {caseItem.overdue_amount.toLocaleString()}</p>
+              </div>
+
+              {caseItem.minimum_payment ? (
+                <div className="p-3.5 bg-blue-500/10 border border-blue-500/20 rounded-2xl">
+                  <span className="text-[10px] font-bold text-blue-500 uppercase">Monthly EMI / Min Due</span>
+                  <p className="text-lg font-black font-mono text-blue-600 dark:text-blue-400">BDT {caseItem.minimum_payment.toLocaleString()}</p>
+                </div>
+              ) : null}
+
+              <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl">
+                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase">{t('detail.collected_amount', 'Total Collected')}</span>
+                <p className="text-xl font-black text-emerald-600 dark:text-emerald-400 font-mono">BDT {caseItem.total_collected_amount.toLocaleString()}</p>
+              </div>
             </div>
           </div>
 

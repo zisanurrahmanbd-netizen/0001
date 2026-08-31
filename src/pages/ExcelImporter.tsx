@@ -30,8 +30,16 @@ export const ExcelImporterPage: React.FC = () => {
   const banks = dataService.getBanks();
   const allProducts = dataService.getProducts();
 
-  // Live editable templates state
-  const [templates, setTemplates] = useState<Record<string, TemplateDefinition>>(() => ({ ...PREBUILT_TEMPLATES }));
+  // Live editable templates state with permanent local persistence
+  const [templates, setTemplates] = useState<Record<string, TemplateDefinition>>(() => {
+    try {
+      const saved = localStorage.getItem("recoverypro_custom_templates");
+      if (saved) {
+        return { ...PREBUILT_TEMPLATES, ...JSON.parse(saved) };
+      }
+    } catch (_) {}
+    return { ...PREBUILT_TEMPLATES };
+  });
 
   // Upload workflow state
   const [file, setFile] = useState<File | null>(null);
@@ -191,9 +199,11 @@ export const ExcelImporterPage: React.FC = () => {
     setCustomHeaders(customHeaders.filter((_, i) => i !== idx));
   };
 
-  const handleSaveAndDownload = () => {
+  const handleSaveTemplate = (andDownload: boolean = false) => {
+    let updated: Record<string, TemplateDefinition>;
+
     if (editingTemplateKey && templates[editingTemplateKey]) {
-      setTemplates({
+      updated = {
         ...templates,
         [editingTemplateKey]: {
           ...templates[editingTemplateKey],
@@ -201,12 +211,36 @@ export const ExcelImporterPage: React.FC = () => {
           productName: customProduct,
           headers: [...customHeaders],
         }
-      });
+      };
+    } else {
+      const newKey = `custom_${customBank.toLowerCase().replace(/[^a-z0-9]/g, '_')}_${Date.now()}`;
+      updated = {
+        ...templates,
+        [newKey]: {
+          type: newKey,
+          name: `${customBank} ${customProduct}`,
+          description: `Custom format schema for ${customBank} (${customProduct})`,
+          badge: customProduct,
+          bankName: customBank,
+          productName: customProduct,
+          headers: [...customHeaders],
+          sampleRow: ["SAMPLE-001", "ACC-12345", "John Doe", "01711-000000", "Dhaka, Bangladesh", 50000, 15000, "Tariqul Islam", "2026-10-31"]
+        }
+      };
     }
 
-    TemplateService.generateAndDownload(customBank, customProduct, customHeaders, [
-      ["SAMPLE-001", "ACC-12345", "John Doe", "01711-000000", "Dhaka, Bangladesh", 50000, 15000, "Tariqul Islam", "2026-10-31"]
-    ]);
+    setTemplates(updated);
+    try {
+      localStorage.setItem("recoverypro_custom_templates", JSON.stringify(updated));
+    } catch (_) {}
+
+    if (andDownload) {
+      TemplateService.generateAndDownload(customBank, customProduct, customHeaders, [
+        ["SAMPLE-001", "ACC-12345", "John Doe", "01711-000000", "Dhaka, Bangladesh", 50000, 15000, "Tariqul Islam", "2026-10-31"]
+      ]);
+    }
+
+    setImportSuccess(`Format template for "${customBank} (${customProduct})" saved to system database!`);
     setShowBuilderModal(false);
   };
 
@@ -672,21 +706,21 @@ export const ExcelImporterPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => setShowBuilderModal(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold"
+                  className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs transition-all"
                 >
                   {t("detail.cancel", "Cancel")}
                 </button>
                 <button
                   type="button"
-                  onClick={handleSaveAndDownload}
-                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold flex items-center gap-2 shadow-lg shadow-emerald-600/30"
+                  onClick={() => handleSaveTemplate(false)}
+                  className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-2 shadow-lg shadow-emerald-600/30 transition-all"
                 >
-                  <Download className="w-4 h-4" />
-                  <span>{t("top.switch_lang") === "English" ? "সংরক্ষণ ও ডাউনলোড" : "Save & Download .XLSX"}</span>
+                  <Check className="w-4 h-4" />
+                  <span>{t("top.switch_lang") === "English" ? "ফরম্যাট সংরক্ষণ করুন" : "Save Format"}</span>
                 </button>
               </div>
             </div>

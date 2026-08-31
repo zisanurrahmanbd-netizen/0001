@@ -1,6 +1,7 @@
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useBranding } from '../context/BrandingContext';
+import { usePermissions, PermissionKey } from '../context/PermissionsContext';
 import { 
   LayoutDashboard, 
   Briefcase, 
@@ -24,20 +25,21 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, isOpen, onClose }) => {
   const { user } = useAuth();
   const { branding } = useBranding();
+  const { can } = usePermissions();
 
-  const navItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin', 'manager', 'agent'] },
-    { id: 'cases', label: 'Bank & MNC Files', icon: Briefcase, roles: ['admin', 'manager', 'agent'] },
-    { id: 'map', label: 'Live Agent Map', icon: MapPin, roles: ['admin', 'manager'] },
-    { id: 'imports', label: 'Excel Templates & Import', icon: FileSpreadsheet, roles: ['admin'] },
-    { id: 'contacts', label: 'Bank Contacts', icon: PhoneCall, roles: ['admin', 'manager', 'agent'] },
-    { id: 'reports_perf', label: 'Agent Performance', icon: TrendingUp, roles: ['admin', 'manager'] },
-    { id: 'reports_expiry', label: 'Expiry Tracker', icon: CalendarClock, roles: ['admin', 'manager'] },
-    { id: 'reports_legal', label: 'Legal & Flagged Cases', icon: ShieldAlert, roles: ['admin', 'manager', 'agent'] },
-    { id: 'team', label: 'Team Management', icon: Users, roles: ['admin'] },
+  const navItems: { id: string; label: string; icon: any; perm: PermissionKey }[] = [
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, perm: 'view_dashboard' },
+    { id: 'cases', label: 'Bank & MNC Files', icon: Briefcase, perm: 'view_cases' },
+    { id: 'map', label: 'Live Agent Map', icon: MapPin, perm: 'view_map' },
+    { id: 'imports', label: 'Excel Templates & Import', icon: FileSpreadsheet, perm: 'view_imports' },
+    { id: 'contacts', label: 'Bank Contacts', icon: PhoneCall, perm: 'view_contacts' },
+    { id: 'reports_perf', label: 'Agent Performance', icon: TrendingUp, perm: 'view_reports_perf' },
+    { id: 'reports_expiry', label: 'Expiry Tracker', icon: CalendarClock, perm: 'view_reports_expiry' },
+    { id: 'reports_legal', label: 'Legal & Flagged Cases', icon: ShieldAlert, perm: 'view_reports_legal' },
+    { id: 'team', label: 'Team Management', icon: Users, perm: 'view_team' },
   ];
 
-  const allowedItems = navItems.filter(item => user && item.roles.includes(user.role));
+  const allowedItems = navItems.filter(item => user && can(item.perm));
 
   return (
     <>

@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { usePermissions } from '../context/PermissionsContext';
 import { dataService } from '../services/dataService';
 import { StatusBadge } from '../components/StatusBadge';
 import { CaseFile, CaseStatus } from '../types';
@@ -23,6 +24,7 @@ interface CasesListProps {
 
 export const CasesList: React.FC<CasesListProps> = ({ onSelectCase, searchQuery = '' }) => {
   const { user } = useAuth();
+  const { can } = usePermissions();
   const [bankFilter, setBankFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [localSearch, setLocalSearch] = useState<string>('');
@@ -100,13 +102,15 @@ export const CasesList: React.FC<CasesListProps> = ({ onSelectCase, searchQuery 
           </p>
         </div>
 
-        <button
-          onClick={handleExportCSV}
-          className="px-3.5 py-2 rounded-xl bg-slate-900 dark:bg-slate-800 text-white font-bold text-xs hover:bg-slate-800 dark:hover:bg-slate-700 flex items-center gap-2 transition-all shadow-sm border border-slate-700/50"
-        >
-          <Download className="w-4 h-4" />
-          <span>Export Excel (.XLSX)</span>
-        </button>
+        {can('export_excel') && (
+          <button
+            onClick={handleExportCSV}
+            className="px-3.5 py-2 rounded-xl bg-slate-900 dark:bg-slate-800 text-white font-bold text-xs hover:bg-slate-800 dark:hover:bg-slate-700 flex items-center gap-2 transition-all shadow-sm border border-slate-700/50"
+          >
+            <Download className="w-4 h-4" />
+            <span>Export Excel (.XLSX)</span>
+          </button>
+        )}
       </div>
 
       {/* Filter Bar */}

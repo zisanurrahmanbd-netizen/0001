@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth, DEMO_USERS } from '../context/AuthContext';
+import { usePermissions } from '../context/PermissionsContext';
 import { dataService } from '../services/dataService';
 import { StatusBadge } from '../components/StatusBadge';
 import { CaseVisitMap } from '../components/CaseVisitMap';
@@ -12,6 +13,7 @@ import {
 
 export const CaseDetail: React.FC<{ caseId: number; onBack: () => void }> = ({ caseId, onBack }) => {
   const { user } = useAuth();
+  const { can } = usePermissions();
   const [caseItem, setCaseItem] = useState<CaseFile | undefined>();
   const [checkIns, setCheckIns] = useState<CheckIn[]>([]);
   const [remarks, setRemarks] = useState<CaseRemark[]>([]);
@@ -149,16 +151,22 @@ export const CaseDetail: React.FC<{ caseId: number; onBack: () => void }> = ({ c
         </button>
 
         <div className="flex flex-wrap items-center gap-2">
-          <button onClick={handleStartCheckIn} className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-purple-600/30 transition-all">
-            <Navigation className="w-3.5 h-3.5" /> GPS Visit Check-In
-          </button>
-          <button onClick={() => setShowRem(true)} className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-blue-600/30 transition-all">
-            <MessageSquare className="w-3.5 h-3.5" /> Log Remark / PTP
-          </button>
-          <button onClick={() => setShowCol(true)} className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-emerald-600/30 transition-all">
-            <Receipt className="w-3.5 h-3.5" /> Record Payment
-          </button>
-          {(user?.role === 'admin' || user?.role === 'manager') && (
+          {can('gps_checkin') && (
+            <button onClick={handleStartCheckIn} className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-purple-600/30 transition-all">
+              <Navigation className="w-3.5 h-3.5" /> GPS Visit Check-In
+            </button>
+          )}
+          {can('log_remark') && (
+            <button onClick={() => setShowRem(true)} className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-blue-600/30 transition-all">
+              <MessageSquare className="w-3.5 h-3.5" /> Log Remark / PTP
+            </button>
+          )}
+          {can('record_payment') && (
+            <button onClick={() => setShowCol(true)} className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-emerald-600/30 transition-all">
+              <Receipt className="w-3.5 h-3.5" /> Record Payment
+            </button>
+          )}
+          {can('reassign_case') && (
             <button onClick={() => setShowReassign(true)} className="px-3.5 py-2 rounded-xl bg-slate-900 dark:bg-slate-800 text-slate-200 font-bold text-xs flex items-center gap-1.5 border border-slate-700">
               <UserCheck className="w-3.5 h-3.5" /> Reassign
             </button>

@@ -1,9 +1,10 @@
-﻿import React, { Component, ErrorInfo, ReactNode } from 'react';
+import React, { Component, ErrorInfo, ReactNode } from 'react';
 import ReactDOM from 'react-dom/client';
 import { App } from './App';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { BrandingProvider } from './context/BrandingContext';
+import { PermissionsProvider } from './context/PermissionsContext';
 import './index.css';
 
 interface Props {
@@ -56,7 +57,9 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
       <ThemeProvider>
         <BrandingProvider>
           <AuthProvider>
-            <App />
+            <PermissionsProvider>
+              <App />
+            </PermissionsProvider>
           </AuthProvider>
         </BrandingProvider>
       </ThemeProvider>

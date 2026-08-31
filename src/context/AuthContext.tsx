@@ -160,8 +160,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [user]);
 
+  const getLatestUsers = (): User[] => {
+    try {
+      const saved = localStorage.getItem('recovery_all_users');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {}
+    return users;
+  };
+
   const login = (email: string, pass: string): { success: boolean; error?: string } => {
-    const found = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+    const list = getLatestUsers();
+    const found = list.find(u => u.email.toLowerCase() === email.toLowerCase());
     if (!found) {
       return { success: false, error: 'User account not found with this email address.' };
     }
@@ -183,7 +195,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const switchUser = (email: string): boolean => {
-    const found = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+    const list = getLatestUsers();
+    const found = list.find(u => u.email.toLowerCase() === email.toLowerCase());
     if (found) {
       if (found.status === 'inactive') {
         alert(`Access Denied: Account "${found.name}" is currently deactivated by the Administrator.`);
@@ -202,15 +215,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       status: newUser.status || 'active',
       is_online: false,
     };
-    setUsers(prev => [created, ...prev]);
+    setUsers(prev => {
+      const next = [created, ...prev];
+      localStorage.setItem('recovery_all_users', JSON.stringify(next));
+      return next;
+    });
     return created;
   };
 
   const updateUser = (id: number, updated: Partial<User>) => {
-    setUsers(prev => prev.map(u => u.id === id ? { ...u, ...updated } : u));
+    setUsers(prev => {
+      const next = prev.map(u => u.id === id ? { ...u, ...updated } : u);
+      localStorage.setItem('recovery_all_users', JSON.stringify(next));
+      return next;
+    });
     if (user && user.id === id) {
       if (updated.status === 'inactive') {
         setUser(null);
+        localStorage.removeItem('recovery_auth_user');
       } else {
         setUser(prev => prev ? { ...prev, ...updated } : null);
       }
@@ -218,7 +240,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const deleteUser = (id: number) => {
-    setUsers(prev => prev.filter(u => u.id !== id));
+    setUsers(prev => {
+      const next = prev.filter(u => u.id !== id);
+      localStorage.setItem('recovery_all_users', JSON.stringify(next));
+      return next;
+    });
   };
 
   return (

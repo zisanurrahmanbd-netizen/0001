@@ -1,8 +1,9 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { Sun, Moon, LogOut, Search, UserCheck, Shield, ChevronDown, Palette } from 'lucide-react';
 import { BrandingModal } from './BrandingModal';
+import { RolePermissionsModal } from './RolePermissionsModal';
 
 interface NavbarProps {
   onSearch?: (query: string) => void;
@@ -14,6 +15,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onSearch, onMenuToggle }) => {
   const { theme, toggleTheme } = useTheme();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showBrandingModal, setShowBrandingModal] = useState(false);
+  const [showPermsModal, setShowPermsModal] = useState(false);
 
   return (
     <>
@@ -39,6 +41,18 @@ export const Navbar: React.FC<NavbarProps> = ({ onSearch, onMenuToggle }) => {
         </div>
 
         <div className="flex items-center gap-2.5">
+          {/* Admin Role & Permission Control */}
+          {user?.role === 'admin' && (
+            <button
+              onClick={() => setShowPermsModal(true)}
+              title="Configure Role & User Access Permissions"
+              className="px-2.5 py-1.5 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 font-bold text-xs flex items-center gap-1.5 transition-all border border-indigo-500/20 shadow-sm"
+            >
+              <Shield className="w-3.5 h-3.5" />
+              <span className="hidden md:inline">Permissions</span>
+            </button>
+          )}
+
           {/* Admin Branding Customizer */}
           {user?.role === 'admin' && (
             <button
@@ -136,6 +150,12 @@ export const Navbar: React.FC<NavbarProps> = ({ onSearch, onMenuToggle }) => {
       <BrandingModal
         isOpen={showBrandingModal}
         onClose={() => setShowBrandingModal(false)}
+      />
+
+      {/* Admin Role & Permissions Control Modal */}
+      <RolePermissionsModal
+        isOpen={showPermsModal}
+        onClose={() => setShowPermsModal(false)}
       />
     </>
   );

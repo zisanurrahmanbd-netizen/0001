@@ -1,6 +1,7 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { User, UserRole } from '../types';
+import { RolePermissionsModal } from '../components/RolePermissionsModal';
 import { 
   Users, 
   Plus, 
@@ -26,6 +27,8 @@ export const TeamManagementPage: React.FC = () => {
   // Modal states
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showPermsModal, setShowPermsModal] = useState(false);
+  const [permsUserId, setPermsUserId] = useState<number | null>(null);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
   // Form states
@@ -136,6 +139,14 @@ export const TeamManagementPage: React.FC = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => { setPermsUserId(null); setShowPermsModal(true); }}
+            className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md shadow-indigo-600/30 flex items-center gap-2 transition-all"
+          >
+            <Shield className="w-4 h-4" />
+            <span>Roles & Permissions Control</span>
+          </button>
+
           <button
             onClick={openAddModal}
             className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-600/30 flex items-center gap-2 transition-all"
@@ -253,6 +264,15 @@ export const TeamManagementPage: React.FC = () => {
               </button>
 
               <div className="flex items-center gap-1">
+                <button
+                  onClick={() => { setPermsUserId(u.id); setShowPermsModal(true); }}
+                  className="p-1.5 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/20 font-bold flex items-center gap-1 text-[11px]"
+                  title="Configure specific permissions for this user"
+                >
+                  <Shield className="w-3.5 h-3.5" />
+                  <span>Perms</span>
+                </button>
+
                 <button
                   onClick={() => openEditModal(u)}
                   className="p-1.5 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 font-bold flex items-center gap-1 text-[11px]"
@@ -492,6 +512,13 @@ export const TeamManagementPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Role & Permissions Control Modal */}
+      <RolePermissionsModal
+        isOpen={showPermsModal}
+        onClose={() => setShowPermsModal(false)}
+        initialUserId={permsUserId}
+      />
     </div>
   );
 };

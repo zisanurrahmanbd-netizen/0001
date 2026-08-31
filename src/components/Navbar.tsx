@@ -4,6 +4,8 @@ import { useTheme } from '../context/ThemeContext';
 import { Sun, Moon, LogOut, Search, UserCheck, Shield, ChevronDown, Palette } from 'lucide-react';
 import { BrandingModal } from './BrandingModal';
 import { RolePermissionsModal } from './RolePermissionsModal';
+import { LanguageToggle } from './LanguageToggle';
+import { useLanguage } from '../context/LanguageContext';
 
 interface NavbarProps {
   onSearch?: (query: string) => void;
@@ -13,6 +15,7 @@ interface NavbarProps {
 export const Navbar: React.FC<NavbarProps> = ({ onSearch, onMenuToggle }) => {
   const { user, logout, switchUser, users } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { t } = useLanguage();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showBrandingModal, setShowBrandingModal] = useState(false);
   const [showPermsModal, setShowPermsModal] = useState(false);
@@ -33,14 +36,14 @@ export const Navbar: React.FC<NavbarProps> = ({ onSearch, onMenuToggle }) => {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               type="text"
-              placeholder="Quick search file #, customer, phone..."
+              placeholder={t('top.search_placeholder', 'Quick search file #, customer, phone...')}
               onChange={(e) => onSearch?.(e.target.value)}
               className="w-full pl-9 pr-4 py-1.5 text-xs rounded-xl bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all"
             />
           </div>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2 sm:gap-2.5">
           {/* Admin Role & Permission Control */}
           {user?.role === 'admin' && (
             <button
@@ -49,7 +52,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onSearch, onMenuToggle }) => {
               className="px-2.5 py-1.5 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 font-bold text-xs flex items-center gap-1.5 transition-all border border-indigo-500/20 shadow-sm"
             >
               <Shield className="w-3.5 h-3.5" />
-              <span className="hidden md:inline">Permissions</span>
+              <span className="hidden md:inline">{t('top.permissions', 'Permissions')}</span>
             </button>
           )}
 
@@ -61,21 +64,24 @@ export const Navbar: React.FC<NavbarProps> = ({ onSearch, onMenuToggle }) => {
               className="px-2.5 py-1.5 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-600 dark:text-purple-400 font-bold text-xs flex items-center gap-1.5 transition-all border border-purple-500/20 shadow-sm"
             >
               <Palette className="w-3.5 h-3.5" />
-              <span className="hidden md:inline">Edit Logo & Brand</span>
+              <span className="hidden md:inline">{t('top.branding', 'Edit Logo & Brand')}</span>
             </button>
           )}
 
           {/* Live status badge */}
-          <div className="hidden md:flex items-center gap-2 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-semibold">
+          <div className="hidden lg:flex items-center gap-2 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-semibold">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span>Supabase Live</span>
+            <span>{t('top.live_status', 'Supabase Live')}</span>
           </div>
+
+          {/* 1-Click Language Switcher (EN / বাংলা) */}
+          <LanguageToggle />
 
           {/* Theme Toggle */}
           <button
             onClick={toggleTheme}
-            title="Toggle Light / Dark Mode"
-            className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-emerald-500 dark:hover:text-emerald-400 transition-all"
+            title={theme === 'dark' ? t('top.light_mode', 'Light Mode') : t('top.dark_mode', 'Dark Mode')}
+            className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-emerald-500 dark:hover:text-emerald-400 transition-all border border-slate-200 dark:border-slate-700 shadow-sm"
           >
             {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-300" /> : <Moon className="w-4 h-4 text-indigo-600" />}
           </button>

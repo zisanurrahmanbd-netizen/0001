@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth, DEMO_USERS } from '../context/AuthContext';
 import { usePermissions } from '../context/PermissionsContext';
+import { useLanguage } from '../context/LanguageContext';
 import { dataService } from '../services/dataService';
 import { StatusBadge } from '../components/StatusBadge';
 import { CaseVisitMap } from '../components/CaseVisitMap';
@@ -14,6 +15,7 @@ import {
 export const CaseDetail: React.FC<{ caseId: number; onBack: () => void }> = ({ caseId, onBack }) => {
   const { user } = useAuth();
   const { can } = usePermissions();
+  const { t } = useLanguage();
   const [caseItem, setCaseItem] = useState<CaseFile | undefined>();
   const [checkIns, setCheckIns] = useState<CheckIn[]>([]);
   const [remarks, setRemarks] = useState<CaseRemark[]>([]);
@@ -147,28 +149,28 @@ export const CaseDetail: React.FC<{ caseId: number; onBack: () => void }> = ({ c
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <button onClick={onBack} className="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-bold flex items-center gap-2 text-slate-700 dark:text-slate-300 hover:text-emerald-500 transition-all w-fit">
-          <ArrowLeft className="w-4 h-4" /> Back to Bank & MNC Files
+          <ArrowLeft className="w-4 h-4" /> {t('detail.back', 'Back to Bank & MNC Files')}
         </button>
 
         <div className="flex flex-wrap items-center gap-2">
           {can('gps_checkin') && (
             <button onClick={handleStartCheckIn} className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-purple-600/30 transition-all">
-              <Navigation className="w-3.5 h-3.5" /> GPS Visit Check-In
+              <Navigation className="w-3.5 h-3.5" /> {t('detail.gps_checkin', 'GPS Visit Check-In')}
             </button>
           )}
           {can('log_remark') && (
             <button onClick={() => setShowRem(true)} className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-blue-600/30 transition-all">
-              <MessageSquare className="w-3.5 h-3.5" /> Log Remark / PTP
+              <MessageSquare className="w-3.5 h-3.5" /> {t('detail.log_remark', 'Log Remark / PTP')}
             </button>
           )}
           {can('record_payment') && (
             <button onClick={() => setShowCol(true)} className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-emerald-600/30 transition-all">
-              <Receipt className="w-3.5 h-3.5" /> Record Payment
+              <Receipt className="w-3.5 h-3.5" /> {t('detail.record_payment', 'Record Payment')}
             </button>
           )}
           {can('reassign_case') && (
             <button onClick={() => setShowReassign(true)} className="px-3.5 py-2 rounded-xl bg-slate-900 dark:bg-slate-800 text-slate-200 font-bold text-xs flex items-center gap-1.5 border border-slate-700">
-              <UserCheck className="w-3.5 h-3.5" /> Reassign
+              <UserCheck className="w-3.5 h-3.5" /> {t('detail.reassign', 'Reassign')}
             </button>
           )}
         </div>

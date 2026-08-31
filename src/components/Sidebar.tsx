@@ -2,6 +2,7 @@ import React from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useBranding } from '../context/BrandingContext';
 import { usePermissions, PermissionKey } from '../context/PermissionsContext';
+import { useLanguage } from '../context/LanguageContext';
 import { 
   LayoutDashboard, 
   Briefcase, 
@@ -26,17 +27,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, isOpe
   const { user } = useAuth();
   const { branding } = useBranding();
   const { can } = usePermissions();
+  const { t } = useLanguage();
 
   const navItems: { id: string; label: string; icon: any; perm: PermissionKey }[] = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, perm: 'view_dashboard' },
-    { id: 'cases', label: 'Bank & MNC Files', icon: Briefcase, perm: 'view_cases' },
-    { id: 'map', label: 'Live Agent Map', icon: MapPin, perm: 'view_map' },
-    { id: 'imports', label: 'Excel Templates & Import', icon: FileSpreadsheet, perm: 'view_imports' },
-    { id: 'contacts', label: 'Bank Contacts', icon: PhoneCall, perm: 'view_contacts' },
-    { id: 'reports_perf', label: 'Agent Performance', icon: TrendingUp, perm: 'view_reports_perf' },
-    { id: 'reports_expiry', label: 'Expiry Tracker', icon: CalendarClock, perm: 'view_reports_expiry' },
-    { id: 'reports_legal', label: 'Legal & Flagged Cases', icon: ShieldAlert, perm: 'view_reports_legal' },
-    { id: 'team', label: 'Team Management', icon: Users, perm: 'view_team' },
+    { id: 'dashboard', label: t('nav.dashboard', 'Dashboard'), icon: LayoutDashboard, perm: 'view_dashboard' },
+    { id: 'cases', label: t('nav.cases', 'Bank & MNC Files'), icon: Briefcase, perm: 'view_cases' },
+    { id: 'map', label: t('nav.map', 'Live Agent Map'), icon: MapPin, perm: 'view_map' },
+    { id: 'imports', label: t('nav.imports', 'Excel Templates & Import'), icon: FileSpreadsheet, perm: 'view_imports' },
+    { id: 'contacts', label: t('nav.contacts', 'Bank Contacts'), icon: PhoneCall, perm: 'view_contacts' },
+    { id: 'reports_perf', label: t('nav.reports_perf', 'Agent Performance'), icon: TrendingUp, perm: 'view_reports_perf' },
+    { id: 'reports_expiry', label: t('nav.reports_expiry', 'Expiry Tracker'), icon: CalendarClock, perm: 'view_reports_expiry' },
+    { id: 'reports_legal', label: t('nav.reports_legal', 'Legal & Flagged Cases'), icon: ShieldAlert, perm: 'view_reports_legal' },
+    { id: 'team', label: t('nav.team', 'Team Management'), icon: Users, perm: 'view_team' },
   ];
 
   const allowedItems = navItems.filter(item => user && can(item.perm));

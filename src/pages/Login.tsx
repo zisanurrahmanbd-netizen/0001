@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useAuth, DEMO_USERS } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { useLanguage } from '../context/LanguageContext';
+import { LanguageToggle } from '../components/LanguageToggle';
 import { Lock, Mail, Eye, EyeOff, ArrowRight, Sun, Moon, ShieldCheck, Sparkles } from 'lucide-react';
 
 import { useBranding } from '../context/BrandingContext';
@@ -9,6 +11,7 @@ export const Login: React.FC = () => {
   const { login, switchUser, users } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { branding } = useBranding();
+  const { t } = useLanguage();
   
   const [email, setEmail] = useState('admin@recovery.local');
   const [password, setPassword] = useState('password123');
@@ -41,22 +44,27 @@ export const Login: React.FC = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 relative transition-colors duration-300">
-      {/* Top right theme toggle */}
-      <div className="absolute top-4 right-4 sm:top-6 sm:right-6">
+      {/* Top right language switcher & theme toggle */}
+      <div className="absolute top-4 right-4 sm:top-6 sm:right-6 flex items-center gap-2">
+        {/* 1-Click Language Switcher (Bangla / English) */}
+        <LanguageToggle />
+
+        {/* Theme Toggle */}
         <button
           type="button"
           onClick={toggleTheme}
+          title={theme === 'dark' ? t('top.light_mode', 'Light Mode') : t('top.dark_mode', 'Dark Mode')}
           className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-bold hover:border-slate-300 dark:hover:border-slate-700 transition-all shadow-sm"
         >
           {theme === 'dark' ? (
             <span className="inline-flex items-center gap-1.5 text-amber-500">
               <Sun className="w-4 h-4" />
-              <span>Light Mode</span>
+              <span className="hidden sm:inline">{t('top.light_mode', 'Light Mode')}</span>
             </span>
           ) : (
             <span className="inline-flex items-center gap-1.5 text-indigo-600">
               <Moon className="w-4 h-4" />
-              <span>Dark Mode</span>
+              <span className="hidden sm:inline">{t('top.dark_mode', 'Dark Mode')}</span>
             </span>
           )}
         </button>
@@ -73,10 +81,10 @@ export const Login: React.FC = () => {
             )}
           </div>
           <h2 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-            {branding.loginTitle || branding.headerText}
+            {branding.loginTitle || t('login.signin_title', branding.headerText)}
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">
-            {branding.loginSubtitle || branding.underText}
+            {branding.loginSubtitle || t('login.signin_subtitle', branding.underText)}
           </p>
         </div>
 
@@ -92,7 +100,7 @@ export const Login: React.FC = () => {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wider">
-                Email Address
+                {t('login.email', 'Email Address')}
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -111,7 +119,7 @@ export const Login: React.FC = () => {
 
             <div>
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wider">
-                Password
+                {t('login.password', 'Password')}
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -139,16 +147,16 @@ export const Login: React.FC = () => {
             <div className="flex items-center justify-between pt-1">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" defaultChecked className="w-4 h-4 rounded border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-950 text-emerald-600 focus:ring-emerald-500/30" />
-                <span className="text-xs text-slate-600 dark:text-slate-400 font-medium">Remember this device</span>
+                <span className="text-xs text-slate-600 dark:text-slate-400 font-medium">{t('login.remember', 'Remember this device')}</span>
               </label>
-              <span className="text-xs text-emerald-600 dark:text-emerald-400 font-mono font-bold">Demo Ready</span>
+              <span className="text-xs text-emerald-600 dark:text-emerald-400 font-mono font-bold">{t('login.demo_ready', 'Demo Ready')}</span>
             </div>
 
             <button
               type="submit"
               className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition-all shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 mt-2"
             >
-              <span>Sign In to Dashboard</span>
+              <span>{t('login.submit', 'Sign In to Dashboard')}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>
@@ -156,7 +164,7 @@ export const Login: React.FC = () => {
           {/* 1-Click Demo Logins */}
           <div className="mt-6 pt-5 border-t border-slate-100 dark:border-slate-800">
             <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 text-center mb-3">
-              1-Click Demo Personas
+              {t('login.demo_personas', '1-Click Demo Personas')}
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               {(() => {

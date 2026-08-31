@@ -5,6 +5,7 @@ import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { BrandingProvider } from './context/BrandingContext';
 import { PermissionsProvider } from './context/PermissionsContext';
+import { LanguageProvider } from './context/LanguageContext';
 import './index.css';
 
 interface Props {
@@ -54,15 +55,17 @@ class ErrorBoundary extends Component<Props, State> {
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
     <ErrorBoundary>
-      <ThemeProvider>
-        <BrandingProvider>
-          <AuthProvider>
-            <PermissionsProvider>
-              <App />
-            </PermissionsProvider>
-          </AuthProvider>
-        </BrandingProvider>
-      </ThemeProvider>
+      <LanguageProvider>
+        <ThemeProvider>
+          <BrandingProvider>
+            <AuthProvider>
+              <PermissionsProvider>
+                <App />
+              </PermissionsProvider>
+            </AuthProvider>
+          </BrandingProvider>
+        </ThemeProvider>
+      </LanguageProvider>
     </ErrorBoundary>
   </React.StrictMode>
 );

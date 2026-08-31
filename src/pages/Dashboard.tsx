@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth, DEMO_USERS } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { dataService, PtpAlertItem } from '../services/dataService';
 import { StatusBadge } from '../components/StatusBadge';
 import { 
@@ -29,6 +30,7 @@ interface DashboardProps {
 
 export const Dashboard: React.FC<DashboardProps> = ({ onSelectCase, onNavigate }) => {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const activeUser = user || DEMO_USERS[0];
   const [metrics, setMetrics] = useState<any>(() => dataService.getDashboardMetrics(activeUser));
   const [cases, setCases] = useState<any[]>(() => dataService.getCases(activeUser));
@@ -58,7 +60,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectCase, onNavigate }
         <div>
           <div className="flex items-center gap-2">
             <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-              Operational Dashboard
+              {t('dash.title', 'Operational Dashboard')}
             </h2>
             {totalActionAlerts > 0 && (
               <button
@@ -66,12 +68,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectCase, onNavigate }
                 className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400 text-xs font-bold animate-pulse hover:bg-rose-500/20 transition-all cursor-pointer"
               >
                 <BellRing className="w-3.5 h-3.5" />
-                <span>{totalActionAlerts} Urgent Follow-Ups</span>
+                <span>{totalActionAlerts} {t('dash.urgent_followups', 'Urgent Follow-Ups')}</span>
               </button>
             )}
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Real-time multi-bank debt recovery tracking & automated customer payment follow-ups
+            {t('dash.subtitle', 'Real-time multi-bank debt recovery tracking & automated customer payment follow-ups')}
           </p>
         </div>
 
@@ -243,7 +245,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectCase, onNavigate }
           className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-emerald-500/30 shadow-sm cursor-pointer hover:border-emerald-500 transition-all"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Due Today (PTP)</span>
+            <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
+              {t('dash.ptp_today', 'Due Today (PTP)')}
+            </span>
             <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
               <Calendar className="w-4 h-4" />
             </div>
@@ -264,7 +268,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectCase, onNavigate }
           className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-rose-500/30 shadow-sm cursor-pointer hover:border-rose-500 transition-all"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-rose-600 dark:text-rose-400 uppercase tracking-wider">Missed PTP / Broken</span>
+            <span className="text-xs font-semibold text-rose-600 dark:text-rose-400 uppercase tracking-wider">
+              {t('dash.overdue_portfolio', 'Missed PTP / Broken')}
+            </span>
             <div className="w-8 h-8 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center">
               <ShieldAlert className="w-4 h-4" />
             </div>
@@ -281,7 +287,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectCase, onNavigate }
 
         <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Portfolio</span>
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              {t('dash.total_allocated', 'Total Portfolio')}
+            </span>
             <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center">
               <Coins className="w-4 h-4" />
             </div>
@@ -298,7 +306,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectCase, onNavigate }
 
         <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Collected</span>
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              {t('dash.total_collected', 'Total Collected')}
+            </span>
             <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
               <TrendingUp className="w-4 h-4" />
             </div>
@@ -308,7 +318,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectCase, onNavigate }
               BDT {summary.total_collected.toLocaleString()}
             </div>
             <div className="text-xs text-slate-500 mt-1">
-              {summary.total_outstanding > 0 ? ((summary.total_collected / summary.total_outstanding) * 100).toFixed(1) : 0}% recovery rate
+              {summary.total_outstanding > 0 ? ((summary.total_collected / summary.total_outstanding) * 100).toFixed(1) : 0}% {t('dash.recovery_rate', 'recovery rate')}
             </div>
           </div>
         </div>

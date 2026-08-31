@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
 import { TemplateService, PREBUILT_TEMPLATES, TemplateDefinition } from "../services/templateService";
-import { ExcelImporter, InspectResult, PreviewResult } from "../services/excelImporter";
+import { ExcelImporter, InspectResult, PreviewResult, formatExcelDate } from "../services/excelImporter";
 import { dataService } from "../services/dataService";
 import { 
   FileSpreadsheet, 
@@ -548,7 +548,7 @@ export const ExcelImporterPage: React.FC = () => {
                         <tr key={rowIdx} className="hover:bg-white dark:hover:bg-slate-900">
                           {row.map((cell, cellIdx) => (
                             <td key={cellIdx} className="py-2 px-3 whitespace-nowrap text-slate-700 dark:text-slate-300">
-                              {String(cell ?? "")}
+                              {String(formatExcelDate(cell, previewData.headers[cellIdx]) ?? "")}
                             </td>
                           ))}
                         </tr>

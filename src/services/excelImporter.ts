@@ -18,10 +18,58 @@ export interface PreviewResult {
   mappedCount: number;
 }
 
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+export function formatExcelDate(val: any, headerName?: string): any {
+  if (val === null || val === undefined || val === '') return '';
+
+  // If already a JS Date object
+  if (val instanceof Date && !isNaN(val.getTime())) {
+    const d = val.getUTCDate();
+    const m = MONTH_NAMES[val.getUTCMonth()];
+    const y = val.getUTCFullYear();
+    return `${d < 10 ? '0' + d : d}-${m}-${y}`;
+  }
+
+  // Check if header is a date-related column
+  const isDateColumn = headerName ? /(date|alloc|expir|dob|disburs|time|period)/i.test(headerName) : false;
+
+  // If numeric or numeric string (Excel serial date)
+  const num = typeof val === 'number' ? val : (typeof val === 'string' && /^\d+(\.\d+)?$/.test(val.trim()) ? Number(val) : null);
+  
+  if (num !== null && (isDateColumn || (num >= 25000 && num <= 65000 && Number.isInteger(num)))) {
+    try {
+      // Excel 1900 leap year bug offset: 25569 = Jan 1, 1970 UTC
+      const dateObj = new Date(Math.round((num - 25569) * 86400 * 1000));
+      if (!isNaN(dateObj.getTime())) {
+        const d = dateObj.getUTCDate();
+        const m = MONTH_NAMES[dateObj.getUTCMonth()];
+        const y = dateObj.getUTCFullYear();
+        return `${d < 10 ? '0' + d : d}-${m}-${y}`;
+      }
+    } catch (_) {}
+  }
+
+  // If ISO string like 2026-07-12T00:00:00.000Z or YYYY-MM-DD
+  if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}/.test(val)) {
+    const parts = val.split(/[-T]/);
+    if (parts.length >= 3) {
+      const y = parseInt(parts[0], 10);
+      const m = parseInt(parts[1], 10) - 1;
+      const d = parseInt(parts[2], 10);
+      if (m >= 0 && m < 12) {
+        return `${d < 10 ? '0' + d : d}-${MONTH_NAMES[m]}-${y}`;
+      }
+    }
+  }
+
+  return val;
+}
+
 export class ExcelImporter {
   public static async inspectFile(file: File): Promise<{ workbook: XLSX.WorkBook; result: InspectResult }> {
     const buffer = await file.arrayBuffer();
-    const workbook = XLSX.read(buffer, { type: 'array' });
+    const workbook = XLSX.read(buffer, { type: 'array', cellDates: true });
 
     const sheets = workbook.SheetNames.map(sheetName => {
       const sheet = workbook.Sheets[sheetName];
@@ -69,7 +117,12 @@ export class ExcelImporter {
 
     const data: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1 });
     const headers = (data[0] || []).map(h => String(h || '').trim());
-    const previewRows = data.slice(1, 6);
+    const rawPreviewRows = data.slice(1, 6);
+
+    // Format any serial dates or date objects in the preview rows
+    const previewRows = rawPreviewRows.map(row => 
+      row.map((cell, colIdx) => formatExcelDate(cell, headers[colIdx]))
+    );
 
     return {
       headers,
@@ -98,11 +151,14 @@ export class ExcelImporter {
       const minPay = Number(row['MINIMUM_DUE'] || row['MIN_DUE'] || row['EMI_AMOUNT'] || 0);
       const agentName = row['AGENT_NAME'] || row['AGENT'] || row['AGENT_ID'] || row['OFFICER_NAME'] || row['RECOVERY_AGENT'] || '';
 
-      // Collect all extra columns into extra_attributes
+      const rawExpiry = row['EXPIRY_DATE'] || row['WORK_ORDER_EXPIRY_DATE'] || row['EXPIRY'] || row['EXPIRE_DATE'] || '';
+      const formattedExpiry = rawExpiry ? String(formatExcelDate(rawExpiry, 'EXPIRY_DATE')) : '';
+
+      // Collect all extra columns into extra_attributes, formatting date columns properly
       const extraAttributes: Record<string, any> = {};
       Object.keys(row).forEach(key => {
         if (!['FILE_NO', 'CARD_NO', 'CUSTOMER_NAME', 'MOBILE_NO', 'PRESENT_ADDRESS', 'PERMANENT_ADDRESS', 'TOTAL_OUTSTANDING', 'OVERDUE_AMOUNT', 'AGENT_NAME'].includes(key)) {
-          extraAttributes[key] = row[key];
+          extraAttributes[key] = formatExcelDate(row[key], key);
         }
       });
 
@@ -118,6 +174,7 @@ export class ExcelImporter {
         overdue_amount: overdue,
         minimum_payment: minPay,
         agent_name: String(agentName),
+        expiry_date: formattedExpiry || undefined,
         bank_id: bankId,
         product_id: productId,
         extra_attributes: extraAttributes,

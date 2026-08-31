@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { User, UserRole } from '../types';
 import { RolePermissionsModal } from '../components/RolePermissionsModal';
 import { 
@@ -21,6 +22,7 @@ import {
 
 export const TeamManagementPage: React.FC = () => {
   const { users, addUser, updateUser, deleteUser, user: currentUser } = useAuth();
+  const { t } = useLanguage();
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
@@ -82,7 +84,8 @@ export const TeamManagementPage: React.FC = () => {
 
   const handleAddSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const mgr = managers.find(m => m.id === Number(formData.manager_id));
+    if (!formData.name || !formData.email) return;
+
     addUser({
       name: formData.name,
       email: formData.email,
@@ -90,7 +93,7 @@ export const TeamManagementPage: React.FC = () => {
       role: formData.role,
       employee_id: formData.employee_id,
       manager_id: formData.role === 'agent' ? Number(formData.manager_id) : undefined,
-      manager_name: formData.role === 'agent' ? mgr?.name : undefined,
+      manager_name: formData.role === 'agent' ? managers.find(m => m.id === Number(formData.manager_id))?.name : undefined,
       status: formData.status,
     });
     setShowAddModal(false);
@@ -98,8 +101,8 @@ export const TeamManagementPage: React.FC = () => {
 
   const handleEditSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedUser) return;
-    const mgr = managers.find(m => m.id === Number(formData.manager_id));
+    if (!selectedUser || !formData.name || !formData.email) return;
+
     updateUser(selectedUser.id, {
       name: formData.name,
       email: formData.email,
@@ -107,7 +110,7 @@ export const TeamManagementPage: React.FC = () => {
       role: formData.role,
       employee_id: formData.employee_id,
       manager_id: formData.role === 'agent' ? Number(formData.manager_id) : undefined,
-      manager_name: formData.role === 'agent' ? mgr?.name : undefined,
+      manager_name: formData.role === 'agent' ? managers.find(m => m.id === Number(formData.manager_id))?.name : undefined,
       status: formData.status,
     });
     setShowEditModal(false);
@@ -115,7 +118,11 @@ export const TeamManagementPage: React.FC = () => {
   };
 
   const handleDelete = (id: number, name: string) => {
-    if (confirm(`Are you sure you want to delete user "${name}"?`)) {
+    if (id === currentUser?.id) {
+      alert("You cannot delete your own account!");
+      return;
+    }
+    if (window.confirm(`Are you sure you want to remove ${name} from the team?`)) {
       deleteUser(id);
     }
   };
@@ -131,10 +138,10 @@ export const TeamManagementPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-            Team & User Management
+            {t('team.title', 'Team & User Management')}
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Create, edit, assign roles, and manage field agents and recovery managers
+            {t('team.subtitle', 'Create, edit, assign roles, and manage field agents and recovery managers')}
           </p>
         </div>
 
@@ -144,7 +151,7 @@ export const TeamManagementPage: React.FC = () => {
             className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md shadow-indigo-600/30 flex items-center gap-2 transition-all"
           >
             <Shield className="w-4 h-4" />
-            <span>Roles & Permissions Control</span>
+            <span>{t('team.perms_btn', 'Roles & Permissions Control')}</span>
           </button>
 
           <button
@@ -152,7 +159,7 @@ export const TeamManagementPage: React.FC = () => {
             className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-600/30 flex items-center gap-2 transition-all"
           >
             <Plus className="w-4 h-4" />
-            <span>Add New User / Agent</span>
+            <span>{t('team.add_user', 'Add New User / Agent')}</span>
           </button>
         </div>
       </div>
@@ -165,22 +172,22 @@ export const TeamManagementPage: React.FC = () => {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by name, email, or employee ID..."
+            placeholder={t('team.search', 'Search by name, email, or employee ID...')}
             className="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-800 dark:text-slate-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500"
           />
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-slate-400 font-bold">Role:</span>
+          <span className="text-slate-400 font-bold">{t('cases.status') === 'অবস্থা' ? 'পদবি:' : 'Role:'}</span>
           <select
             value={roleFilter}
             onChange={(e) => setRoleFilter(e.target.value)}
             className="px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-800 dark:text-slate-200"
           >
-            <option value="all">All Roles ({users.length})</option>
-            <option value="admin">Administrators</option>
-            <option value="manager">Team Managers</option>
-            <option value="agent">Field Agents</option>
+            <option value="all">{t('team.all_roles', 'All Roles')} ({users.length})</option>
+            <option value="admin">{t('team.role_admin', 'Administrators')}</option>
+            <option value="manager">{t('team.role_manager', 'Team Managers')}</option>
+            <option value="agent">{t('team.role_agent', 'Field Agents')}</option>
           </select>
         </div>
       </div>
@@ -213,12 +220,12 @@ export const TeamManagementPage: React.FC = () => {
                       u.role === 'manager' ? 'bg-blue-500/20 text-blue-600 dark:text-blue-300' :
                       'bg-emerald-500/20 text-emerald-600 dark:text-emerald-300'
                     }`}>
-                      {u.role}
+                      {u.role === 'admin' ? t('team.role_admin', 'Admin') : u.role === 'manager' ? t('team.role_manager', 'Manager') : t('team.role_agent', 'Agent')}
                     </span>
                     <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
                       u.status === 'inactive' ? 'bg-rose-500/10 text-rose-600' : 'bg-emerald-500/10 text-emerald-600'
                     }`}>
-                      {u.status === 'inactive' ? 'Inactive' : 'Active'}
+                      {u.status === 'inactive' ? (t('cases.status') === 'অবস্থা' ? 'নিষ্ক্রিয়' : 'Inactive') : (t('cases.status') === 'অবস্থা' ? 'সক্রিয়' : 'Active')}
                     </span>
                   </div>
                 </div>
@@ -229,20 +236,20 @@ export const TeamManagementPage: React.FC = () => {
 
             <div className="space-y-1.5 text-xs text-slate-500 dark:text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800">
               <div className="flex items-center justify-between">
-                <span>Employee ID:</span>
+                <span>{t('cases.status') === 'অবস্থা' ? 'এমপ্লয়ি আইডি:' : 'Employee ID:'}</span>
                 <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{u.employee_id || 'N/A'}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span>Email:</span>
+                <span>{t('cases.status') === 'অবস্থা' ? 'ইমেইল:' : 'Email:'}</span>
                 <span className="truncate max-w-[170px] text-slate-700 dark:text-slate-300">{u.email}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span>Phone:</span>
+                <span>{t('cases.status') === 'অবস্থা' ? 'মোবাইল:' : 'Phone:'}</span>
                 <a href={'tel:' + u.phone} className="hover:underline text-slate-700 dark:text-slate-300">{u.phone || 'N/A'}</a>
               </div>
               {u.manager_name && (
                 <div className="flex items-center justify-between">
-                  <span>Manager:</span>
+                  <span>{t('cases.status') === 'অবস্থা' ? 'ম্যানেজার:' : 'Manager:'}</span>
                   <span className="font-medium text-slate-800 dark:text-slate-200 truncate max-w-[160px]">{u.manager_name}</span>
                 </div>
               )}
@@ -260,7 +267,7 @@ export const TeamManagementPage: React.FC = () => {
                 title="Toggle Active/Inactive"
               >
                 <Power className="w-3 h-3" />
-                <span>{u.status === 'inactive' ? 'Activate' : 'Deactivate'}</span>
+                <span>{u.status === 'inactive' ? t('team.activate', 'Activate') : t('team.deactivate', 'Deactivate')}</span>
               </button>
 
               <div className="flex items-center gap-1">
@@ -270,7 +277,7 @@ export const TeamManagementPage: React.FC = () => {
                   title="Configure specific permissions for this user"
                 >
                   <Shield className="w-3.5 h-3.5" />
-                  <span>Perms</span>
+                  <span>{t('team.perms', 'Perms')}</span>
                 </button>
 
                 <button
@@ -279,7 +286,7 @@ export const TeamManagementPage: React.FC = () => {
                   title="Edit user details"
                 >
                   <Edit3 className="w-3.5 h-3.5" />
-                  <span>Edit</span>
+                  <span>{t('team.edit', 'Edit')}</span>
                 </button>
 
                 {u.id !== currentUser?.id && (

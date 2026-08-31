@@ -1,11 +1,13 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { useAuth, DEMO_USERS } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { dataService } from '../services/dataService';
 import { TrendingUp, Download, Award, Users, Search } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 export const AgentPerformancePage: React.FC = () => {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [managerFilter, setManagerFilter] = useState('all');
 
   const agents = DEMO_USERS.filter(u => u.role === 'agent');
@@ -46,10 +48,10 @@ export const AgentPerformancePage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-            Field Agent Performance & Recovery Analytics
+            {t('perf.title', 'Field Agent Performance & Recovery Analytics')}
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Comparative performance rankings, visit completions, and recovery collection totals
+            {t('perf.subtitle', 'Comparative performance rankings, visit completions, and recovery collection totals')}
           </p>
         </div>
 
@@ -58,7 +60,7 @@ export const AgentPerformancePage: React.FC = () => {
           className="px-3.5 py-2 rounded-xl bg-slate-900 dark:bg-slate-800 text-white font-bold text-xs hover:bg-slate-800 flex items-center gap-2 transition-all border border-slate-700/50"
         >
           <Download className="w-4 h-4" />
-          <span>Export Excel (.XLSX)</span>
+          <span>{t('cases.export_excel', 'Export Excel (.XLSX)')}</span>
         </button>
       </div>
 
@@ -89,11 +91,11 @@ export const AgentPerformancePage: React.FC = () => {
               <p className="text-xs text-slate-500">{top.employeeId} • {top.managerName}</p>
               <div className="mt-3 pt-3 border-t border-slate-200/40 dark:border-slate-800/40 flex items-center justify-between">
                 <div>
-                  <span className="text-[10px] uppercase font-bold text-slate-400">Total Recovered</span>
+                  <span className="text-[10px] uppercase font-bold text-slate-400">{t('perf.total_collected', 'Total Recovered')}</span>
                   <p className="text-sm font-black text-emerald-600 dark:text-emerald-400 font-mono">BDT {top.totalCollected.toLocaleString()}</p>
                 </div>
                 <div className="text-right">
-                  <span className="text-[10px] uppercase font-bold text-slate-400">Visits</span>
+                  <span className="text-[10px] uppercase font-bold text-slate-400">{t('perf.visited_files', 'Visits')}</span>
                   <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{top.visitedFiles} / {top.totalFiles}</p>
                 </div>
               </div>

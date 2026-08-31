@@ -1,5 +1,6 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { dataService } from '../services/dataService';
 import { BankContact } from '../types';
 import { 
@@ -16,6 +17,7 @@ import {
 
 export const BankContactsPage: React.FC = () => {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const banks = dataService.getBanks();
   const [contacts, setContacts] = useState<BankContact[]>(() => dataService.getContacts());
   const [bankFilter, setBankFilter] = useState<string>('all');
@@ -61,7 +63,7 @@ export const BankContactsPage: React.FC = () => {
   };
 
   const handleDelete = (id: number) => {
-    if (confirm('Are you sure you want to delete this bank contact?')) {
+    if (window.confirm('Delete this bank contact?')) {
       dataService.deleteContact(id);
       reload();
     }
@@ -114,10 +116,10 @@ export const BankContactsPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-            Bank Contacts & Recovery Officers Directory
+            {t('contacts.title', 'Partner Bank & Institutional Directory')}
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Direct phone numbers and email contacts for bank liaisons and credit managers
+            {t('contacts.subtitle', 'Direct phone numbers and email contacts for bank liaisons and credit managers')}
           </p>
         </div>
 
@@ -127,7 +129,7 @@ export const BankContactsPage: React.FC = () => {
             className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-600/30 flex items-center gap-2 transition-all"
           >
             <Plus className="w-4 h-4" />
-            <span>Add Bank Officer</span>
+            <span>{t('contacts.add_new', 'Add Bank Officer')}</span>
           </button>
         )}
       </div>
@@ -138,7 +140,7 @@ export const BankContactsPage: React.FC = () => {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
             type="text"
-            placeholder="Search officer name, phone, department, branch..."
+            placeholder={t('contacts.search', 'Search officer name, phone, department, branch...')}
             value={searchQ}
             onChange={(e) => setSearchQ(e.target.value)}
             className="w-full pl-9 pr-3 py-2 text-xs rounded-xl bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 placeholder-slate-400"
@@ -151,7 +153,7 @@ export const BankContactsPage: React.FC = () => {
             onChange={(e) => setBankFilter(e.target.value)}
             className="w-full px-3 py-2 text-xs rounded-xl bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100"
           >
-            <option value="all">All Partner Banks</option>
+            <option value="all">{t('cases.all_banks', 'All Partner Banks')}</option>
             {banks.map(b => (
               <option key={b.id} value={String(b.id)}>{b.name}</option>
             ))}

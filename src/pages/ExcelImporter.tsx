@@ -1,4 +1,5 @@
 ﻿import React, { useState } from 'react';
+import { useLanguage } from '../context/LanguageContext';
 import { TemplateService, PREBUILT_TEMPLATES, TemplateDefinition } from '../services/templateService';
 import { ExcelImporter, InspectResult, PreviewResult } from '../services/excelImporter';
 import { dataService } from '../services/dataService';
@@ -20,6 +21,7 @@ import {
 import * as XLSX from 'xlsx';
 
 export const ExcelImporterPage: React.FC = () => {
+  const { t } = useLanguage();
   // Live editable templates state
   const [templates, setTemplates] = useState<Record<string, TemplateDefinition>>(() => ({ ...PREBUILT_TEMPLATES }));
 
@@ -64,8 +66,8 @@ export const ExcelImporterPage: React.FC = () => {
           const preview = ExcelImporter.previewSheet(wb, firstSheet);
           setPreviewData(preview);
         }
-      } catch (err) {
-        alert('Failed to parse Excel file. Please ensure it is a valid .xlsx or .xls file.');
+      } catch (err: any) {
+        alert('Failed to parse Excel file: ' + (err.message || 'Invalid format'));
       }
     }
   };
@@ -86,14 +88,13 @@ export const ExcelImporterPage: React.FC = () => {
       const parsedCases = ExcelImporter.parseSheetToCases(workbook, selectedSheet, 1, 1);
       const count = dataService.importCases(parsedCases);
       setIsProcessing(false);
-      setImportSuccess(`Successfully imported and mapped ${count} recovery cases into Supabase!`);
+      setImportSuccess(`Successfully imported and mapped ${count} recovery cases into system database!`);
       setFile(null);
       setInspectResult(null);
       setPreviewData(null);
     }, 600);
   };
 
-  // Open Edit Modal for a specific pre-built template
   const handleEditTemplate = (key: string, tpl: TemplateDefinition) => {
     setEditingTemplateKey(key);
     setCustomBank(tpl.bankName);
@@ -102,17 +103,16 @@ export const ExcelImporterPage: React.FC = () => {
     setShowBuilderModal(true);
   };
 
-  // Open Blank Template Creator
   const handleCreateNewTemplate = () => {
     setEditingTemplateKey(null);
-    setCustomBank('One Bank Limited');
-    setCustomProduct('Custom Product');
-    setCustomHeaders(['FILE_NO', 'ACCOUNT_NO', 'CUSTOMER_NAME', 'MOBILE_NO', 'PRESENT_ADDRESS', 'TOTAL_OUTSTANDING', 'OVERDUE_AMOUNT', 'EXPIRY_DATE']);
+    setCustomBank('Standard Chartered Bank');
+    setCustomProduct('Personal Loan');
+    setCustomHeaders(['FILE_NO', 'ACCOUNT_NO', 'CUSTOMER_NAME', 'MOBILE_NO', 'PRESENT_ADDRESS', 'TOTAL_OUTSTANDING', 'EXPIRY_DATE']);
     setShowBuilderModal(true);
   };
 
   const addCustomHeader = () => {
-    if (newColName.trim() && !customHeaders.includes(newColName.trim())) {
+    if (newColName.trim() && !customHeaders.includes(newColName.trim().toUpperCase().replace(/\s+/g, '_'))) {
       setCustomHeaders([...customHeaders, newColName.trim().toUpperCase().replace(/\s+/g, '_')]);
       setNewColName('');
     }
@@ -123,7 +123,6 @@ export const ExcelImporterPage: React.FC = () => {
   };
 
   const handleSaveAndDownload = () => {
-    // If editing an existing template, update state
     if (editingTemplateKey && templates[editingTemplateKey]) {
       setTemplates({
         ...templates,
@@ -148,10 +147,10 @@ export const ExcelImporterPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-            Excel Ingestion & Template Studio
+            {t('import.title', 'Excel Ingestion & Template Studio')}
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Download standard bank schemas, customize column headers, or ingest recovery workbooks
+            {t('import.subtitle', 'Download standard bank schemas, customize column headers, or ingest recovery workbooks')}
           </p>
         </div>
 
@@ -161,7 +160,7 @@ export const ExcelImporterPage: React.FC = () => {
             className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-md shadow-purple-600/30 flex items-center gap-2 transition-all"
           >
             <Plus className="w-4 h-4" />
-            <span>Create Custom Template</span>
+            <span>{t('top.switch_lang') === 'English' ? 'কাস্টম টেমপ্লেট তৈরি' : 'Create Custom Template'}</span>
           </button>
 
           <button
@@ -169,7 +168,7 @@ export const ExcelImporterPage: React.FC = () => {
             className="px-3.5 py-2 rounded-xl bg-slate-900 dark:bg-slate-800 text-white font-bold text-xs hover:bg-slate-800 flex items-center gap-2 transition-all border border-slate-700/50"
           >
             <Download className="w-4 h-4" />
-            <span>Master Multi-Bank Workbook</span>
+            <span>{t('top.switch_lang') === 'English' ? 'মাস্টার ওয়ার্কবুক ডাউনলোড' : 'Master Multi-Bank Workbook'}</span>
           </button>
         </div>
       </div>
@@ -181,35 +180,41 @@ export const ExcelImporterPage: React.FC = () => {
         </div>
       )}
 
-      {/* Pre-built Templates Grid with Edit & Download actions */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-            Institutional Recovery Templates (Editable Formats)
+      {/* Pre-built Templates Grid */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <FileSpreadsheet className="w-4 h-4 text-emerald-500" />
+            <span>{t('top.switch_lang') === 'English' ? 'ব্যাংক টেমপ্লেট ফরম্যাটসমূহ' : 'Institutional Bank Templates & Schemas'}</span>
           </h3>
-          <span className="text-xs text-slate-400 font-medium">Click "Edit Format" to add/remove columns</span>
+          <span className="text-xs text-slate-400">
+            {t('top.switch_lang') === 'English' ? 'ক্লিক করে এডিট বা ডাউনলোড করুন' : 'Click to customize columns or download sample XLSX'}
+          </span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {Object.entries(templates).map(([key, tpl]) => (
-            <div key={key} className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between space-y-4">
-              <div>
-                <div className="flex items-center justify-between">
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 uppercase">
-                    {tpl.badge}
-                  </span>
-                  <span className="text-[11px] font-mono text-slate-400 font-bold">{tpl.headers.length} columns</span>
+            <div
+              key={key}
+              className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between space-y-4 hover:border-emerald-500/50 transition-all group"
+            >
+              <div className="space-y-2">
+                <div className="w-9 h-9 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-xs">
+                  <FileSpreadsheet className="w-4 h-4" />
                 </div>
-                <h4 className="font-bold text-slate-900 dark:text-white text-sm mt-2">{tpl.name}</h4>
-                <p className="text-xs text-slate-500 mt-1">{tpl.description}</p>
-                <div className="mt-3 flex flex-wrap gap-1">
+                <div>
+                  <h4 className="font-extrabold text-slate-900 dark:text-white text-xs">{tpl.bankName}</h4>
+                  <p className="text-[11px] text-slate-500 font-medium">{tpl.productName}</p>
+                </div>
+
+                <div className="flex flex-wrap gap-1 pt-1">
                   {tpl.headers.slice(0, 4).map((h, i) => (
-                    <span key={i} className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                    <span key={i} className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-950 text-slate-600 dark:text-slate-400 border border-slate-200/50 dark:border-slate-800">
                       {h}
                     </span>
                   ))}
                   {tpl.headers.length > 4 && (
-                    <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-400">
+                    <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-600 dark:text-purple-400 font-bold">
                       +{tpl.headers.length - 4} more
                     </span>
                   )}
@@ -224,7 +229,7 @@ export const ExcelImporterPage: React.FC = () => {
                   title="Customize column headers for this format"
                 >
                   <Edit3 className="w-3.5 h-3.5" />
-                  <span>Edit Format</span>
+                  <span>{t('top.switch_lang') === 'English' ? 'এডিট ফরম্যাট' : 'Edit Format'}</span>
                 </button>
 
                 <button
@@ -232,7 +237,7 @@ export const ExcelImporterPage: React.FC = () => {
                   className="py-2 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-emerald-600 hover:text-white dark:hover:bg-emerald-600 text-slate-700 dark:text-slate-300 font-bold text-xs flex items-center justify-center gap-1.5 transition-all"
                 >
                   <Download className="w-3.5 h-3.5" />
-                  <span>Download</span>
+                  <span>{t('top.switch_lang') === 'English' ? 'ডাউনলোড' : 'Download'}</span>
                 </button>
               </div>
             </div>
@@ -244,7 +249,7 @@ export const ExcelImporterPage: React.FC = () => {
       <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
         <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
           <Upload className="w-4 h-4 text-emerald-500" />
-          <span>Upload & Ingest Recovery Workbook (.XLSX)</span>
+          <span>{t('top.switch_lang') === 'English' ? 'রিকভারি ফাইল আপলোড ও প্রক্রিয়াকরণ (.XLSX)' : 'Upload & Ingest Recovery Workbook (.XLSX)'}</span>
         </h3>
 
         {!inspectResult ? (
@@ -255,7 +260,7 @@ export const ExcelImporterPage: React.FC = () => {
           >
             <FileSpreadsheet className="w-10 h-10 text-emerald-500 mb-2 animate-bounce" />
             <p className="font-bold text-sm text-slate-800 dark:text-slate-200">
-              Drag and drop any bank .xlsx file here
+              {t('import.upload_box', 'Drag and drop .xlsx file here or browse device')}
             </p>
             <p className="text-xs text-slate-400 mt-1">
               Supports One Bank, DBBL, Asian Paints, and customized workbooks
@@ -272,7 +277,7 @@ export const ExcelImporterPage: React.FC = () => {
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="text-slate-400 font-medium">Select Sheet:</span>
+                <span className="text-slate-400 font-medium">{t('import.select_sheet', 'Select Worksheet')}:</span>
                 <select
                   value={selectedSheet}
                   onChange={(e) => handleSelectSheet(e.target.value)}
@@ -285,30 +290,32 @@ export const ExcelImporterPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Preview Table */}
+            {/* Sheet Preview Table */}
             {previewData && (
-              <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
-                <div className="p-3 bg-slate-100 dark:bg-slate-950 font-bold text-xs text-slate-700 dark:text-slate-300 flex items-center justify-between">
-                  <span className="flex items-center gap-1.5">
-                    <Eye className="w-3.5 h-3.5 text-emerald-500" />
-                    Preview First 5 Rows ({previewData.mappedCount} Total Data Rows)
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-bold text-slate-700 dark:text-slate-300">
+                    Data Preview (First 5 Rows):
+                  </span>
+                  <span className="text-slate-400 font-mono">
+                    Total Rows: {previewData.mappedCount}
                   </span>
                 </div>
 
-                <div className="overflow-x-auto max-h-60">
-                  <table className="w-full text-left text-[11px]">
-                    <thead className="bg-slate-50 dark:bg-slate-900 text-slate-400 uppercase border-b border-slate-200 dark:border-slate-800">
+                <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-x-auto bg-slate-50 dark:bg-slate-950">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-100 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800 font-mono text-[10px] text-slate-400 uppercase">
                       <tr>
                         {previewData.headers.map((h, idx) => (
-                          <th key={idx} className="py-2 px-3 whitespace-nowrap">{h}</th>
+                          <th key={idx} className="py-2.5 px-3 font-bold whitespace-nowrap">{h}</th>
                         ))}
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                      {previewData.rows.map((row, rIdx) => (
-                        <tr key={rIdx} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
-                          {row.map((cell: any, cIdx: number) => (
-                            <td key={cIdx} className="py-2 px-3 whitespace-nowrap text-slate-700 dark:text-slate-300">
+                    <tbody className="divide-y divide-slate-200/60 dark:divide-slate-800/60 font-mono text-[11px]">
+                      {previewData.rows.map((row, rowIdx) => (
+                        <tr key={rowIdx} className="hover:bg-white dark:hover:bg-slate-900">
+                          {row.map((cell, cellIdx) => (
+                            <td key={cellIdx} className="py-2 px-3 whitespace-nowrap text-slate-700 dark:text-slate-300">
                               {String(cell ?? '')}
                             </td>
                           ))}
@@ -326,14 +333,14 @@ export const ExcelImporterPage: React.FC = () => {
                 onClick={() => { setInspectResult(null); setFile(null); }}
                 className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs"
               >
-                Cancel
+                {t('detail.cancel', 'Cancel')}
               </button>
               <button
                 onClick={handleRunImport}
                 disabled={isProcessing}
                 className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-600/30 flex items-center gap-2"
               >
-                {isProcessing ? 'Ingesting into Database...' : 'Confirm & Ingest Cases'}
+                {isProcessing ? 'Ingesting into Database...' : (t('top.switch_lang') === 'English' ? 'ইমপোর্ট সম্পন্ন করুন' : 'Confirm & Ingest Cases')}
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>
@@ -431,7 +438,7 @@ export const ExcelImporterPage: React.FC = () => {
                   onClick={() => setShowBuilderModal(false)}
                   className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold"
                 >
-                  Cancel
+                  {t('detail.cancel', 'Cancel')}
                 </button>
                 <button
                   type="button"
@@ -439,7 +446,7 @@ export const ExcelImporterPage: React.FC = () => {
                   className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold flex items-center gap-2 shadow-lg shadow-emerald-600/30"
                 >
                   <Download className="w-4 h-4" />
-                  <span>Save & Download .XLSX</span>
+                  <span>{t('top.switch_lang') === 'English' ? 'সংরক্ষণ ও ডাউনলোড' : 'Save & Download .XLSX'}</span>
                 </button>
               </div>
             </div>

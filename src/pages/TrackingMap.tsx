@@ -1,11 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useAuth, DEMO_USERS } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { User } from '../types';
 import { MapPin, Users, Phone, Navigation, RefreshCw } from 'lucide-react';
 import L from 'leaflet';
 
 export const TrackingMap: React.FC = () => {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markersRef = useRef<Record<number, L.Marker>>({});
@@ -82,10 +84,10 @@ export const TrackingMap: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-            Live Field Agent Telemetry
+            {t('map.title', 'Live Field Agent Telemetry')}
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Real-time GPS location of active field recovery personnel
+            {t('map.subtitle', 'Real-time GPS location of active field recovery personnel')}
           </p>
         </div>
 
@@ -94,7 +96,7 @@ export const TrackingMap: React.FC = () => {
           className="px-3.5 py-2 rounded-xl bg-slate-900 dark:bg-slate-800 text-white font-bold text-xs hover:bg-slate-800 flex items-center gap-2 transition-all border border-slate-700/50"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-          <span>Refresh GPS Pings</span>
+          <span>{t('top.switch_lang') === 'English' ? 'জিপিএস রিফ্রেশ করুন' : 'Refresh GPS Pings'}</span>
         </button>
       </div>
 
@@ -103,7 +105,7 @@ export const TrackingMap: React.FC = () => {
         <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
           <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <Users className="w-4 h-4 text-emerald-500" />
-            <span>Field Agents ({agents.length})</span>
+            <span>{t('map.online_agents', 'Field Agents')} ({agents.length})</span>
           </h3>
 
           <div className="space-y-2 max-h-[500px] overflow-y-auto">
@@ -119,7 +121,7 @@ export const TrackingMap: React.FC = () => {
                 </div>
                 <div className="text-[11px] text-slate-500 flex items-center justify-between">
                   <span>{a.employee_id}</span>
-                  <span className="font-mono">{a.is_online ? 'Live Ping' : 'Offline'}</span>
+                  <span className="font-mono">{a.is_online ? (t('top.switch_lang') === 'English' ? 'লাইভ ট্র্যাকিং' : 'Live Ping') : (t('top.switch_lang') === 'English' ? 'অফলাইন' : 'Offline')}</span>
                 </div>
               </div>
             ))}

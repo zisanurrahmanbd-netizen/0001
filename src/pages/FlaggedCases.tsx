@@ -1,5 +1,6 @@
-﻿import React from 'react';
+import React from 'react';
 import { useAuth, DEMO_USERS } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { dataService } from '../services/dataService';
 import { StatusBadge } from '../components/StatusBadge';
 import { ShieldAlert, AlertOctagon, UserX, PhoneOff } from 'lucide-react';
@@ -10,6 +11,7 @@ interface FlaggedCasesProps {
 
 export const FlaggedCasesPage: React.FC<FlaggedCasesProps> = ({ onSelectCase }) => {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const allCases = dataService.getCases(user || DEMO_USERS[0]);
   
   const flagged = allCases.filter(c => ['legal', 'untraceable', 'broken_promise', 'disputed'].includes(c.status));
@@ -18,10 +20,10 @@ export const FlaggedCasesPage: React.FC<FlaggedCasesProps> = ({ onSelectCase }) 
     <div className="space-y-6">
       <div>
         <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-          Legal & High-Risk Flagged Registry
+          {t('legal.title', 'Legal & High-Risk Flagged Registry')}
         </h2>
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-          Cases requiring court suits, Artha Rin proceedings, 138 NI Act notices, or untraceable investigations
+          {t('legal.subtitle', 'Cases requiring court suits, Artha Rin proceedings, 138 NI Act notices, or untraceable investigations')}
         </p>
       </div>
 
@@ -30,12 +32,12 @@ export const FlaggedCasesPage: React.FC<FlaggedCasesProps> = ({ onSelectCase }) 
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50 dark:bg-slate-950/60 border-b border-slate-200 dark:border-slate-800 text-slate-400 uppercase tracking-wider text-[11px]">
               <tr>
-                <th className="py-3 px-4">File / Customer</th>
-                <th className="py-3 px-4">Bank / Product</th>
-                <th className="py-3 px-4">Flag Category</th>
-                <th className="py-3 px-4">Legal Notes</th>
-                <th className="py-3 px-4 text-right">Outstanding (BDT)</th>
-                <th className="py-3 px-4 text-right">Action</th>
+                <th className="py-3 px-4">{t('cases.customer', 'File / Customer')}</th>
+                <th className="py-3 px-4">{t('cases.bank_product', 'Bank / Product')}</th>
+                <th className="py-3 px-4">{t('cases.status', 'Flag Category')}</th>
+                <th className="py-3 px-4">{t('top.switch_lang') === 'English' ? 'আইনি মন্তব্য' : 'Legal Notes'}</th>
+                <th className="py-3 px-4 text-right">{t('cases.outstanding', 'Outstanding')} (BDT)</th>
+                <th className="py-3 px-4 text-right">{t('cases.action', 'Action')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
@@ -63,7 +65,7 @@ export const FlaggedCasesPage: React.FC<FlaggedCasesProps> = ({ onSelectCase }) 
                       onClick={() => onSelectCase(c.id)}
                       className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs"
                     >
-                      Open Case
+                      {t('cases.view_detail', 'Open Case')}
                     </button>
                   </td>
                 </tr>

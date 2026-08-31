@@ -1,10 +1,12 @@
-﻿import React from 'react';
+import React from 'react';
 import { useAuth, DEMO_USERS } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { dataService } from '../services/dataService';
 import { CalendarClock, AlertTriangle, CheckCircle2 } from 'lucide-react';
 
 export const ExpiryTrackerPage: React.FC = () => {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const cases = dataService.getCases(user || DEMO_USERS[0]);
   const banks = dataService.getBanks();
 
@@ -46,10 +48,10 @@ export const ExpiryTrackerPage: React.FC = () => {
     <div className="space-y-6">
       <div>
         <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-          Contract Expiry Matrix & Pipeline Buckets
+          {t('expiry.title', 'Portfolio Expiry Matrix & Allocation Tracker')}
         </h2>
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-          Track upcoming bank recovery mandate expirations across all partner institutions
+          {t('expiry.subtitle', 'Monitor contract expiration buckets across partner banks and recovery mandates')}
         </p>
       </div>
 
@@ -58,13 +60,13 @@ export const ExpiryTrackerPage: React.FC = () => {
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50 dark:bg-slate-950/60 border-b border-slate-200 dark:border-slate-800 text-slate-400 uppercase tracking-wider text-[11px]">
               <tr>
-                <th className="py-3 px-4">Partner Bank</th>
-                <th className="py-3 px-4 text-center">Active Pipeline</th>
-                <th className="py-3 px-4 text-center text-amber-500">Expiring ≤7 Days</th>
-                <th className="py-3 px-4 text-center text-blue-500">Expiring 8-30 Days</th>
-                <th className="py-3 px-4 text-center text-rose-500">Expired Mandates</th>
-                <th className="py-3 px-4 text-center text-emerald-500">Settled Accounts</th>
-                <th className="py-3 px-4 text-right">Total Cases</th>
+                <th className="py-3 px-4">{t('cases.bank_product', 'Partner Bank')}</th>
+                <th className="py-3 px-4 text-center">{t('expiry.active', 'Active Pipeline')}</th>
+                <th className="py-3 px-4 text-center text-amber-500">{t('expiry.expiring_7', 'Expiring ≤7 Days')}</th>
+                <th className="py-3 px-4 text-center text-blue-500">{t('expiry.expiring_30', 'Expiring 8-30 Days')}</th>
+                <th className="py-3 px-4 text-center text-rose-500">{t('expiry.expired', 'Expired Mandates')}</th>
+                <th className="py-3 px-4 text-center text-emerald-500">{t('status.settled', 'Settled Accounts')}</th>
+                <th className="py-3 px-4 text-right">{t('dash.total_allocated', 'Total Cases')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">

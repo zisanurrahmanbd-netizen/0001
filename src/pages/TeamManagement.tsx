@@ -474,12 +474,13 @@ export const TeamManagementPage: React.FC = () => {
                   <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Role</label>
                   <select
                     value={formData.role}
+                    disabled={selectedUser?.email.toLowerCase() === 'zisanurrahmanbd@gmail.com'}
                     onChange={(e) => setFormData({ ...formData, role: e.target.value as UserRole })}
-                    className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-900 dark:text-white font-bold"
+                    className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-900 dark:text-white font-bold disabled:opacity-75 disabled:cursor-not-allowed"
                   >
-                    <option value="agent">Field Agent</option>
+                    <option value="admin">Administrator (Super Admin)</option>
                     <option value="manager">Team Manager</option>
-                    <option value="admin">Administrator</option>
+                    <option value="agent">Field Agent</option>
                   </select>
                 </div>
                 <div>

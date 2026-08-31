@@ -3,7 +3,7 @@ import { User } from '../types';
 import { supabase } from '../lib/supabase';
 
 // Real production admin only - all demo accounts permanently removed
-const REAL_ADMIN: User = {
+export const REAL_ADMIN: User = {
   id: 1,
   name: 'Zisan Ur Rahman',
   email: 'zisanurrahmanbd@gmail.com',
@@ -15,7 +15,7 @@ const REAL_ADMIN: User = {
   password: '@01608800026',
 };
 
-const USERS_VERSION = '5.0_real_users_only';
+const USERS_VERSION = '6.0_admin_enforced';
 
 function getInitialUsers(): User[] {
   const version = localStorage.getItem('recovery_users_version');
@@ -30,9 +30,26 @@ function getInitialUsers(): User[] {
     const saved = localStorage.getItem('recovery_all_users');
     if (saved) {
       const parsed: User[] = JSON.parse(saved);
-      const hasAdmin = parsed.some(u => u.email === REAL_ADMIN.email);
-      if (!hasAdmin) return [REAL_ADMIN, ...parsed];
-      return parsed;
+      // Guarantee zisanurrahmanbd@gmail.com is always role: 'admin'
+      let foundAdmin = false;
+      const updated = parsed.map(u => {
+        if (u.email.toLowerCase() === REAL_ADMIN.email.toLowerCase()) {
+          foundAdmin = true;
+          return {
+            ...u,
+            name: 'Zisan Ur Rahman',
+            role: 'admin' as const,
+            status: 'active' as const,
+            password: u.password || '@01608800026',
+          };
+        }
+        return u;
+      });
+      if (!foundAdmin) {
+        updated.unshift(REAL_ADMIN);
+      }
+      localStorage.setItem('recovery_all_users', JSON.stringify(updated));
+      return updated;
     }
   } catch (_) {}
   return [REAL_ADMIN];
@@ -68,6 +85,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (saved) {
         const parsed: User = JSON.parse(saved);
         if (parsed?.status === 'inactive') return null;
+        // Guarantee zisanurrahmanbd@gmail.com is always role: 'admin' when restored
+        if (parsed.email?.toLowerCase() === REAL_ADMIN.email.toLowerCase()) {
+          parsed.role = 'admin';
+        }
         return parsed;
       }
     } catch (_) {}
@@ -93,7 +114,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(null);
         localStorage.removeItem('recovery_auth_user');
       } else {
-        localStorage.setItem('recovery_auth_user', JSON.stringify(user));
+        // Always enforce admin role for zisanurrahmanbd@gmail.com
+        const toSave = user.email.toLowerCase() === REAL_ADMIN.email.toLowerCase()
+          ? { ...user, role: 'admin' }
+          : user;
+        localStorage.setItem('recovery_auth_user', JSON.stringify(toSave));
       }
     } else {
       localStorage.removeItem('recovery_auth_user');
@@ -105,7 +130,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const saved = localStorage.getItem('recovery_all_users');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map(u => {
+            if (u.email.toLowerCase() === REAL_ADMIN.email.toLowerCase()) {
+              return { ...u, role: 'admin' };
+            }
+            return u;
+          });
+        }
       }
     } catch (_) {}
     return users;
@@ -206,6 +238,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { result: 'error', error: 'Incorrect password. Please try again.' };
     }
 
+    // Force admin role for zisanurrahmanbd@gmail.com
+    if (found.email.toLowerCase() === REAL_ADMIN.email.toLowerCase()) {
+      found.role = 'admin';
+    }
+
     const deviceKey = `${found.email}:${navigator.userAgent.slice(0, 60)}`;
     if (!verifiedDevices.has(deviceKey)) {
       setPendingEmail(found.email.toLowerCase());
@@ -251,6 +288,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const found = list.find(u => u.email.toLowerCase() === email.toLowerCase());
     if (!found) return { success: false, error: 'User account not found.' };
 
+    // Force admin role for zisanurrahmanbd@gmail.com
+    if (found.email.toLowerCase() === REAL_ADMIN.email.toLowerCase()) {
+      found.role = 'admin';
+    }
+
     const deviceKey = `${found.email}:${navigator.userAgent.slice(0, 60)}`;
     const newVerified = new Set(verifiedDevices);
     newVerified.add(deviceKey);
@@ -294,7 +336,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateUser = (id: number, updated: Partial<User>) => {
     setUsers(prev => {
-      const next = prev.map(u => u.id === id ? { ...u, ...updated } : u);
+      const next = prev.map(u => {
+        if (u.id === id) {
+          // If this is zisanurrahmanbd@gmail.com, protect its admin role
+          if (u.email.toLowerCase() === REAL_ADMIN.email.toLowerCase()) {
+            return { ...u, ...updated, role: 'admin' as const };
+          }
+          return { ...u, ...updated };
+        }
+        return u;
+      });
       localStorage.setItem('recovery_all_users', JSON.stringify(next));
       return next;
     });
@@ -303,14 +354,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(null);
         localStorage.removeItem('recovery_auth_user');
       } else {
-        setUser(prev => prev ? { ...prev, ...updated } : null);
+        const updatedRole = (user.email.toLowerCase() === REAL_ADMIN.email.toLowerCase())
+          ? 'admin'
+          : (updated.role || user.role);
+        setUser(prev => prev ? { ...prev, ...updated, role: updatedRole } : null);
       }
     }
   };
 
   const deleteUser = (id: number) => {
     setUsers(prev => {
-      const next = prev.filter(u => u.id !== id);
+      const next = prev.filter(u => {
+        // Prevent deleting the root admin
+        if (u.email.toLowerCase() === REAL_ADMIN.email.toLowerCase()) return true;
+        return u.id !== id;
+      });
       localStorage.setItem('recovery_all_users', JSON.stringify(next));
       return next;
     });

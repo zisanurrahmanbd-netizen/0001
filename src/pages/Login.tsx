@@ -6,7 +6,7 @@ import { Lock, Mail, Eye, EyeOff, ArrowRight, Sun, Moon, ShieldCheck, Sparkles }
 import { useBranding } from '../context/BrandingContext';
 
 export const Login: React.FC = () => {
-  const { login, switchUser } = useAuth();
+  const { login, switchUser, users } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { branding } = useBranding();
   
@@ -18,16 +18,25 @@ export const Login: React.FC = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    const ok = login(email, password);
-    if (!ok) {
-      setError('Invalid credentials. You can use any demo password (e.g. password123).');
+    const res = login(email, password);
+    if (!res.success) {
+      setError(res.error || 'Invalid credentials.');
     }
   };
 
   const handleQuickDemo = (demoEmail: string) => {
     setEmail(demoEmail);
     setPassword('password123');
-    switchUser(demoEmail);
+    setError('');
+    const target = users.find(u => u.email.toLowerCase() === demoEmail.toLowerCase());
+    if (target?.status === 'inactive') {
+      setError(`⚠️ Account "${target.name}" is deactivated by the Administrator. Access denied.`);
+      return;
+    }
+    const ok = switchUser(demoEmail);
+    if (!ok) {
+      setError(`⚠️ Account is currently deactivated.`);
+    }
   };
 
   return (
@@ -150,30 +159,63 @@ export const Login: React.FC = () => {
               1-Click Demo Personas
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => handleQuickDemo('admin@recovery.local')}
-                className="p-2.5 rounded-2xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800/40 hover:bg-purple-100 dark:hover:bg-purple-900/60 text-purple-700 dark:text-purple-300 text-xs font-medium text-center transition-all flex flex-col items-center gap-0.5 shadow-sm"
-              >
-                <span className="font-extrabold text-[11px] uppercase">Admin</span>
-                <span className="text-[10px] text-purple-500 dark:text-purple-400/80">admin@...</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickDemo('manager.dhaka@recovery.local')}
-                className="p-2.5 rounded-2xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/40 hover:bg-blue-100 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 text-xs font-medium text-center transition-all flex flex-col items-center gap-0.5 shadow-sm"
-              >
-                <span className="font-extrabold text-[11px] uppercase">Manager</span>
-                <span className="text-[10px] text-blue-500 dark:text-blue-400/80">dhaka@...</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickDemo('agent.rahim@recovery.local')}
-                className="p-2.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 text-xs font-medium text-center transition-all flex flex-col items-center gap-0.5 shadow-sm"
-              >
-                <span className="font-extrabold text-[11px] uppercase">Field Agent</span>
-                <span className="text-[10px] text-emerald-500 dark:text-emerald-400/80">rahim@...</span>
-              </button>
+              {(() => {
+                const adminUser = users.find(u => u.email === 'admin@recovery.local');
+                const managerUser = users.find(u => u.email === 'manager.dhaka@recovery.local');
+                const agentUser = users.find(u => u.email === 'agent.rahim@recovery.local');
+
+                return (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => handleQuickDemo('admin@recovery.local')}
+                      className={`p-2.5 rounded-2xl border text-xs font-medium text-center transition-all flex flex-col items-center gap-0.5 shadow-sm ${
+                        adminUser?.status === 'inactive'
+                          ? 'bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 opacity-60 text-slate-400 cursor-not-allowed'
+                          : 'bg-purple-50 dark:bg-purple-950/40 border-purple-200 dark:border-purple-800/40 hover:bg-purple-100 dark:hover:bg-purple-900/60 text-purple-700 dark:text-purple-300'
+                      }`}
+                    >
+                      <span className="font-extrabold text-[11px] uppercase flex items-center gap-1">
+                        <span>Admin</span>
+                        {adminUser?.status === 'inactive' && <span className="text-[9px] text-rose-500 font-bold">(Off)</span>}
+                      </span>
+                      <span className="text-[10px] text-purple-500 dark:text-purple-400/80">admin@...</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleQuickDemo('manager.dhaka@recovery.local')}
+                      className={`p-2.5 rounded-2xl border text-xs font-medium text-center transition-all flex flex-col items-center gap-0.5 shadow-sm ${
+                        managerUser?.status === 'inactive'
+                          ? 'bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 opacity-60 text-slate-400 cursor-not-allowed'
+                          : 'bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800/40 hover:bg-blue-100 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300'
+                      }`}
+                    >
+                      <span className="font-extrabold text-[11px] uppercase flex items-center gap-1">
+                        <span>Manager</span>
+                        {managerUser?.status === 'inactive' && <span className="text-[9px] text-rose-500 font-bold">(Off)</span>}
+                      </span>
+                      <span className="text-[10px] text-blue-500 dark:text-blue-400/80">dhaka@...</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleQuickDemo('agent.rahim@recovery.local')}
+                      className={`p-2.5 rounded-2xl border text-xs font-medium text-center transition-all flex flex-col items-center gap-0.5 shadow-sm ${
+                        agentUser?.status === 'inactive'
+                          ? 'bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 opacity-60 text-slate-400 cursor-not-allowed'
+                          : 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300'
+                      }`}
+                    >
+                      <span className="font-extrabold text-[11px] uppercase flex items-center gap-1">
+                        <span>Field Agent</span>
+                        {agentUser?.status === 'inactive' && <span className="text-[9px] text-rose-500 font-bold">(Off)</span>}
+                      </span>
+                      <span className="text-[10px] text-emerald-500 dark:text-emerald-400/80">rahim@...</span>
+                    </button>
+                  </>
+                );
+              })()}
             </div>
           </div>
         </div>

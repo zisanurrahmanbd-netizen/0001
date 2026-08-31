@@ -1,4 +1,4 @@
-﻿import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, UserRole } from '../types';
 
 export const DEMO_USERS: User[] = [
@@ -112,9 +112,9 @@ export const DEMO_USERS: User[] = [
 interface AuthContextType {
   user: User | null;
   users: User[];
-  login: (email: string, pass: string) => boolean;
+  login: (email: string, pass: string) => { success: boolean; error?: string };
   logout: () => void;
-  switchUser: (email: string) => void;
+  switchUser: (email: string) => boolean;
   addUser: (user: Omit<User, 'id'>) => User;
   updateUser: (id: number, user: Partial<User>) => void;
   deleteUser: (id: number) => void;
@@ -134,7 +134,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(() => {
     const saved = localStorage.getItem('recovery_auth_user');
     if (saved) {
-      try { return JSON.parse(saved); } catch (e) { return null; }
+      try { 
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.status === 'inactive') return null;
+        return parsed;
+      } catch (e) { return null; }
     }
     return DEMO_USERS[0];
   });
@@ -145,28 +149,50 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     if (user) {
-      localStorage.setItem('recovery_auth_user', JSON.stringify(user));
+      if (user.status === 'inactive') {
+        setUser(null);
+        localStorage.removeItem('recovery_auth_user');
+      } else {
+        localStorage.setItem('recovery_auth_user', JSON.stringify(user));
+      }
     } else {
       localStorage.removeItem('recovery_auth_user');
     }
   }, [user]);
 
-  const login = (email: string, pass: string): boolean => {
+  const login = (email: string, pass: string): { success: boolean; error?: string } => {
     const found = users.find(u => u.email.toLowerCase() === email.toLowerCase());
-    if (found && (pass === 'password123' || pass === 'password' || pass.length >= 4)) {
-      setUser(found);
-      return true;
+    if (!found) {
+      return { success: false, error: 'User account not found with this email address.' };
     }
-    return false;
+    if (found.status === 'inactive') {
+      return { 
+        success: false, 
+        error: '⚠️ Account Deactivated: This user account has been disabled by the Administrator. Access is blocked.' 
+      };
+    }
+    if (pass === 'password123' || pass === 'password' || pass.length >= 4) {
+      setUser(found);
+      return { success: true };
+    }
+    return { success: false, error: 'Invalid password. Please check your credentials.' };
   };
 
   const logout = () => {
     setUser(null);
   };
 
-  const switchUser = (email: string) => {
+  const switchUser = (email: string): boolean => {
     const found = users.find(u => u.email.toLowerCase() === email.toLowerCase());
-    if (found) setUser(found);
+    if (found) {
+      if (found.status === 'inactive') {
+        alert(`Access Denied: Account "${found.name}" is currently deactivated by the Administrator.`);
+        return false;
+      }
+      setUser(found);
+      return true;
+    }
+    return false;
   };
 
   const addUser = (newUser: Omit<User, 'id'>): User => {
@@ -183,7 +209,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updateUser = (id: number, updated: Partial<User>) => {
     setUsers(prev => prev.map(u => u.id === id ? { ...u, ...updated } : u));
     if (user && user.id === id) {
-      setUser(prev => prev ? { ...prev, ...updated } : null);
+      if (updated.status === 'inactive') {
+        setUser(null);
+      } else {
+        setUser(prev => prev ? { ...prev, ...updated } : null);
+      }
     }
   };
 

@@ -15,7 +15,10 @@ import {
   Edit3,
   Building2,
   CreditCard,
-  Check
+  Check,
+  Info,
+  Sparkles,
+  UserX
 } from "lucide-react";
 import * as XLSX from "xlsx";
 

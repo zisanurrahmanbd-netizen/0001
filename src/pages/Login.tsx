@@ -1,41 +1,14 @@
-﻿import React, { useState } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { LanguageToggle } from '../components/LanguageToggle';
 import { useBranding } from '../context/BrandingContext';
+import { sendOtpToEmail } from '../services/emailService';
 import {
   Lock, Mail, Eye, EyeOff, ArrowRight,
-  Sun, Moon, ShieldCheck, KeyRound, RefreshCw, CheckCircle2
+  Sun, Moon, ShieldCheck, KeyRound, RefreshCw, CheckCircle2, AlertCircle
 } from 'lucide-react';
-
-// EmailJS config — set your own service/template IDs in EmailJS dashboard
-// Template variables used: {{to_email}}, {{otp_code}}, {{app_name}}, {{expires_minutes}}
-const EMAILJS_SERVICE_ID  = 'service_recovery_otp';   // <- replace with your EmailJS service ID
-const EMAILJS_TEMPLATE_ID = 'template_otp';           // <- replace with your EmailJS template ID
-const EMAILJS_PUBLIC_KEY  = 'YOUR_EMAILJS_PUBLIC_KEY'; // <- replace with your EmailJS public key
-
-async function sendOtpEmail(toEmail: string, code: string, appName: string): Promise<boolean> {
-  try {
-    // Dynamic import so it doesn't block if not configured yet
-    const emailjs = await import('@emailjs/browser');
-    await emailjs.send(
-      EMAILJS_SERVICE_ID,
-      EMAILJS_TEMPLATE_ID,
-      {
-        to_email: toEmail,
-        otp_code: code,
-        app_name: appName,
-        expires_minutes: '10',
-      },
-      EMAILJS_PUBLIC_KEY
-    );
-    return true;
-  } catch (err) {
-    console.error('EmailJS send error:', err);
-    return false;
-  }
-}
 
 type Step = 'credentials' | 'otp';
 
@@ -46,21 +19,36 @@ export const Login: React.FC = () => {
   const { t } = useLanguage();
 
   // ── Credentials step ─────────────────────────────────────────────────────
-  const [email, setEmail]           = useState('');
-  const [password, setPassword]     = useState('');
+  const [email, setEmail]               = useState('zisanurrahmanbd@gmail.com');
+  const [password, setPassword]         = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
   // ── OTP step ──────────────────────────────────────────────────────────────
-  const [step, setStep]             = useState<Step>('credentials');
-  const [otpEmail, setOtpEmail]     = useState('');
-  const [otpCode, setOtpCode]       = useState('');
-  const [otpSending, setOtpSending] = useState(false);
-  const [otpSent, setOtpSent]       = useState(false);
-  const [otpDevMode, setOtpDevMode] = useState(''); // shows code if EmailJS not configured
+  const [step, setStep]                 = useState<Step>('credentials');
+  const [otpEmail, setOtpEmail]         = useState('');
+  const [otpCode, setOtpCode]           = useState('');
+  const [otpSending, setOtpSending]     = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const otpInputRef = useRef<HTMLInputElement>(null);
 
   // ── Shared ────────────────────────────────────────────────────────────────
-  const [error, setError]   = useState('');
+  const [error, setError]     = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Cooldown countdown timer
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      const timer = setTimeout(() => setResendCooldown(prev => prev - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resendCooldown]);
+
+  // Focus OTP input on step change
+  useEffect(() => {
+    if (step === 'otp') {
+      setTimeout(() => otpInputRef.current?.focus(), 150);
+    }
+  }, [step]);
 
   // ─── Step 1: Credentials submit ──────────────────────────────────────────
   const handleCredentials = async (e: React.FormEvent) => {
@@ -68,72 +56,62 @@ export const Login: React.FC = () => {
     setError('');
     setLoading(true);
 
-    const res = login(email.trim(), password);
+    const cleanEmail = email.trim().toLowerCase();
+    const res = login(cleanEmail, password);
     setLoading(false);
 
     if (res.result === 'ok') {
-      // Trusted device — logged in directly
       return;
     }
     if (res.result === 'otp_required') {
-      // New device — need OTP
-      setOtpEmail(email.trim().toLowerCase());
-      await handleSendOtp(email.trim().toLowerCase());
+      setOtpEmail(cleanEmail);
+      await handleDispatchOtp(cleanEmail);
       setStep('otp');
+      setResendCooldown(60);
       return;
     }
     setError(res.error || 'Login failed.');
   };
 
-  // ─── Send OTP (called automatically after credential check) ──────────────
-  const handleSendOtp = async (targetEmail: string) => {
+  // ─── Dispatch OTP via Email ──────────────────────────────────────────────
+  const handleDispatchOtp = async (targetEmail: string) => {
     setOtpSending(true);
-    setOtpSent(false);
     const code = generateOtp(targetEmail);
-
-    const emailJsConfigured = EMAILJS_PUBLIC_KEY !== 'YOUR_EMAILJS_PUBLIC_KEY';
-    if (emailJsConfigured) {
-      const ok = await sendOtpEmail(targetEmail, code, branding.headerText || 'Recovery System');
-      if (!ok) {
-        // Fallback: show code on screen (development mode)
-        setOtpDevMode(code);
-      }
-    } else {
-      // EmailJS not configured yet — show code on screen for admin setup
-      setOtpDevMode(code);
+    try {
+      await sendOtpToEmail(targetEmail, code, branding.headerText || 'Bank Recovery System');
+    } catch (err) {
+      console.warn('Dispatch note:', err);
+    } finally {
+      setOtpSending(false);
     }
-
-    setOtpSending(false);
-    setOtpSent(true);
   };
 
   // ─── Step 2: OTP submit ──────────────────────────────────────────────────
-  const handleOtpSubmit = (e: React.FormEvent) => {
+  const handleOtpSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
-    const res = verifyOtp(otpEmail, otpCode.trim());
+    const res = await verifyOtp(otpEmail, otpCode.trim());
     setLoading(false);
 
     if (!res.success) {
-      setError(res.error || 'OTP verification failed.');
+      setError(res.error || 'Invalid verification code.');
       return;
     }
-    // Logged in — AuthContext sets user, App re-renders
   };
 
   const handleResendOtp = async () => {
+    if (resendCooldown > 0 || otpSending) return;
     setOtpCode('');
-    setOtpDevMode('');
     setError('');
-    await handleSendOtp(otpEmail);
+    await handleDispatchOtp(otpEmail);
+    setResendCooldown(60);
   };
 
   const handleBackToLogin = () => {
     setStep('credentials');
     setOtpCode('');
-    setOtpDevMode('');
     setError('');
   };
 
@@ -179,7 +157,7 @@ export const Login: React.FC = () => {
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">
             {step === 'otp'
-              ? t('login.otp_subtitle', 'Enter the 6-digit code sent to your email')
+              ? t('login.otp_subtitle', 'Enter the 6-digit security code sent to your Gmail')
               : (branding.loginSubtitle || t('login.signin_subtitle', branding.underText))}
           </p>
         </div>
@@ -189,8 +167,8 @@ export const Login: React.FC = () => {
 
           {/* Error Banner */}
           {error && (
-            <div className="mb-5 p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/80 border border-rose-200 dark:border-rose-800/80 text-rose-700 dark:text-rose-200 text-xs flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-rose-500 flex-shrink-0" />
+            <div className="mb-5 p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/80 border border-rose-200 dark:border-rose-800/80 text-rose-700 dark:text-rose-200 text-xs flex items-center gap-2 animate-in fade-in">
+              <AlertCircle className="w-4 h-4 text-rose-500 flex-shrink-0" />
               <span>{error}</span>
             </div>
           )}
@@ -248,7 +226,7 @@ export const Login: React.FC = () => {
                 disabled={loading}
                 className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white font-bold text-sm transition-all shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 mt-2"
               >
-                <span>{loading ? t('login.checking', 'Checking...') : t('login.submit', 'Sign In')}</span>
+                <span>{loading ? t('login.checking', 'Authenticating...') : t('login.submit', 'Sign In')}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
 
@@ -256,7 +234,7 @@ export const Login: React.FC = () => {
               <div className="mt-4 p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 flex items-start gap-2">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0 mt-0.5" />
                 <p className="text-[10px] text-slate-400 leading-relaxed">
-                  {t('login.security_note', 'First-time login requires email verification. A one-time code will be sent to your registered email.')}
+                  {t('login.security_note', '2-Step Verification protected: A one-time code will be dispatched to your registered Gmail on new login.')}
                 </p>
               </div>
             </form>
@@ -266,33 +244,25 @@ export const Login: React.FC = () => {
           {step === 'otp' && (
             <form onSubmit={handleOtpSubmit} className="space-y-5">
               {/* Sent to indicator */}
-              <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/50">
-                <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+              <div className="flex items-start gap-3 p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/40">
+                <div className="w-9 h-9 rounded-xl bg-emerald-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
                   <Mail className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                 </div>
-                <div>
-                  <p className="text-xs font-bold text-emerald-700 dark:text-emerald-300">
-                    {otpSending ? t('login.otp_sending', 'Sending code...') : (otpSent ? t('login.otp_sent', 'Code sent!') : '')}
+                <div className="flex-1">
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-xs font-extrabold text-emerald-800 dark:text-emerald-200">
+                      {otpSending ? t('login.otp_sending', 'Dispatching code to Gmail...') : t('login.otp_sent', 'Code Dispatched to Gmail')}
+                    </p>
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                  </div>
+                  <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-1">
+                    Sent to <span className="font-semibold text-emerald-700 dark:text-emerald-300 font-mono">{otpEmail}</span>
                   </p>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                    {t('login.otp_sent_to', 'Sent to')}: <span className="font-mono font-bold text-slate-700 dark:text-slate-200">{otpEmail}</span>
+                  <p className="text-[10px] text-slate-400 mt-1 leading-relaxed">
+                    Check your <strong className="text-slate-600 dark:text-slate-300">Inbox</strong> or <strong className="text-slate-600 dark:text-slate-300">Spam / Junk folder</strong>.
                   </p>
                 </div>
-                {otpSent && <CheckCircle2 className="w-5 h-5 text-emerald-500 ml-auto flex-shrink-0" />}
               </div>
-
-              {/* Dev-mode OTP display (when EmailJS not configured) */}
-              {otpDevMode && (
-                <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/50">
-                  <p className="text-[10px] font-bold text-amber-700 dark:text-amber-300 uppercase tracking-wider mb-1">
-                    ⚙️ EmailJS Not Configured — Dev Mode
-                  </p>
-                  <p className="text-xs text-amber-600 dark:text-amber-400">
-                    Your OTP code: <span className="font-mono font-extrabold text-lg text-amber-700 dark:text-amber-200 tracking-[0.3em]">{otpDevMode}</span>
-                  </p>
-                  <p className="text-[10px] text-amber-500 mt-1">Configure EmailJS to send real codes to Gmail.</p>
-                </div>
-              )}
 
               {/* OTP Input */}
               <div>
@@ -304,9 +274,11 @@ export const Login: React.FC = () => {
                     <KeyRound className="w-4 h-4" />
                   </div>
                   <input
+                    ref={otpInputRef}
                     type="text"
                     required
                     inputMode="numeric"
+                    autoComplete="one-time-code"
                     maxLength={6}
                     pattern="[0-9]{6}"
                     value={otpCode}
@@ -315,7 +287,10 @@ export const Login: React.FC = () => {
                     className="w-full pl-10 pr-3.5 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xl font-mono font-bold tracking-[0.4em] text-slate-900 dark:text-white placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all text-center"
                   />
                 </div>
-                <p className="text-[10px] text-slate-400 mt-1.5">{t('login.otp_expires', 'Code expires in 10 minutes.')}</p>
+                <div className="flex items-center justify-between text-[10px] text-slate-400 mt-1.5">
+                  <span>{t('login.otp_expires', 'Code is valid for 10 minutes')}</span>
+                  <span>{otpCode.length}/6 digits</span>
+                </div>
               </div>
 
               <button
@@ -332,11 +307,17 @@ export const Login: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleResendOtp}
-                  disabled={otpSending}
-                  className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline font-bold flex items-center gap-1 disabled:opacity-50"
+                  disabled={resendCooldown > 0 || otpSending}
+                  className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline font-bold flex items-center gap-1.5 disabled:opacity-50 disabled:no-underline"
                 >
-                  <RefreshCw className="w-3 h-3" />
-                  {t('login.resend_otp', 'Resend Code')}
+                  <RefreshCw className={`w-3 h-3 ${otpSending ? 'animate-spin' : ''}`} />
+                  <span>
+                    {otpSending
+                      ? 'Sending...'
+                      : resendCooldown > 0
+                      ? `Resend Code (${resendCooldown}s)`
+                      : t('login.resend_otp', 'Resend Code')}
+                  </span>
                 </button>
                 <button
                   type="button"

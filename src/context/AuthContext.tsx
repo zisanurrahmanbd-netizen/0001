@@ -1,5 +1,6 @@
 ﻿import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '../types';
+import { supabase } from '../lib/supabase';
 
 // Real production admin only - all demo accounts permanently removed
 const REAL_ADMIN: User = {
@@ -47,7 +48,7 @@ interface AuthContextType {
   user: User | null;
   users: User[];
   login: (email: string, pass: string) => { result: 'ok' | 'otp_required' | 'error'; error?: string };
-  verifyOtp: (email: string, code: string) => { success: boolean; error?: string };
+  verifyOtp: (email: string, code: string) => Promise<{ success: boolean; error?: string }>;
   pendingEmail: string | null;
   generateOtp: (email: string) => string;
   logout: () => void;
@@ -150,24 +151,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { result: 'ok' };
   };
 
-  const verifyOtp = (email: string, code: string): { success: boolean; error?: string } => {
-    if (!otpSession) {
-      return { success: false, error: 'No OTP session active. Please request a new code.' };
+  const verifyOtp = async (email: string, code: string): Promise<{ success: boolean; error?: string }> => {
+    const cleanCode = code.trim();
+    let isMatch = false;
+
+    // Check 1: Session OTP
+    if (otpSession && otpSession.email === email.toLowerCase() && Date.now() <= otpSession.expiresAt) {
+      if (cleanCode === otpSession.code) {
+        isMatch = true;
+      }
     }
-    if (otpSession.email !== email.toLowerCase()) {
-      return { success: false, error: 'OTP email mismatch.' };
+
+    // Check 2: Supabase OTP Verification
+    if (!isMatch) {
+      try {
+        const { data, error } = await supabase.auth.verifyOtp({
+          email: email.toLowerCase(),
+          token: cleanCode,
+          type: 'email',
+        });
+        if (data?.user && !error) {
+          isMatch = true;
+        }
+      } catch (err) {
+        console.warn('Supabase verifyOtp note:', err);
+      }
     }
-    if (Date.now() > otpSession.expiresAt) {
-      setOtpSession(null);
-      return { success: false, error: 'OTP expired. Please request a new code.' };
-    }
-    if (code.trim() !== otpSession.code) {
-      return { success: false, error: 'Incorrect code. Please check your email and try again.' };
+
+    if (!isMatch) {
+      return { success: false, error: 'Invalid or expired 6-digit verification code. Please check your Gmail and try again.' };
     }
 
     const list = getLatestUsers();
     const found = list.find(u => u.email.toLowerCase() === email.toLowerCase());
-    if (!found) return { success: false, error: 'User not found.' };
+    if (!found) return { success: false, error: 'User account not found.' };
 
     const deviceKey = `${found.email}:${navigator.userAgent.slice(0, 60)}`;
     const newVerified = new Set(verifiedDevices);

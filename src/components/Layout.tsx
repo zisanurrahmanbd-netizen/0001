@@ -13,7 +13,7 @@ export const Layout: React.FC<LayoutProps> = ({ currentPage, onNavigate, onSearc
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex transition-colors">
+    <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex transition-colors">
       <Sidebar
         currentPage={currentPage}
         onNavigate={onNavigate}
@@ -21,12 +21,12 @@ export const Layout: React.FC<LayoutProps> = ({ currentPage, onNavigate, onSearc
         onClose={() => setIsSidebarOpen(false)}
       />
 
-      <div className="flex-1 lg:pl-64 flex flex-col min-w-0">
+      <div className="flex-1 lg:pl-64 flex flex-col min-w-0 max-w-full overflow-x-hidden">
         <Navbar
           onSearch={onSearch}
           onMenuToggle={() => setIsSidebarOpen(!isSidebarOpen)}
         />
-        <main className="flex-1 p-4 sm:p-6 md:p-8 max-w-7xl w-full mx-auto">
+        <main className="flex-1 p-3 sm:p-5 md:p-7 max-w-7xl w-full mx-auto min-w-0">
           {children}
         </main>
       </div>

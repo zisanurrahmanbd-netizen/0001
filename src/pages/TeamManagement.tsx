@@ -192,107 +192,116 @@ export const TeamManagementPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Users Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {/* Users Grid - Responsive Auto Adjust */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-5">
         {filtered.map(u => (
           <div
             key={u.id}
-            className={`p-5 rounded-3xl bg-white dark:bg-slate-900 border shadow-sm space-y-3 transition-all ${
-              u.status === 'inactive' ? 'border-rose-500/20 opacity-75' : 'border-slate-200 dark:border-slate-800'
+            className={`p-5 rounded-3xl bg-white dark:bg-slate-900 border shadow-sm flex flex-col justify-between space-y-3.5 transition-all hover:shadow-md ${
+              u.status === 'inactive' ? 'border-rose-500/30 opacity-75 bg-rose-500/5' : 'border-slate-200 dark:border-slate-800'
             }`}
           >
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-2xl font-bold flex items-center justify-center text-sm ${
-                  u.role === 'admin' ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400' :
-                  u.role === 'manager' ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400' :
-                  'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-                }`}>
-                  {u.name.charAt(0)}
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                    <span>{u.name}</span>
-                  </h3>
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
-                      u.role === 'admin' ? 'bg-purple-500/20 text-purple-600 dark:text-purple-300' :
-                      u.role === 'manager' ? 'bg-blue-500/20 text-blue-600 dark:text-blue-300' :
-                      'bg-emerald-500/20 text-emerald-600 dark:text-emerald-300'
-                    }`}>
-                      {u.role === 'admin' ? t('team.role_admin', 'Admin') : u.role === 'manager' ? t('team.role_manager', 'Manager') : t('team.role_agent', 'Agent')}
-                    </span>
-                    <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
-                      u.status === 'inactive' ? 'bg-rose-500/10 text-rose-600' : 'bg-emerald-500/10 text-emerald-600'
-                    }`}>
-                      {u.status === 'inactive' ? (t('cases.status') === 'অবস্থা' ? 'নিষ্ক্রিয়' : 'Inactive') : (t('cases.status') === 'অবস্থা' ? 'সক্রিয়' : 'Active')}
-                    </span>
+            <div className="space-y-3">
+              {/* Card Header */}
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className={`w-10 h-10 rounded-2xl font-bold flex items-center justify-center text-sm flex-shrink-0 shadow-sm ${
+                    u.role === 'admin' ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20' :
+                    u.role === 'manager' ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20' :
+                    'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                  }`}>
+                    {u.name.charAt(0)}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-sm font-extrabold text-slate-900 dark:text-white truncate" title={u.name}>
+                      {u.name}
+                    </h3>
+                    <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                      <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
+                        u.role === 'admin' ? 'bg-purple-500/15 text-purple-600 dark:text-purple-300' :
+                        u.role === 'manager' ? 'bg-blue-500/15 text-blue-600 dark:text-blue-300' :
+                        'bg-emerald-500/15 text-emerald-600 dark:text-emerald-300'
+                      }`}>
+                        {u.role === 'admin' ? t('team.role_admin', 'Admin') : u.role === 'manager' ? t('team.role_manager', 'Manager') : t('team.role_agent', 'Agent')}
+                      </span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        u.status === 'inactive' ? 'bg-rose-500/10 text-rose-600 border border-rose-500/20' : 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20'
+                      }`}>
+                        {u.status === 'inactive' ? (t('cases.status') === 'অবস্থা' ? 'নিষ্ক্রিয়' : 'Inactive') : (t('cases.status') === 'অবস্থা' ? 'সক্রিয়' : 'Active')}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <span className={`w-2.5 h-2.5 rounded-full ${u.is_online ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} title={u.is_online ? 'Online' : 'Offline'} />
-            </div>
-
-            <div className="space-y-1.5 text-xs text-slate-500 dark:text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800">
-              <div className="flex items-center justify-between">
-                <span>{t('cases.status') === 'অবস্থা' ? 'এমপ্লয়ি আইডি:' : 'Employee ID:'}</span>
-                <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{u.employee_id || 'N/A'}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>{t('cases.status') === 'অবস্থা' ? 'ইমেইল:' : 'Email:'}</span>
-                <span className="truncate max-w-[170px] text-slate-700 dark:text-slate-300">{u.email}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>{t('cases.status') === 'অবস্থা' ? 'মোবাইল:' : 'Phone:'}</span>
-                <a href={'tel:' + u.phone} className="hover:underline text-slate-700 dark:text-slate-300">{u.phone || 'N/A'}</a>
-              </div>
-              {u.manager_name && (
-                <div className="flex items-center justify-between">
-                  <span>{t('cases.status') === 'অবস্থা' ? 'ম্যানেজার:' : 'Manager:'}</span>
-                  <span className="font-medium text-slate-800 dark:text-slate-200 truncate max-w-[160px]">{u.manager_name}</span>
+                <div className="flex items-center gap-1.5 flex-shrink-0 pt-1">
+                  <span
+                    className={`w-2.5 h-2.5 rounded-full ${u.is_online ? 'bg-emerald-500 animate-pulse shadow-sm shadow-emerald-500/50' : 'bg-slate-400'}`}
+                    title={u.is_online ? 'Online & Active' : 'Offline'}
+                  />
                 </div>
-              )}
+              </div>
+
+              {/* Details List */}
+              <div className="space-y-2 text-xs pt-3 border-t border-slate-100 dark:border-slate-800/80">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-slate-400 font-semibold">{t('cases.status') === 'অবস্থা' ? 'এমপ্লয়ি আইডি:' : 'Employee ID:'}</span>
+                  <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{u.employee_id || 'N/A'}</span>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-slate-400 font-semibold">{t('cases.status') === 'অবস্থা' ? 'ইমেইল:' : 'Email:'}</span>
+                  <span className="truncate text-slate-700 dark:text-slate-300 font-medium text-right" title={u.email}>{u.email}</span>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-slate-400 font-semibold">{t('cases.status') === 'অবস্থা' ? 'মোবাইল:' : 'Phone:'}</span>
+                  <a href={'tel:' + u.phone} className="hover:underline text-emerald-600 dark:text-emerald-400 font-medium">{u.phone || 'N/A'}</a>
+                </div>
+                {u.manager_name && (
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-slate-400 font-semibold">{t('cases.status') === 'অবস্থা' ? 'ম্যানেজার:' : 'Manager:'}</span>
+                    <span className="font-medium text-slate-800 dark:text-slate-200 truncate text-right" title={u.manager_name}>{u.manager_name}</span>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Action Buttons: Edit, Toggle Status, Delete */}
-            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-1 text-xs">
+            <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2 text-xs">
               <button
                 onClick={() => toggleUserStatus(u)}
-                className={`px-2.5 py-1 rounded-xl font-bold text-[11px] flex items-center gap-1 transition-all ${
+                className={`px-3 py-1.5 rounded-xl font-bold text-[11px] flex items-center gap-1.5 transition-all flex-shrink-0 ${
                   u.status === 'inactive'
-                    ? 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-rose-500'
+                    ? 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 border border-emerald-500/20'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-rose-500/10 hover:text-rose-500'
                 }`}
                 title="Toggle Active/Inactive"
               >
-                <Power className="w-3 h-3" />
+                <Power className="w-3.5 h-3.5" />
                 <span>{u.status === 'inactive' ? t('team.activate', 'Activate') : t('team.deactivate', 'Deactivate')}</span>
               </button>
 
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1.5 flex-shrink-0">
                 <button
                   onClick={() => { setPermsUserId(u.id); setShowPermsModal(true); }}
-                  className="p-1.5 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/20 font-bold flex items-center gap-1 text-[11px]"
+                  className="px-2.5 py-1.5 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/20 font-bold flex items-center gap-1 text-[11px] border border-indigo-500/20 shadow-sm"
                   title="Configure specific permissions for this user"
                 >
                   <Shield className="w-3.5 h-3.5" />
-                  <span>{t('team.perms', 'Perms')}</span>
+                  <span className="hidden sm:inline">{t('team.perms', 'Perms')}</span>
                 </button>
 
                 <button
                   onClick={() => openEditModal(u)}
-                  className="p-1.5 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 font-bold flex items-center gap-1 text-[11px]"
+                  className="px-2.5 py-1.5 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 font-bold flex items-center gap-1 text-[11px] border border-blue-500/20 shadow-sm"
                   title="Edit user details"
                 >
                   <Edit3 className="w-3.5 h-3.5" />
-                  <span>{t('team.edit', 'Edit')}</span>
+                  <span className="hidden sm:inline">{t('team.edit', 'Edit')}</span>
                 </button>
 
                 {u.id !== currentUser?.id && (
                   <button
                     onClick={() => handleDelete(u.id, u.name)}
-                    className="p-1.5 rounded-xl bg-rose-500/10 text-rose-600 hover:bg-rose-500/20 font-bold"
+                    className="p-1.5 rounded-xl bg-rose-500/10 text-rose-600 hover:bg-rose-500/20 font-bold border border-rose-500/20 shadow-sm"
                     title="Delete user"
                   >
                     <Trash2 className="w-3.5 h-3.5" />

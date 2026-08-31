@@ -383,8 +383,58 @@ export const ExcelImporterPage: React.FC = () => {
           </label>
         ) : (
           <div className="space-y-4">
+
+            {/* ─── "I am uploading a file for this bank/product" selector ─── */}
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-emerald-500/10 border border-blue-500/30 dark:border-blue-500/20 space-y-3">
+              <div className="flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                <span className="text-xs font-extrabold text-slate-900 dark:text-white">
+                  I am uploading a file for:
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                {/* Select Bank */}
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1">
+                    Partner Bank / Institution
+                  </label>
+                  <select
+                    value={selectedBankId}
+                    onChange={(e) => handleBankChange(Number(e.target.value))}
+                    className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                  >
+                    {banks.map(b => (
+                      <option key={b.id} value={b.id}>🏦 {b.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Select Product / Portfolio */}
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1">
+                    Product / Portfolio Type
+                  </label>
+                  <select
+                    value={selectedProductId}
+                    onChange={(e) => setSelectedProductId(Number(e.target.value))}
+                    className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white font-bold focus:outline-none focus:ring-2 focus:ring-purple-500/40"
+                  >
+                    {availableProducts.map(p => (
+                      <option key={p.id} value={p.id}>💳 {p.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <p className="text-[10px] text-slate-400 flex items-center gap-1">
+                <Info className="w-3 h-3 text-blue-400 flex-shrink-0" />
+                All imported cases will be categorized under the bank and product you select above. New banks can be added from the Partner Banks section.
+              </p>
+            </div>
+
             {/* Sheet Selector */}
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+            <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
               <div>
                 <span className="text-slate-400 uppercase font-bold text-[10px]">Loaded File</span>
                 <p className="font-bold text-slate-900 dark:text-white">{inspectResult.fileName}</p>

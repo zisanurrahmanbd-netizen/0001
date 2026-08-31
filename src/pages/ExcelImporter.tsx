@@ -302,23 +302,15 @@ export const ExcelImporterPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Action Buttons: Edit Format & Download */}
-              <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 dark:border-slate-800/80">
+              {/* Action Button: Edit Format only */}
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80">
                 <button
                   onClick={() => handleEditTemplate(key, tpl)}
-                  className="py-2 px-3 rounded-xl bg-purple-500/10 hover:bg-purple-600 hover:text-white text-purple-600 dark:text-purple-400 font-bold text-xs flex items-center justify-center gap-1.5 transition-all"
+                  className="w-full py-2 px-3 rounded-xl bg-purple-500/10 hover:bg-purple-600 hover:text-white text-purple-600 dark:text-purple-400 font-bold text-xs flex items-center justify-center gap-1.5 transition-all"
                   title="Customize column headers for this format"
                 >
                   <Edit3 className="w-3.5 h-3.5" />
                   <span>{t("top.switch_lang") === "English" ? "এডিট ফরম্যাট" : "Edit Format"}</span>
-                </button>
-
-                <button
-                  onClick={() => TemplateService.generateAndDownload(tpl.bankName, tpl.productName, tpl.headers, [tpl.sampleRow])}
-                  className="py-2 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-emerald-600 hover:text-white dark:hover:bg-emerald-600 text-slate-700 dark:text-slate-300 font-bold text-xs flex items-center justify-center gap-1.5 transition-all"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>{t("top.switch_lang") === "English" ? "ডাউনলোড" : "Download"}</span>
                 </button>
               </div>
             </div>

@@ -41,6 +41,7 @@ export const TeamManagementPage: React.FC = () => {
     role: 'agent' as UserRole,
     employee_id: '',
     manager_id: 2,
+    password: '',
     status: 'active' as 'active' | 'inactive',
   });
 
@@ -63,6 +64,7 @@ export const TeamManagementPage: React.FC = () => {
       role: 'agent',
       employee_id: `AGT-00${users.length + 1}`,
       manager_id: managers[0]?.id || 2,
+      password: '',
       status: 'active',
     });
     setShowAddModal(true);
@@ -77,6 +79,7 @@ export const TeamManagementPage: React.FC = () => {
       role: u.role,
       employee_id: u.employee_id || '',
       manager_id: u.manager_id || (managers[0]?.id || 2),
+      password: u.password || '',
       status: u.status || 'active',
     });
     setShowEditModal(true);
@@ -94,6 +97,7 @@ export const TeamManagementPage: React.FC = () => {
       employee_id: formData.employee_id,
       manager_id: formData.role === 'agent' ? Number(formData.manager_id) : undefined,
       manager_name: formData.role === 'agent' ? managers.find(m => m.id === Number(formData.manager_id))?.name : undefined,
+      password: formData.password || '@Pass2026',
       status: formData.status,
     });
     setShowAddModal(false);
@@ -103,7 +107,7 @@ export const TeamManagementPage: React.FC = () => {
     e.preventDefault();
     if (!selectedUser || !formData.name || !formData.email) return;
 
-    updateUser(selectedUser.id, {
+    const updates: Partial<User> = {
       name: formData.name,
       email: formData.email,
       phone: formData.phone,
@@ -112,7 +116,12 @@ export const TeamManagementPage: React.FC = () => {
       manager_id: formData.role === 'agent' ? Number(formData.manager_id) : undefined,
       manager_name: formData.role === 'agent' ? managers.find(m => m.id === Number(formData.manager_id))?.name : undefined,
       status: formData.status,
-    });
+    };
+    if (formData.password) {
+      updates.password = formData.password;
+    }
+
+    updateUser(selectedUser.id, updates);
     setShowEditModal(false);
     setSelectedUser(null);
   };
@@ -386,6 +395,21 @@ export const TeamManagementPage: React.FC = () => {
                 </div>
               </div>
 
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Account Password</label>
+                <input
+                  type="text"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  placeholder="e.g. @Pass2026 (Defaults to @Pass2026 if empty)"
+                  className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-900 dark:text-white font-mono"
+                />
+                <p className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-1 flex items-center gap-1 font-medium">
+                  <Shield className="w-3 h-3 flex-shrink-0" />
+                  <span>2-Step Verification (2FA OTP) will automatically protect this user's email on login.</span>
+                </p>
+              </div>
+
               {formData.role === 'agent' && (
                 <div>
                   <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Reporting Manager</label>
@@ -490,6 +514,17 @@ export const TeamManagementPage: React.FC = () => {
                     className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-900 dark:text-white font-medium"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Reset Password (Optional)</label>
+                <input
+                  type="text"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  placeholder="Enter new password to change"
+                  className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-900 dark:text-white font-mono"
+                />
               </div>
 
               {formData.role === 'agent' && (

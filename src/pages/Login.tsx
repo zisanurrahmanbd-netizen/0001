@@ -50,6 +50,17 @@ export const Login: React.FC = () => {
     }
   }, [step]);
 
+  // Listen for force-deactivation event fired by the watchdog in AuthContext
+  useEffect(() => {
+    const handleDeactivated = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      setStep('credentials');
+      setError(detail?.message || 'Your account has been deactivated. Please contact your administrator.');
+    };
+    window.addEventListener('account_deactivated', handleDeactivated);
+    return () => window.removeEventListener('account_deactivated', handleDeactivated);
+  }, []);
+
   // ─── Step 1: Credentials submit ──────────────────────────────────────────
   const handleCredentials = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -1,4 +1,4 @@
-﻿import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { User, UserRole } from '../types';
 import { supabase } from '../lib/supabase';
 
@@ -158,6 +158,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } else {
       localStorage.removeItem('recovery_auth_user');
     }
+  }, [user]);
+
+  // ── Live Session Watchdog: Force-logout deactivated users within 30s ──────
+  useEffect(() => {
+    if (!user) return;
+    // Primary admin can never be deactivated — skip watchdog
+    if (user.email.toLowerCase() === REAL_ADMIN.email.toLowerCase()) return;
+
+    const watchdog = setInterval(async () => {
+      try {
+        const { data, error } = await supabase
+          .from('users')
+          .select('id, status')
+          .eq('email', user.email.toLowerCase())
+          .single();
+
+        if (error) return; // network issue — keep session alive, retry next tick
+
+        if (data?.status === 'inactive') {
+          clearInterval(watchdog);
+          localStorage.removeItem('recovery_auth_user');
+          localStorage.removeItem('recovery_verified_devices');
+          setUser(null);
+          // Fire event so Login page can display a clear reason message
+          window.dispatchEvent(new CustomEvent('account_deactivated', {
+            detail: { message: 'Your account has been deactivated by an administrator. Please contact your manager.' }
+          }));
+        }
+      } catch (_) {
+        // Silently ignore network errors — do not terminate session on connectivity issues
+      }
+    }, 30_000); // Poll every 30 seconds
+
+    return () => clearInterval(watchdog);
   }, [user]);
 
   const getLatestUsers = (): User[] => {

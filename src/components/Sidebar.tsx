@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useBranding } from '../context/BrandingContext';
 import { 
@@ -27,7 +27,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, isOpe
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin', 'manager', 'agent'] },
-    { id: 'cases', label: 'Case Registry', icon: Briefcase, roles: ['admin', 'manager', 'agent'] },
+    { id: 'cases', label: 'Bank & MNC Files', icon: Briefcase, roles: ['admin', 'manager', 'agent'] },
     { id: 'map', label: 'Live Agent Map', icon: MapPin, roles: ['admin', 'manager'] },
     { id: 'imports', label: 'Excel Templates & Import', icon: FileSpreadsheet, roles: ['admin'] },
     { id: 'contacts', label: 'Bank Contacts', icon: PhoneCall, roles: ['admin', 'manager', 'agent'] },

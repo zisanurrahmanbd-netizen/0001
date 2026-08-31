@@ -145,7 +145,7 @@ export const CaseDetail: React.FC<{ caseId: number; onBack: () => void }> = ({ c
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <button onClick={onBack} className="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-bold flex items-center gap-2 text-slate-700 dark:text-slate-300 hover:text-emerald-500 transition-all w-fit">
-          <ArrowLeft className="w-4 h-4" /> Back to Case Registry
+          <ArrowLeft className="w-4 h-4" /> Back to Bank & MNC Files
         </button>
 
         <div className="flex flex-wrap items-center gap-2">

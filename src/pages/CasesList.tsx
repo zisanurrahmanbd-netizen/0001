@@ -93,10 +93,10 @@ export const CasesList: React.FC<CasesListProps> = ({ onSelectCase, searchQuery 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-            Case Registry & Accounts
+            Bank & MNC Files
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Showing {filteredCases.length} assigned debt recovery accounts
+            Showing {filteredCases.length} assigned institutional bank & corporate recovery files
           </p>
         </div>
 

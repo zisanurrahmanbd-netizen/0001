@@ -394,15 +394,38 @@ class DataService {
   public async pushCasesToCloud(caseList: CaseFile[]): Promise<{ count: number; error?: string }> {
     if (!caseList || caseList.length === 0) return { count: 0 };
     try {
-      const dbRows = caseList.map(c => mapCaseToDb(c));
+      // 1. Fetch existing case ids mapped by file_number to preserve exact id keys
+      let existingMap = new Map<string, number>();
+      try {
+        const { data: existingRows } = await supabase.from('cases').select('id, file_number');
+        if (Array.isArray(existingRows)) {
+          existingRows.forEach((r: any) => {
+            if (r.file_number && r.id) existingMap.set(String(r.file_number).trim(), Number(r.id));
+          });
+        }
+      } catch (_) {}
+
+      // Assign persistent IDs so cases_pkey never conflicts
+      const dbRows = caseList.map((c, idx) => {
+        const existingId = existingMap.get(String(c.file_number).trim());
+        const finalId = existingId || c.id || (Date.now() + idx);
+        c.id = finalId;
+        return mapCaseToDb(c);
+      });
+
       for (let i = 0; i < dbRows.length; i += 25) {
         const chunk = dbRows.slice(i, i + 25);
-        const { error } = await supabase.from('cases').upsert(chunk, { onConflict: 'file_number' });
+        const { error } = await supabase.from('cases').upsert(chunk, { onConflict: 'id' });
         if (error) {
-          console.error('Error upserting chunk to cases:', error);
-          return { count: 0, error: error.message || (error as any).details || JSON.stringify(error) };
+          console.error('Error upserting chunk on id:', error);
+          // Fallback to file_number
+          const { error: err2 } = await supabase.from('cases').upsert(chunk, { onConflict: 'file_number' });
+          if (err2) {
+            return { count: 0, error: error.message || (error as any).details || JSON.stringify(error) };
+          }
         }
       }
+      this.saveState();
       return { count: caseList.length };
     } catch (err: any) {
       console.error('Pushing cases to cloud exception:', err);

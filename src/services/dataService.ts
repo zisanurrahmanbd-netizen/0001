@@ -264,7 +264,10 @@ class DataService {
   public async syncWithCloud(forcePush = false): Promise<{ success: boolean; count: number; error?: string }> {
     try {
       if (forcePush && this.cases.length > 0) {
-        await this.pushCasesToCloud(this.cases);
+        const pushRes = await this.pushCasesToCloud(this.cases);
+        if (pushRes.error) {
+          return { success: false, count: this.cases.length, error: `Push error: ${pushRes.error}` };
+        }
       }
 
       // 1. Sync Cases from Supabase
@@ -272,7 +275,10 @@ class DataService {
       if (casesErr) {
         console.warn('Supabase fetch cases note:', casesErr);
         if (this.cases.length > 0) {
-          await this.pushCasesToCloud(this.cases);
+          const pushRes = await this.pushCasesToCloud(this.cases);
+          if (pushRes.error) {
+            return { success: false, count: this.cases.length, error: `Fetch: ${casesErr.message}, Push: ${pushRes.error}` };
+          }
         }
         return { success: false, count: this.cases.length, error: casesErr.message };
       }
@@ -305,7 +311,10 @@ class DataService {
           }
         } else if (this.cases.length > 0) {
           // If cloud is empty but local has cases (e.g. newly uploaded device), push to cloud
-          await this.pushCasesToCloud(this.cases);
+          const pushRes = await this.pushCasesToCloud(this.cases);
+          if (pushRes.error) {
+            return { success: false, count: this.cases.length, error: `Cloud push error: ${pushRes.error}` };
+          }
         }
       }
 
@@ -382,19 +391,22 @@ class DataService {
     }
   }
 
-  public async pushCasesToCloud(caseList: CaseFile[]): Promise<void> {
-    if (!caseList || caseList.length === 0) return;
+  public async pushCasesToCloud(caseList: CaseFile[]): Promise<{ count: number; error?: string }> {
+    if (!caseList || caseList.length === 0) return { count: 0 };
     try {
       const dbRows = caseList.map(c => mapCaseToDb(c));
       for (let i = 0; i < dbRows.length; i += 25) {
         const chunk = dbRows.slice(i, i + 25);
         const { error } = await supabase.from('cases').upsert(chunk, { onConflict: 'file_number' });
         if (error) {
-          console.warn('Error upserting chunk to cases:', error);
+          console.error('Error upserting chunk to cases:', error);
+          return { count: 0, error: error.message || (error as any).details || JSON.stringify(error) };
         }
       }
-    } catch (err) {
-      console.warn('Pushing cases to cloud exception:', err);
+      return { count: caseList.length };
+    } catch (err: any) {
+      console.error('Pushing cases to cloud exception:', err);
+      return { count: 0, error: err?.message || String(err) };
     }
   }
 

@@ -18,7 +18,8 @@ import {
   Check,
   Info,
   Sparkles,
-  UserX
+  UserX,
+  Trash2
 } from "lucide-react";
 import * as XLSX from "xlsx";
 
@@ -266,6 +267,40 @@ export const ExcelImporterPage: React.FC = () => {
     setShowBuilderModal(false);
   };
 
+  const handleDeleteTemplate = async (key: string, tpl: TemplateDefinition) => {
+    // Prebuilt templates cannot be deleted
+    if (key in (PREBUILT_TEMPLATES as any)) {
+      alert(`"${tpl.name}" is a built-in template and cannot be deleted.`);
+      return;
+    }
+    if (!window.confirm(`Delete template "${tpl.bankName} – ${tpl.productName}"?\n\nThis will remove it from all devices.`)) return;
+
+    // Remove from local state
+    const updated = { ...templates };
+    delete updated[key];
+    setTemplates(updated);
+
+    // Update localStorage (save only custom keys = keys NOT in prebuilts)
+    const customOnly = Object.fromEntries(
+      Object.entries(updated).filter(([k]) => !(k in (PREBUILT_TEMPLATES as any)))
+    );
+    try {
+      if (Object.keys(customOnly).length === 0) {
+        localStorage.removeItem("recoverypro_custom_templates");
+      } else {
+        localStorage.setItem("recoverypro_custom_templates", JSON.stringify(customOnly));
+      }
+    } catch (_) {}
+
+    // ☁️ Delete from Supabase cloud
+    try {
+      const { supabase } = await import("../lib/supabase");
+      await supabase.from("file_templates").delete().eq("template_key", key);
+    } catch (_) {}
+
+    setImportSuccess(`Template "${tpl.bankName} – ${tpl.productName}" deleted from cloud ☁️`);
+  };
+
   const standardHeaderFormat = [
     { key: "FILE_NO", label: "File No", req: true },
     { key: "CARD_NO / ACCOUNT_NO", label: "Account / Card No", req: true },
@@ -279,6 +314,7 @@ export const ExcelImporterPage: React.FC = () => {
     { key: "EXPIRY_DATE", label: "Expiry Date (YYYY-MM-DD)", req: false },
     { key: "LEGAL_STATUS", label: "Legal Status", req: false },
   ];
+
 
   return (
     <div className="space-y-8">
@@ -358,17 +394,31 @@ export const ExcelImporterPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Action Button: Edit Format only */}
-              <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80">
+              {/* Action Buttons: Edit + Delete */}
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex gap-2">
                 <button
                   onClick={() => handleEditTemplate(key, tpl)}
-                  className="w-full py-2 px-3 rounded-xl bg-purple-500/10 hover:bg-purple-600 hover:text-white text-purple-600 dark:text-purple-400 font-bold text-xs flex items-center justify-center gap-1.5 transition-all"
+                  className="flex-1 py-2 px-3 rounded-xl bg-purple-500/10 hover:bg-purple-600 hover:text-white text-purple-600 dark:text-purple-400 font-bold text-xs flex items-center justify-center gap-1.5 transition-all"
                   title="Customize column headers for this format"
                 >
                   <Edit3 className="w-3.5 h-3.5" />
-                  <span>{t("top.switch_lang") === "English" ? "এডিট ফরম্যাট" : "Edit Format"}</span>
+                  <span>{t("top.switch_lang") === "English" ? "এডিট" : "Edit"}</span>
                 </button>
+                {!(key in PREBUILT_TEMPLATES) ? (
+                  <button
+                    onClick={() => handleDeleteTemplate(key, tpl)}
+                    className="py-2 px-3 rounded-xl bg-rose-500/10 hover:bg-rose-600 hover:text-white text-rose-500 font-bold text-xs flex items-center justify-center gap-1 transition-all"
+                    title="Delete this custom template"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                ) : (
+                  <span className="py-2 px-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 text-[9px] font-mono flex items-center" title="Built-in template">
+                    built-in
+                  </span>
+                )}
               </div>
+
             </div>
           ))}
         </div>

@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { Bank, Product, CaseFile, CheckIn, Collection, CaseRemark, BankContact, User } from '../types';
+import { PREBUILT_TEMPLATES } from './templateService';
 
 export const INITIAL_BANKS: Bank[] = [
   { id: 1, name: 'One Bank Limited', code: 'ONE', is_active: true },
@@ -14,6 +15,97 @@ export const INITIAL_PRODUCTS: Product[] = [
   { id: 4, bank_id: 2, name: 'Agent Banking Loan', code: 'DBBL-ABL', commission_rate: 8.0 },
   { id: 5, bank_id: 3, name: 'Dealer Recovery', code: 'APB-DR', commission_rate: 5.0 },
 ];
+
+export function getAllSystemBanks(): Bank[] {
+  const list = [...INITIAL_BANKS];
+  try {
+    const saved = typeof localStorage !== 'undefined' ? localStorage.getItem('recoverypro_custom_templates') : null;
+    const hidden = (() => {
+      try {
+        const h = typeof localStorage !== 'undefined' ? localStorage.getItem('recoverypro_hidden_prebuilts') : null;
+        return h ? new Set<string>(JSON.parse(h)) : new Set<string>();
+      } catch (_) { return new Set<string>(); }
+    })();
+
+    const allTpls: Record<string, any> = { ...PREBUILT_TEMPLATES };
+    if (saved) {
+      try {
+        Object.assign(allTpls, JSON.parse(saved));
+      } catch (_) {}
+    }
+
+    // Remove hidden prebuilts
+    hidden.forEach((k: string) => delete allTpls[k]);
+
+    Object.values(allTpls).forEach((t: any) => {
+      if (!t?.bankName || typeof t.bankName !== 'string') return;
+      const bName = t.bankName.trim();
+      if (!bName) return;
+      const exists = list.some(b => b.name.toLowerCase() === bName.toLowerCase());
+      if (!exists) {
+        let hash = 0;
+        for (let i = 0; i < bName.length; i++) hash = ((hash << 5) - hash) + bName.charCodeAt(i);
+        const newId = Math.abs(hash % 100000) + 100;
+        const code = bName.split(/\s+/).map((w: string) => w[0]).join('').toUpperCase().substring(0, 6) || 'BANK';
+        list.push({
+          id: newId,
+          name: bName,
+          code: code,
+          is_active: true
+        });
+      }
+    });
+  } catch (_) {}
+  return list;
+}
+
+export function getAllSystemProducts(): Product[] {
+  const banks = getAllSystemBanks();
+  const list = [...INITIAL_PRODUCTS];
+  try {
+    const saved = typeof localStorage !== 'undefined' ? localStorage.getItem('recoverypro_custom_templates') : null;
+    const hidden = (() => {
+      try {
+        const h = typeof localStorage !== 'undefined' ? localStorage.getItem('recoverypro_hidden_prebuilts') : null;
+        return h ? new Set<string>(JSON.parse(h)) : new Set<string>();
+      } catch (_) { return new Set<string>(); }
+    })();
+
+    const allTpls: Record<string, any> = { ...PREBUILT_TEMPLATES };
+    if (saved) {
+      try {
+        Object.assign(allTpls, JSON.parse(saved));
+      } catch (_) {}
+    }
+
+    // Remove hidden prebuilts
+    hidden.forEach((k: string) => delete allTpls[k]);
+
+    Object.values(allTpls).forEach((t: any) => {
+      if (!t?.bankName || !t?.productName) return;
+      const bName = String(t.bankName).trim();
+      const pName = String(t.productName).trim();
+      if (!bName || !pName) return;
+      const bank = banks.find(b => b.name.toLowerCase() === bName.toLowerCase());
+      if (!bank) return;
+      const exists = list.some(p => p.bank_id === bank.id && p.name.toLowerCase() === pName.toLowerCase());
+      if (!exists) {
+        let hash = 0;
+        const combined = `${bank.name}_${pName}`;
+        for (let i = 0; i < combined.length; i++) hash = ((hash << 5) - hash) + combined.charCodeAt(i);
+        const newProdId = Math.abs(hash % 100000) + 100;
+        list.push({
+          id: newProdId,
+          bank_id: bank.id,
+          name: pName,
+          code: `${bank.code}-${pName.replace(/[^A-Za-z0-9]/g, '').substring(0, 3).toUpperCase()}`,
+          commission_rate: 10.0
+        });
+      }
+    });
+  } catch (_) {}
+  return list;
+}
 
 // Clean Production Initial State (All Sample Mock Data Deleted Permanently)
 export const INITIAL_CONTACTS: BankContact[] = [];
@@ -116,8 +208,8 @@ export function enrichCase(c: CaseFile): CaseFile {
     allocation_date: allocDate,
     expiry_date: expDate,
     legal_status: bankStatus,
-    bank: INITIAL_BANKS.find(b => b.id === c.bank_id),
-    product: INITIAL_PRODUCTS.find(p => p.id === c.product_id),
+    bank: getAllSystemBanks().find(b => b.id === c.bank_id) || INITIAL_BANKS.find(b => b.id === c.bank_id),
+    product: getAllSystemProducts().find(p => p.id === c.product_id) || INITIAL_PRODUCTS.find(p => p.id === c.product_id),
   };
 }
 
@@ -507,17 +599,18 @@ class DataService {
   }
 
   public getBanks(): Bank[] {
-    return INITIAL_BANKS;
+    return getAllSystemBanks();
   }
 
   public getProducts(): Product[] {
-    return INITIAL_PRODUCTS;
+    return getAllSystemProducts();
   }
 
   public getContacts(): BankContact[] {
+    const banks = getAllSystemBanks();
     return this.contacts.map(c => ({
       ...c,
-      bank: INITIAL_BANKS.find(b => b.id === c.bank_id)
+      bank: banks.find(b => b.id === c.bank_id) || INITIAL_BANKS.find(b => b.id === c.bank_id)
     }));
   }
 

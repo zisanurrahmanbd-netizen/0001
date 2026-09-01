@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
 import { TemplateService, PREBUILT_TEMPLATES, TemplateDefinition } from "../services/templateService";
@@ -28,10 +28,6 @@ export const ExcelImporterPage: React.FC = () => {
   const { t } = useLanguage();
   const { users } = useAuth();
 
-  // All available banks and products in the system
-  const banks = dataService.getBanks();
-  const allProducts = dataService.getProducts();
-
   // Helper: get set of prebuilt keys that have been hidden/deleted by the user
   const getHiddenPrebuilts = useCallback((): Set<string> => {
     try {
@@ -57,7 +53,6 @@ export const ExcelImporterPage: React.FC = () => {
     return base;
   }, [getHiddenPrebuilts]);
 
-
   // Live editable templates state - initialized from local, refreshed from cloud
   const [templates, setTemplates] = useState<Record<string, TemplateDefinition>>(loadTemplatesFromLocal);
 
@@ -74,6 +69,56 @@ export const ExcelImporterPage: React.FC = () => {
     };
   }, [loadTemplatesFromLocal]);
 
+  // Dynamically compute all banks available from templates & dataService
+  const banks = useMemo(() => {
+    const list = [...dataService.getBanks()];
+    Object.values(templates).forEach(tpl => {
+      if (!tpl.bankName) return;
+      const bName = tpl.bankName.trim();
+      const exists = list.some(b => b.name.toLowerCase() === bName.toLowerCase());
+      if (!exists) {
+        let hash = 0;
+        for (let i = 0; i < bName.length; i++) hash = ((hash << 5) - hash) + bName.charCodeAt(i);
+        const newId = Math.abs(hash % 100000) + 100;
+        const code = bName.split(/\s+/).map((w: string) => w[0]).join('').toUpperCase().substring(0, 6) || 'BANK';
+        list.push({
+          id: newId,
+          name: bName,
+          code: code,
+          is_active: true
+        });
+      }
+    });
+    return list;
+  }, [templates]);
+
+  // Dynamically compute all products available for all banks
+  const allProducts = useMemo(() => {
+    const list = [...dataService.getProducts()];
+    Object.values(templates).forEach(tpl => {
+      if (!tpl.bankName || !tpl.productName) return;
+      const bName = tpl.bankName.trim();
+      const pName = tpl.productName.trim();
+      const bank = banks.find(b => b.name.toLowerCase() === bName.toLowerCase());
+      if (!bank) return;
+      const exists = list.some(p => p.bank_id === bank.id && p.name.toLowerCase() === pName.toLowerCase());
+      if (!exists) {
+        let hash = 0;
+        const combined = `${bank.name}_${pName}`;
+        for (let i = 0; i < combined.length; i++) hash = ((hash << 5) - hash) + combined.charCodeAt(i);
+        const newProdId = Math.abs(hash % 100000) + 100;
+        list.push({
+          id: newProdId,
+          bank_id: bank.id,
+          name: pName,
+          code: `${bank.code}-${pName.replace(/[^A-Za-z0-9]/g, '').substring(0, 3).toUpperCase()}`,
+          commission_rate: 10.0
+        });
+      }
+    });
+    return list;
+  }, [templates, banks]);
+
   // Upload workflow state
   const [file, setFile] = useState<File | null>(null);
   const [workbook, setWorkbook] = useState<XLSX.WorkBook | null>(null);
@@ -89,7 +134,16 @@ export const ExcelImporterPage: React.FC = () => {
   const [selectedProductId, setSelectedProductId] = useState<number>(1);
 
   // Filter products matching selected bank
-  const availableProducts = allProducts.filter(p => p.bank_id === selectedBankId);
+  const availableProducts = useMemo(() => {
+    return allProducts.filter(p => p.bank_id === selectedBankId);
+  }, [allProducts, selectedBankId]);
+
+  // Auto-select valid product if selectedBankId changes
+  useEffect(() => {
+    if (availableProducts.length > 0 && !availableProducts.some(p => p.id === selectedProductId)) {
+      setSelectedProductId(availableProducts[0].id);
+    }
+  }, [availableProducts, selectedProductId]);
 
   // Custom Template Builder state
   const [showBuilderModal, setShowBuilderModal] = useState(false);
@@ -561,8 +615,13 @@ export const ExcelImporterPage: React.FC = () => {
                   const bank = banks.find(b => b.id === selectedBankId);
                   const prod = allProducts.find(p => p.id === selectedProductId);
                   if (bank && prod) {
-                    // Find matching prebuilt template
+                    // Find matching template by exact bank and product, or fallback
                     const matchingKey = Object.keys(templates).find(k =>
+                      templates[k].bankName.trim().toLowerCase() === bank.name.trim().toLowerCase() &&
+                      templates[k].productName.trim().toLowerCase() === prod.name.trim().toLowerCase()
+                    ) || Object.keys(templates).find(k =>
+                      templates[k].bankName.trim().toLowerCase() === bank.name.trim().toLowerCase()
+                    ) || Object.keys(templates).find(k =>
                       templates[k].bankName.toLowerCase().includes(bank.code.toLowerCase()) ||
                       bank.name.toLowerCase().includes(templates[k].bankName.split(' ')[0].toLowerCase())
                     );

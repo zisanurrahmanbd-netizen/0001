@@ -32,16 +32,31 @@ export const ExcelImporterPage: React.FC = () => {
   const banks = dataService.getBanks();
   const allProducts = dataService.getProducts();
 
-  // Helper: build the full templates record by merging prebuilts + localStorage custom
+  // Helper: get set of prebuilt keys that have been hidden/deleted by the user
+  const getHiddenPrebuilts = useCallback((): Set<string> => {
+    try {
+      const h = localStorage.getItem("recoverypro_hidden_prebuilts");
+      return h ? new Set(JSON.parse(h)) : new Set();
+    } catch (_) { return new Set(); }
+  }, []);
+
+  // Helper: build the full templates record - merges prebuilts + custom, minus hidden ones
   const loadTemplatesFromLocal = useCallback((): Record<string, TemplateDefinition> => {
+    const hidden = getHiddenPrebuilts();
+    const base: Record<string, TemplateDefinition> = {};
+    // Include prebuilts that have NOT been hidden
+    Object.entries(PREBUILT_TEMPLATES).forEach(([k, v]) => {
+      if (!hidden.has(k)) base[k] = v;
+    });
     try {
       const saved = localStorage.getItem("recoverypro_custom_templates");
       if (saved) {
-        return { ...PREBUILT_TEMPLATES, ...JSON.parse(saved) };
+        return { ...base, ...JSON.parse(saved) };
       }
     } catch (_) {}
-    return { ...PREBUILT_TEMPLATES };
-  }, []);
+    return base;
+  }, [getHiddenPrebuilts]);
+
 
   // Live editable templates state - initialized from local, refreshed from cloud
   const [templates, setTemplates] = useState<Record<string, TemplateDefinition>>(loadTemplatesFromLocal);
@@ -269,36 +284,42 @@ export const ExcelImporterPage: React.FC = () => {
   };
 
   const handleDeleteTemplate = async (key: string, tpl: TemplateDefinition) => {
-    // Prebuilt templates cannot be deleted
-    if (key in (PREBUILT_TEMPLATES as any)) {
-      alert(`"${tpl.name}" is a built-in template and cannot be deleted.`);
-      return;
-    }
     if (!window.confirm(`Delete template "${tpl.bankName} – ${tpl.productName}"?\n\nThis will remove it from all devices.`)) return;
 
-    // Remove from local state
+    // Remove from local state immediately
     const updated = { ...templates };
     delete updated[key];
     setTemplates(updated);
 
-    // Update localStorage (save only custom keys = keys NOT in prebuilts)
-    const customOnly = Object.fromEntries(
-      Object.entries(updated).filter(([k]) => !(k in (PREBUILT_TEMPLATES as any)))
-    );
-    try {
-      if (Object.keys(customOnly).length === 0) {
-        localStorage.removeItem("recoverypro_custom_templates");
-      } else {
-        localStorage.setItem("recoverypro_custom_templates", JSON.stringify(customOnly));
-      }
-    } catch (_) {}
+    const isPrebuilt = key in (PREBUILT_TEMPLATES as any);
 
-    // ☁️ Delete from Supabase cloud
-    try {
-      await supabase.from("file_templates").delete().eq("template_key", key);
-    } catch (_) {}
+    if (isPrebuilt) {
+      // Track hidden prebuilts so they don't reappear on reload
+      try {
+        const hidden = getHiddenPrebuilts();
+        hidden.add(key);
+        localStorage.setItem("recoverypro_hidden_prebuilts", JSON.stringify(Array.from(hidden)));
+      } catch (_) {}
+    } else {
+      // Remove from custom templates in localStorage
+      const customOnly = Object.fromEntries(
+        Object.entries(updated).filter(([k]) => !(k in (PREBUILT_TEMPLATES as any)))
+      );
+      try {
+        if (Object.keys(customOnly).length === 0) {
+          localStorage.removeItem("recoverypro_custom_templates");
+        } else {
+          localStorage.setItem("recoverypro_custom_templates", JSON.stringify(customOnly));
+        }
+      } catch (_) {}
 
-    setImportSuccess(`Template "${tpl.bankName} – ${tpl.productName}" deleted from cloud ☁️`);
+      // ☁️ Delete from Supabase cloud (only custom templates are in cloud)
+      try {
+        await supabase.from("file_templates").delete().eq("template_key", key);
+      } catch (_) {}
+    }
+
+    setImportSuccess(`Template "${tpl.bankName} – ${tpl.productName}" removed ☁️`);
   };
 
   const standardHeaderFormat = [
@@ -404,20 +425,15 @@ export const ExcelImporterPage: React.FC = () => {
                   <Edit3 className="w-3.5 h-3.5" />
                   <span>{t("top.switch_lang") === "English" ? "এডিট" : "Edit"}</span>
                 </button>
-                {!(key in PREBUILT_TEMPLATES) ? (
-                  <button
-                    onClick={() => handleDeleteTemplate(key, tpl)}
-                    className="py-2 px-3 rounded-xl bg-rose-500/10 hover:bg-rose-600 hover:text-white text-rose-500 font-bold text-xs flex items-center justify-center gap-1 transition-all"
-                    title="Delete this custom template"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                ) : (
-                  <span className="py-2 px-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 text-[9px] font-mono flex items-center" title="Built-in template">
-                    built-in
-                  </span>
-                )}
+                <button
+                  onClick={() => handleDeleteTemplate(key, tpl)}
+                  className="py-2 px-3 rounded-xl bg-rose-500/10 hover:bg-rose-600 hover:text-white text-rose-500 font-bold text-xs flex items-center justify-center gap-1 transition-all"
+                  title="Delete this template"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
               </div>
+
 
             </div>
           ))}

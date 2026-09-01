@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
 import { TemplateService, PREBUILT_TEMPLATES, TemplateDefinition } from "../services/templateService";
@@ -30,8 +30,8 @@ export const ExcelImporterPage: React.FC = () => {
   const banks = dataService.getBanks();
   const allProducts = dataService.getProducts();
 
-  // Live editable templates state with permanent local persistence
-  const [templates, setTemplates] = useState<Record<string, TemplateDefinition>>(() => {
+  // Helper: build the full templates record by merging prebuilts + localStorage custom
+  const loadTemplatesFromLocal = useCallback((): Record<string, TemplateDefinition> => {
     try {
       const saved = localStorage.getItem("recoverypro_custom_templates");
       if (saved) {
@@ -39,7 +39,23 @@ export const ExcelImporterPage: React.FC = () => {
       }
     } catch (_) {}
     return { ...PREBUILT_TEMPLATES };
-  });
+  }, []);
+
+  // Live editable templates state - initialized from local, refreshed from cloud
+  const [templates, setTemplates] = useState<Record<string, TemplateDefinition>>(loadTemplatesFromLocal);
+
+  // Subscribe to cloud sync events so templates auto-refresh on all devices
+  useEffect(() => {
+    const unsubscribe = dataService.subscribe(() => {
+      setTemplates(loadTemplatesFromLocal());
+    });
+    const handleSyncEvent = () => setTemplates(loadTemplatesFromLocal());
+    window.addEventListener('recovery_data_synced', handleSyncEvent);
+    return () => {
+      unsubscribe();
+      window.removeEventListener('recovery_data_synced', handleSyncEvent);
+    };
+  }, [loadTemplatesFromLocal]);
 
   // Upload workflow state
   const [file, setFile] = useState<File | null>(null);
@@ -199,10 +215,12 @@ export const ExcelImporterPage: React.FC = () => {
     setCustomHeaders(customHeaders.filter((_, i) => i !== idx));
   };
 
-  const handleSaveTemplate = (andDownload: boolean = false) => {
+  const handleSaveTemplate = async (andDownload: boolean = false) => {
     let updated: Record<string, TemplateDefinition>;
+    let savedKey: string;
 
     if (editingTemplateKey && templates[editingTemplateKey]) {
+      savedKey = editingTemplateKey;
       updated = {
         ...templates,
         [editingTemplateKey]: {
@@ -213,11 +231,11 @@ export const ExcelImporterPage: React.FC = () => {
         }
       };
     } else {
-      const newKey = `custom_${customBank.toLowerCase().replace(/[^a-z0-9]/g, '_')}_${Date.now()}`;
+      savedKey = `custom_${customBank.toLowerCase().replace(/[^a-z0-9]/g, '_')}_${Date.now()}`;
       updated = {
         ...templates,
-        [newKey]: {
-          type: newKey,
+        [savedKey]: {
+          type: savedKey,
           name: `${customBank} ${customProduct}`,
           description: `Custom format schema for ${customBank} (${customProduct})`,
           badge: customProduct,
@@ -230,9 +248,13 @@ export const ExcelImporterPage: React.FC = () => {
     }
 
     setTemplates(updated);
+    // Save locally
     try {
       localStorage.setItem("recoverypro_custom_templates", JSON.stringify(updated));
     } catch (_) {}
+
+    // ☁️ Push to cloud so all devices get this template
+    dataService.pushTemplateToCloud(savedKey, updated[savedKey]).catch(() => {});
 
     if (andDownload) {
       TemplateService.generateAndDownload(customBank, customProduct, customHeaders, [
@@ -240,7 +262,7 @@ export const ExcelImporterPage: React.FC = () => {
       ]);
     }
 
-    setImportSuccess(`Format template for "${customBank} (${customProduct})" saved to system database!`);
+    setImportSuccess(`Format template for "${customBank} (${customProduct})" saved to cloud database ☁️`);
     setShowBuilderModal(false);
   };
 

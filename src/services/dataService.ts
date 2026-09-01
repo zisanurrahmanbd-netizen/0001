@@ -384,10 +384,70 @@ class DataService {
         this.saveState();
       }
 
+      // 6. Sync Templates from Supabase → localStorage
+      try {
+        const { data: cloudTemplates, error: tplErr } = await supabase.from('file_templates').select('*');
+        if (!tplErr && Array.isArray(cloudTemplates) && cloudTemplates.length > 0) {
+          const remoteCustom: Record<string, any> = {};
+          cloudTemplates.forEach((t: any) => {
+            try {
+              const def = typeof t.definition === 'string' ? JSON.parse(t.definition) : t.definition;
+              remoteCustom[t.template_key] = def;
+            } catch (_) {}
+          });
+          if (Object.keys(remoteCustom).length > 0) {
+            // Merge: local + remote, remote wins on key collision
+            const existing: Record<string, any> = (() => {
+              try {
+                const saved = localStorage.getItem('recoverypro_custom_templates');
+                return saved ? JSON.parse(saved) : {};
+              } catch (_) { return {}; }
+            })();
+            const merged = { ...existing, ...remoteCustom };
+            localStorage.setItem('recoverypro_custom_templates', JSON.stringify(merged));
+            this.notifySubscribers(); // Trigger ExcelImporter to reload
+          }
+        }
+      } catch (_) {}
+
       return { success: true, count: this.cases.length };
     } catch (err: any) {
       console.warn('Cloud sync error:', err);
       return { success: false, count: this.cases.length, error: err?.message || String(err) };
+    }
+  }
+
+  // Push a single custom template (or all) to Supabase file_templates table
+  public async pushTemplateToCloud(templateKey: string, templateDef: any): Promise<{ error?: string }> {
+    try {
+      const { error } = await supabase.from('file_templates').upsert(
+        { template_key: templateKey, definition: templateDef, updated_at: new Date().toISOString() },
+        { onConflict: 'template_key' }
+      );
+      if (error) return { error: error.message };
+      return {};
+    } catch (err: any) {
+      return { error: err?.message || String(err) };
+    }
+  }
+
+  // Push ALL custom templates currently saved in localStorage to Supabase
+  public async pushAllTemplatesToCloud(): Promise<{ count: number; error?: string }> {
+    try {
+      const saved = localStorage.getItem('recoverypro_custom_templates');
+      if (!saved) return { count: 0 };
+      const customTemplates: Record<string, any> = JSON.parse(saved);
+      const rows = Object.entries(customTemplates).map(([key, def]) => ({
+        template_key: key,
+        definition: def,
+        updated_at: new Date().toISOString()
+      }));
+      if (rows.length === 0) return { count: 0 };
+      const { error } = await supabase.from('file_templates').upsert(rows, { onConflict: 'template_key' });
+      if (error) return { count: 0, error: error.message };
+      return { count: rows.length };
+    } catch (err: any) {
+      return { count: 0, error: err?.message || String(err) };
     }
   }
 

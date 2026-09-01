@@ -384,31 +384,44 @@ class DataService {
         this.saveState();
       }
 
-      // 6. Sync Templates from Supabase → localStorage
+      // 6. Sync Templates from Supabase → localStorage (cloud is source of truth)
       try {
         const { data: cloudTemplates, error: tplErr } = await supabase.from('file_templates').select('*');
-        if (!tplErr && Array.isArray(cloudTemplates) && cloudTemplates.length > 0) {
+        if (!tplErr && Array.isArray(cloudTemplates)) {
           const remoteCustom: Record<string, any> = {};
+          let remoteHiddenPrebuilts: string[] = [];
+
           cloudTemplates.forEach((t: any) => {
             try {
-              const def = typeof t.definition === 'string' ? JSON.parse(t.definition) : t.definition;
-              remoteCustom[t.template_key] = def;
+              if (t.template_key === '__hidden_prebuilts__') {
+                // Special entry: list of built-in template keys hidden by user
+                const val = typeof t.definition === 'string' ? JSON.parse(t.definition) : t.definition;
+                remoteHiddenPrebuilts = Array.isArray(val) ? val : (val?.keys || []);
+              } else {
+                const def = typeof t.definition === 'string' ? JSON.parse(t.definition) : t.definition;
+                remoteCustom[t.template_key] = def;
+              }
             } catch (_) {}
           });
+
+          // REPLACE local custom templates with cloud (cloud is source of truth — deletions propagate)
           if (Object.keys(remoteCustom).length > 0) {
-            // Merge: local + remote, remote wins on key collision
-            const existing: Record<string, any> = (() => {
-              try {
-                const saved = localStorage.getItem('recoverypro_custom_templates');
-                return saved ? JSON.parse(saved) : {};
-              } catch (_) { return {}; }
-            })();
-            const merged = { ...existing, ...remoteCustom };
-            localStorage.setItem('recoverypro_custom_templates', JSON.stringify(merged));
-            this.notifySubscribers(); // Trigger ExcelImporter to reload
+            localStorage.setItem('recoverypro_custom_templates', JSON.stringify(remoteCustom));
+          } else {
+            localStorage.removeItem('recoverypro_custom_templates');
           }
+
+          // Sync hidden prebuilts (built-in deletions) across devices
+          if (remoteHiddenPrebuilts.length > 0) {
+            localStorage.setItem('recoverypro_hidden_prebuilts', JSON.stringify(remoteHiddenPrebuilts));
+          } else {
+            localStorage.removeItem('recoverypro_hidden_prebuilts');
+          }
+
+          this.notifySubscribers(); // Trigger ExcelImporter to reload
         }
       } catch (_) {}
+
 
       return { success: true, count: this.cases.length };
     } catch (err: any) {

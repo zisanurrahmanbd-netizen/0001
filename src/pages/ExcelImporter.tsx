@@ -264,10 +264,31 @@ export const ExcelImporterPage: React.FC = () => {
       };
     }
 
-    setTemplates(updated);
-    // Save locally
+    // If this key was in hidden prebuilts, unhide it across devices
     try {
-      localStorage.setItem("recoverypro_custom_templates", JSON.stringify(updated));
+      const hidden = getHiddenPrebuilts();
+      if (hidden.has(savedKey)) {
+        hidden.delete(savedKey);
+        const hiddenArr = Array.from(hidden);
+        localStorage.setItem("recoverypro_hidden_prebuilts", JSON.stringify(hiddenArr));
+        await supabase.from("file_templates").upsert(
+          { template_key: '__hidden_prebuilts__', definition: hiddenArr, updated_at: new Date().toISOString() },
+          { onConflict: 'template_key' }
+        );
+      }
+    } catch (_) {}
+
+    setTemplates(updated);
+
+    // Save only custom or modified templates to local storage
+    const customOnly = Object.fromEntries(
+      Object.entries(updated).filter(([k, v]) => {
+        if (!(k in (PREBUILT_TEMPLATES as any))) return true;
+        return JSON.stringify(v) !== JSON.stringify(PREBUILT_TEMPLATES[k]);
+      })
+    );
+    try {
+      localStorage.setItem("recoverypro_custom_templates", JSON.stringify(customOnly));
     } catch (_) {}
 
     // ☁️ Push to cloud so all devices get this template
@@ -279,7 +300,7 @@ export const ExcelImporterPage: React.FC = () => {
       ]);
     }
 
-    setImportSuccess(`Format template for "${customBank} (${customProduct})" saved to cloud database ☁️`);
+    setImportSuccess(`Format template for "${customBank} (${customProduct})" saved and synced to cloud ☁️`);
     setShowBuilderModal(false);
   };
 
@@ -294,11 +315,19 @@ export const ExcelImporterPage: React.FC = () => {
     const isPrebuilt = key in (PREBUILT_TEMPLATES as any);
 
     if (isPrebuilt) {
-      // Track hidden prebuilts so they don't reappear on reload
+      // Track hidden prebuilts so they don't reappear on any device
       try {
         const hidden = getHiddenPrebuilts();
         hidden.add(key);
-        localStorage.setItem("recoverypro_hidden_prebuilts", JSON.stringify(Array.from(hidden)));
+        const hiddenArr = Array.from(hidden);
+        localStorage.setItem("recoverypro_hidden_prebuilts", JSON.stringify(hiddenArr));
+        
+        // Push hidden list to Supabase and remove any custom override for this prebuilt key
+        await supabase.from("file_templates").upsert(
+          { template_key: '__hidden_prebuilts__', definition: hiddenArr, updated_at: new Date().toISOString() },
+          { onConflict: 'template_key' }
+        );
+        await supabase.from("file_templates").delete().eq("template_key", key);
       } catch (_) {}
     } else {
       // Remove from custom templates in localStorage
@@ -313,13 +342,13 @@ export const ExcelImporterPage: React.FC = () => {
         }
       } catch (_) {}
 
-      // ☁️ Delete from Supabase cloud (only custom templates are in cloud)
+      // ☁️ Delete from Supabase cloud
       try {
         await supabase.from("file_templates").delete().eq("template_key", key);
       } catch (_) {}
     }
 
-    setImportSuccess(`Template "${tpl.bankName} – ${tpl.productName}" removed ☁️`);
+    setImportSuccess(`Template "${tpl.bankName} – ${tpl.productName}" deleted across all devices ☁️`);
   };
 
   const standardHeaderFormat = [

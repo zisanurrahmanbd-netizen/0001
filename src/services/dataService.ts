@@ -121,15 +121,107 @@ export function enrichCase(c: CaseFile): CaseFile {
   };
 }
 
+function mapCaseToDb(c: CaseFile): any {
+  return {
+    id: c.id,
+    file_number: c.file_number,
+    bank_id: c.bank_id,
+    product_id: c.product_id,
+    account_number: c.account_number || '',
+    customer_name: c.customer_name,
+    customer_phone: c.customer_phone || '',
+    customer_secondary_phone: c.customer_secondary_phone || '',
+    customer_address_present: c.customer_address_present || '',
+    customer_address_permanent: c.customer_address_permanent || '',
+    present_address_visited: Boolean(c.present_address_visited),
+    permanent_address_visited: Boolean(c.permanent_address_visited),
+    outstanding_amount: Number(c.outstanding_amount) || 0,
+    overdue_amount: Number(c.overdue_amount) || 0,
+    minimum_payment: c.minimum_payment ? Number(c.minimum_payment) : null,
+    status: c.status || 'new',
+    legal_status: c.legal_status || 'Normal Recovery',
+    availability_status: c.availability_status || null,
+    assigned_agent_id: c.assigned_agent_id ? Number(c.assigned_agent_id) : null,
+    agent_name: c.agent_name || '',
+    assigned_manager_id: c.assigned_manager_id ? Number(c.assigned_manager_id) : null,
+    allocation_date: c.allocation_date || null,
+    expiry_date: c.expiry_date || null,
+    last_visit_at: c.last_visit_at || null,
+    total_collected_amount: Number(c.total_collected_amount) || 0,
+    extra_attributes: c.extra_attributes || {},
+    created_at: c.created_at || new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+}
+
+function mapCaseFromDb(row: any): CaseFile {
+  return enrichCase({
+    id: Number(row.id),
+    file_number: String(row.file_number || row.case_no || `FILE-${row.id}`),
+    bank_id: Number(row.bank_id || 1),
+    product_id: Number(row.product_id || 1),
+    account_number: row.account_number || '',
+    customer_name: row.customer_name || row.name || 'Customer',
+    customer_phone: row.customer_phone || row.phone || '',
+    customer_secondary_phone: row.customer_secondary_phone || '',
+    customer_address_present: row.customer_address_present || row.present_address || '',
+    customer_address_permanent: row.customer_address_permanent || row.permanent_address || '',
+    present_address_visited: Boolean(row.present_address_visited),
+    permanent_address_visited: Boolean(row.permanent_address_visited),
+    outstanding_amount: Number(row.outstanding_amount) || 0,
+    overdue_amount: Number(row.overdue_amount) || 0,
+    minimum_payment: row.minimum_payment ? Number(row.minimum_payment) : undefined,
+    status: row.status || 'new',
+    legal_status: row.legal_status || 'Normal Recovery',
+    availability_status: row.availability_status || undefined,
+    assigned_agent_id: row.assigned_agent_id ? Number(row.assigned_agent_id) : undefined,
+    agent_name: row.agent_name || '',
+    assigned_manager_id: row.assigned_manager_id ? Number(row.assigned_manager_id) : undefined,
+    allocation_date: row.allocation_date || undefined,
+    expiry_date: row.expiry_date || undefined,
+    last_visit_at: row.last_visit_at || undefined,
+    total_collected_amount: Number(row.total_collected_amount) || 0,
+    extra_attributes: typeof row.extra_attributes === 'object' && row.extra_attributes !== null ? row.extra_attributes : {},
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  });
+}
+
 class DataService {
   private cases: CaseFile[] = [];
   private remarks: CaseRemark[] = [];
   private checkIns: CheckIn[] = [];
   private collections: Collection[] = [];
   private contacts: BankContact[] = [];
+  private listeners: Set<() => void> = new Set();
+  private syncTimer: any = null;
 
   constructor() {
     this.loadState();
+    // Initial sync with cloud
+    this.syncWithCloud();
+    // Auto-sync every 15 seconds across all logged-in devices
+    if (typeof window !== 'undefined') {
+      this.syncTimer = setInterval(() => {
+        this.syncWithCloud();
+      }, 15_000);
+    }
+  }
+
+  public subscribe(listener: () => void): () => void {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  }
+
+  private notifySubscribers() {
+    this.listeners.forEach(fn => {
+      try { fn(); } catch (_) {}
+    });
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('recovery_data_synced'));
+    }
   }
 
   private loadState() {
@@ -168,6 +260,120 @@ class DataService {
     localStorage.setItem('recovery_contacts', JSON.stringify(this.contacts));
   }
 
+  // ── Two-Way Cloud Synchronization with Supabase ───────────────────────────
+  public async syncWithCloud(): Promise<void> {
+    try {
+      // 1. Sync Cases from Supabase
+      const { data: cloudCases, error: casesErr } = await supabase.from('cases').select('*');
+      if (!casesErr && Array.isArray(cloudCases)) {
+        if (cloudCases.length > 0) {
+          const map = new Map<string, CaseFile>();
+          // Cloud records
+          cloudCases.forEach(row => {
+            const parsed = mapCaseFromDb(row);
+            map.set(parsed.file_number, parsed);
+          });
+          // Merge local cases that might not have pushed yet
+          this.cases.forEach(localC => {
+            if (!map.has(localC.file_number)) {
+              map.set(localC.file_number, localC);
+            }
+          });
+          const merged = Array.from(map.values());
+          if (merged.length !== this.cases.length || JSON.stringify(merged) !== JSON.stringify(this.cases)) {
+            this.cases = merged;
+            this.saveState();
+            this.notifySubscribers();
+          }
+        } else if (this.cases.length > 0) {
+          // If cloud is empty but local has cases (e.g. newly uploaded device), push to cloud
+          this.pushCasesToCloud(this.cases);
+        }
+      }
+
+      // 2. Sync Remarks from Supabase
+      const { data: cloudRemarks, error: remErr } = await supabase.from('case_remarks').select('*');
+      if (!remErr && Array.isArray(cloudRemarks) && cloudRemarks.length > 0) {
+        this.remarks = cloudRemarks.map((r: any) => ({
+          id: Number(r.id),
+          case_file_id: Number(r.case_file_id || r.case_id),
+          user_id: Number(r.user_id),
+          contact_status: r.contact_status || 'contacted',
+          promised_amount: r.promised_amount ? Number(r.promised_amount) : undefined,
+          promise_date: r.promise_date || undefined,
+          remarks: r.remarks || '',
+          created_at: r.created_at || new Date().toISOString()
+        }));
+        this.saveState();
+      }
+
+      // 3. Sync CheckIns from Supabase
+      const { data: cloudCheckins, error: ciErr } = await supabase.from('check_ins').select('*');
+      if (!ciErr && Array.isArray(cloudCheckins) && cloudCheckins.length > 0) {
+        this.checkIns = cloudCheckins.map((ci: any) => ({
+          id: Number(ci.id),
+          case_file_id: Number(ci.case_file_id || ci.case_id),
+          agent_id: Number(ci.agent_id),
+          address_type: ci.address_type || 'present',
+          latitude: Number(ci.latitude),
+          longitude: Number(ci.longitude),
+          accuracy: ci.accuracy ? Number(ci.accuracy) : undefined,
+          notes: ci.notes || '',
+          visited_at: ci.visited_at || new Date().toISOString()
+        }));
+        this.saveState();
+      }
+
+      // 4. Sync Collections from Supabase
+      const { data: cloudCols, error: colErr } = await supabase.from('collections').select('*');
+      if (!colErr && Array.isArray(cloudCols) && cloudCols.length > 0) {
+        this.collections = cloudCols.map((col: any) => ({
+          id: Number(col.id),
+          case_file_id: Number(col.case_file_id || col.case_id),
+          agent_id: Number(col.agent_id),
+          amount: Number(col.amount),
+          payment_method: col.payment_method || 'cash',
+          receipt_number: col.receipt_number || '',
+          collected_at: col.collected_at || new Date().toISOString()
+        }));
+        this.saveState();
+      }
+
+      // 5. Sync Contacts from Supabase
+      const { data: cloudContacts, error: conErr } = await supabase.from('bank_contacts').select('*');
+      if (!conErr && Array.isArray(cloudContacts) && cloudContacts.length > 0) {
+        this.contacts = cloudContacts.map((c: any) => ({
+          id: Number(c.id),
+          bank_id: Number(c.bank_id),
+          name: c.name || '',
+          designation: c.designation || '',
+          department: c.department || '',
+          phone: c.phone || '',
+          email: c.email || '',
+          branch: c.branch || '',
+          notes: c.notes || '',
+          created_at: c.created_at || new Date().toISOString()
+        }));
+        this.saveState();
+      }
+    } catch (err) {
+      console.warn('Cloud sync error:', err);
+    }
+  }
+
+  public async pushCasesToCloud(caseList: CaseFile[]): Promise<void> {
+    if (!caseList || caseList.length === 0) return;
+    try {
+      const dbRows = caseList.map(c => mapCaseToDb(c));
+      for (let i = 0; i < dbRows.length; i += 50) {
+        const chunk = dbRows.slice(i, i + 50);
+        await supabase.from('cases').upsert(chunk, { onConflict: 'file_number' });
+      }
+    } catch (err) {
+      console.warn('Pushing cases to cloud note:', err);
+    }
+  }
+
   public getBanks(): Bank[] {
     return INITIAL_BANKS;
   }
@@ -190,6 +396,10 @@ class DataService {
     };
     this.contacts.unshift(newContact);
     this.saveState();
+    this.notifySubscribers();
+    try {
+      supabase.from('bank_contacts').insert([newContact]).then(() => {});
+    } catch (_) {}
     return newContact;
   }
 
@@ -198,12 +408,20 @@ class DataService {
     if (existing) {
       Object.assign(existing, contact);
       this.saveState();
+      this.notifySubscribers();
+      try {
+        supabase.from('bank_contacts').update(contact).eq('id', id).then(() => {});
+      } catch (_) {}
     }
   }
 
   public deleteContact(id: number) {
     this.contacts = this.contacts.filter(c => c.id !== id);
     this.saveState();
+    this.notifySubscribers();
+    try {
+      supabase.from('bank_contacts').delete().eq('id', id).then(() => {});
+    } catch (_) {}
   }
 
   public getCases(user: User): CaseFile[] {
@@ -229,6 +447,10 @@ class DataService {
       item.assigned_agent_id = agentId;
       item.status = 'in_progress';
       this.saveState();
+      this.notifySubscribers();
+      try {
+        supabase.from('cases').update({ assigned_agent_id: agentId, status: 'in_progress' }).eq('id', caseId).then(() => {});
+      } catch (_) {}
     }
   }
 
@@ -247,6 +469,17 @@ class DataService {
     }
 
     this.saveState();
+    this.notifySubscribers();
+    try {
+      supabase.from('check_ins').insert([newCi]).then(() => {});
+      if (item) {
+        supabase.from('cases').update({
+          present_address_visited: item.present_address_visited,
+          permanent_address_visited: item.permanent_address_visited,
+          status: 'visited'
+        }).eq('id', item.id).then(() => {});
+      }
+    } catch (_) {}
     return newCi;
   }
 
@@ -267,6 +500,10 @@ class DataService {
     }
 
     this.saveState();
+    this.notifySubscribers();
+    try {
+      supabase.from('case_remarks').insert([newR]).then(() => {});
+    } catch (_) {}
     return newR;
   }
 
@@ -290,6 +527,16 @@ class DataService {
     }
 
     this.saveState();
+    this.notifySubscribers();
+    try {
+      supabase.from('collections').insert([newCol]).then(() => {});
+      if (item) {
+        supabase.from('cases').update({
+          total_collected_amount: item.total_collected_amount,
+          status: item.status
+        }).eq('id', item.id).then(() => {});
+      }
+    } catch (_) {}
     return newCol;
   }
 
@@ -335,14 +582,15 @@ class DataService {
         const latestPtp = caseRemarks[0];
         if (latestPtp.promise_date && latestPtp.promise_date < todayStr) {
           const ptpDate = new Date(latestPtp.promise_date);
-          const diffDays = Math.max(1, Math.floor((todayDate.getTime() - ptpDate.getTime()) / (1000 * 3600 * 24)));
+          const daysOverdue = Math.max(1, Math.floor((todayDate.getTime() - ptpDate.getTime()) / (1000 * 60 * 60 * 24)));
+
           results.push({
             caseItem: c,
             remark: latestPtp,
             promisedAmount: latestPtp.promised_amount || c.overdue_amount,
             promiseDate: latestPtp.promise_date,
             isOverdue: true,
-            daysDiff: diffDays
+            daysDiff: daysOverdue
           });
         }
       }
@@ -353,30 +601,30 @@ class DataService {
   public getDashboardMetrics(user: User) {
     const cases = this.getCases(user);
     const totalFiles = cases.length;
-    const activeFiles = cases.filter(c => !['settled', 'closed'].includes(c.status)).length;
+    const activeFiles = cases.filter(c => ['new', 'in_progress', 'visited'].includes(c.status)).length;
+    const settled = cases.filter(c => c.status === 'settled').length;
     
     const now = new Date();
-    const sevenDaysLater = new Date(now.getTime() + 7 * 86400000);
+    const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
     
     const expiringSoon = cases.filter(c => {
       if (!c.expiry_date || ['settled', 'closed'].includes(c.status)) return false;
       const exp = new Date(c.expiry_date);
-      return exp >= now && exp <= sevenDaysLater;
+      return exp >= now && exp <= thirtyDaysFromNow;
     }).length;
 
     const expired = cases.filter(c => {
       if (!c.expiry_date || ['settled', 'closed'].includes(c.status)) return false;
-      return new Date(c.expiry_date) < now;
+      const exp = new Date(c.expiry_date);
+      return exp < now;
     }).length;
 
-    const settled = cases.filter(c => c.status === 'settled').length;
     const totalOutstanding = cases.reduce((acc, c) => acc + (c.outstanding_amount || 0), 0);
     const totalCollected = cases.reduce((acc, c) => acc + (c.total_collected_amount || 0), 0);
 
     const todayPtps = this.getTodayPtpAlerts(user);
     const missedPtps = this.getMissedPaymentAlerts(user);
 
-    // Bank breakdown
     const bankBreakdown: Record<string, { count: number; outstanding: number }> = {};
     cases.forEach(c => {
       const bankName = c.bank?.name || 'Other';
@@ -414,20 +662,39 @@ class DataService {
   }
 
   public deleteCase(id: number) {
+    const toDelete = this.cases.find(c => c.id === id);
+    const fileNum = toDelete?.file_number;
+
     this.cases = this.cases.filter(c => c.id !== id);
     this.remarks = this.remarks.filter(r => r.case_file_id !== id);
     this.checkIns = this.checkIns.filter(ci => ci.case_file_id !== id);
     this.collections = this.collections.filter(col => col.case_file_id !== id);
     this.saveState();
+    this.notifySubscribers();
+
+    if (fileNum) {
+      try {
+        supabase.from('cases').delete().eq('file_number', fileNum).then(() => {});
+      } catch (_) {}
+    }
   }
 
   public deleteCases(ids: number[]) {
     const idSet = new Set(ids);
+    const fileNumbers = this.cases.filter(c => idSet.has(c.id)).map(c => c.file_number);
+
     this.cases = this.cases.filter(c => !idSet.has(c.id));
     this.remarks = this.remarks.filter(r => !idSet.has(r.case_file_id));
     this.checkIns = this.checkIns.filter(ci => !idSet.has(ci.case_file_id));
     this.collections = this.collections.filter(col => !idSet.has(col.case_file_id));
     this.saveState();
+    this.notifySubscribers();
+
+    if (fileNumbers.length > 0) {
+      try {
+        supabase.from('cases').delete().in('file_number', fileNumbers).then(() => {});
+      } catch (_) {}
+    }
   }
 
   // Detect agents mentioned in uploaded files whose user accounts are not created yet
@@ -481,6 +748,8 @@ class DataService {
       if (saved) registeredUsers = JSON.parse(saved);
     } catch (_) {}
 
+    const casesToSync: CaseFile[] = [];
+
     newCases.forEach(item => {
       const existing = this.cases.find(c => c.file_number === item.file_number);
       const agentName = item.agent_name || item.extra_attributes?.['AGENT_NAME'] || item.extra_attributes?.['AGENT'] || '';
@@ -501,8 +770,9 @@ class DataService {
           assigned_agent_id: matchedAgentId || existing.assigned_agent_id,
           updated_at: new Date().toISOString() 
         });
+        casesToSync.push(existing);
       } else {
-        const fullCase: CaseFile = {
+        const fullCase: CaseFile = enrichCase({
           id: Date.now() + Math.floor(Math.random() * 10000),
           file_number: item.file_number || `FILE-${Date.now()}`,
           bank_id: item.bank_id || 1,
@@ -525,12 +795,19 @@ class DataService {
           allocation_date: item.allocation_date || new Date().toISOString().split('T')[0],
           expiry_date: item.expiry_date || new Date(Date.now() + 60 * 86400000).toISOString().split('T')[0],
           extra_attributes: item.extra_attributes || {}
-        };
+        });
         this.cases.push(fullCase);
+        casesToSync.push(fullCase);
       }
       imported++;
     });
+
     this.saveState();
+    this.notifySubscribers();
+
+    // Asynchronously push all imported cases to Supabase Cloud
+    this.pushCasesToCloud(casesToSync);
+
     return imported;
   }
 
@@ -540,11 +817,23 @@ class DataService {
     this.checkIns = [];
     this.collections = [];
     this.saveState();
+    this.notifySubscribers();
+
+    try {
+      supabase.from('cases').delete().neq('id', 0).then(() => {});
+      supabase.from('case_remarks').delete().neq('id', 0).then(() => {});
+      supabase.from('check_ins').delete().neq('id', 0).then(() => {});
+      supabase.from('collections').delete().neq('id', 0).then(() => {});
+    } catch (_) {}
   }
 
   public clearAllContacts() {
     this.contacts = [];
     this.saveState();
+    this.notifySubscribers();
+    try {
+      supabase.from('bank_contacts').delete().neq('id', 0).then(() => {});
+    } catch (_) {}
   }
 }
 

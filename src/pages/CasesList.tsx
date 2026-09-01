@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { usePermissions } from "../context/PermissionsContext";
 import { useLanguage } from "../context/LanguageContext";
@@ -34,9 +34,17 @@ export const CasesList: React.FC<CasesListProps> = ({ onSelectCase, searchQuery 
   const [localSearch, setLocalSearch] = useState<string>("" );
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [dataVersion, setDataVersion] = useState(0);
+
+  useEffect(() => {
+    const unsub = dataService.subscribe(() => {
+      setDataVersion(v => v + 1);
+    });
+    return unsub;
+  }, []);
 
   const banks = dataService.getBanks();
-  const allCases = useMemo(() => user ? dataService.getCases(user) : [], [user]);
+  const allCases = useMemo(() => user ? dataService.getCases(user) : [], [user, dataVersion]);
 
   const filteredCases = useMemo(() => {
     const q = (searchQuery || localSearch).toLowerCase().trim();

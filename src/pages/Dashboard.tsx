@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { dataService, PtpAlertItem } from '../services/dataService';
@@ -44,6 +44,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectCase, onNavigate }
       setMetrics(dataService.getDashboardMetrics(user));
       setCases(dataService.getCases(user));
     }
+    const unsub = dataService.subscribe(() => {
+      if (user) {
+        setMetrics(dataService.getDashboardMetrics(user));
+        setCases(dataService.getCases(user));
+      }
+    });
+    return unsub;
   }, [user]);
 
   if (!metrics) return <div className="p-8 text-center text-slate-500">Loading dashboard metrics...</div>;

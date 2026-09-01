@@ -4,6 +4,7 @@ import { useLanguage } from "../context/LanguageContext";
 import { TemplateService, PREBUILT_TEMPLATES, TemplateDefinition } from "../services/templateService";
 import { ExcelImporter, InspectResult, PreviewResult, formatExcelDate } from "../services/excelImporter";
 import { dataService } from "../services/dataService";
+import { supabase } from "../lib/supabase";
 import { 
   FileSpreadsheet, 
   Download, 
@@ -294,7 +295,6 @@ export const ExcelImporterPage: React.FC = () => {
 
     // ☁️ Delete from Supabase cloud
     try {
-      const { supabase } = await import("../lib/supabase");
       await supabase.from("file_templates").delete().eq("template_key", key);
     } catch (_) {}
 

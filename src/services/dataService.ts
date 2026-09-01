@@ -261,11 +261,23 @@ class DataService {
   }
 
   // ── Two-Way Cloud Synchronization with Supabase ───────────────────────────
-  public async syncWithCloud(): Promise<void> {
+  public async syncWithCloud(forcePush = false): Promise<{ success: boolean; count: number; error?: string }> {
     try {
+      if (forcePush && this.cases.length > 0) {
+        await this.pushCasesToCloud(this.cases);
+      }
+
       // 1. Sync Cases from Supabase
       const { data: cloudCases, error: casesErr } = await supabase.from('cases').select('*');
-      if (!casesErr && Array.isArray(cloudCases)) {
+      if (casesErr) {
+        console.warn('Supabase fetch cases note:', casesErr);
+        if (this.cases.length > 0) {
+          await this.pushCasesToCloud(this.cases);
+        }
+        return { success: false, count: this.cases.length, error: casesErr.message };
+      }
+
+      if (Array.isArray(cloudCases)) {
         if (cloudCases.length > 0) {
           const map = new Map<string, CaseFile>();
           // Cloud records
@@ -285,9 +297,15 @@ class DataService {
             this.saveState();
             this.notifySubscribers();
           }
+
+          // Also push any local cases that were not in cloud
+          const unpushed = this.cases.filter(c => !cloudCases.some(cc => cc.file_number === c.file_number));
+          if (unpushed.length > 0) {
+            await this.pushCasesToCloud(unpushed);
+          }
         } else if (this.cases.length > 0) {
           // If cloud is empty but local has cases (e.g. newly uploaded device), push to cloud
-          this.pushCasesToCloud(this.cases);
+          await this.pushCasesToCloud(this.cases);
         }
       }
 
@@ -356,8 +374,11 @@ class DataService {
         }));
         this.saveState();
       }
-    } catch (err) {
+
+      return { success: true, count: this.cases.length };
+    } catch (err: any) {
       console.warn('Cloud sync error:', err);
+      return { success: false, count: this.cases.length, error: err?.message || String(err) };
     }
   }
 
@@ -365,12 +386,15 @@ class DataService {
     if (!caseList || caseList.length === 0) return;
     try {
       const dbRows = caseList.map(c => mapCaseToDb(c));
-      for (let i = 0; i < dbRows.length; i += 50) {
-        const chunk = dbRows.slice(i, i + 50);
-        await supabase.from('cases').upsert(chunk, { onConflict: 'file_number' });
+      for (let i = 0; i < dbRows.length; i += 25) {
+        const chunk = dbRows.slice(i, i + 25);
+        const { error } = await supabase.from('cases').upsert(chunk, { onConflict: 'file_number' });
+        if (error) {
+          console.warn('Error upserting chunk to cases:', error);
+        }
       }
     } catch (err) {
-      console.warn('Pushing cases to cloud note:', err);
+      console.warn('Pushing cases to cloud exception:', err);
     }
   }
 

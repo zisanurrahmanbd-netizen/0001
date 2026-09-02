@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase';
 import { Bank, Product, CaseFile, CheckIn, Collection, CaseRemark, BankContact, User } from '../types';
 import { PREBUILT_TEMPLATES } from './templateService';
+import { loadGSheetSettings, pushUpdateToSheet } from './googleSheetsSync';
 
 export const INITIAL_BANKS: Bank[] = [
   { id: 1, name: 'One Bank Limited', code: 'ONE', is_active: true },
@@ -833,6 +834,8 @@ class DataService {
       item.updated_at = new Date().toISOString();
       this.saveState();
       this.notifySubscribers();
+
+      // ── Sync back to Supabase ───────────────────────────────────
       try {
         const dbPayload: any = {
           customer_phone: item.customer_phone,
@@ -843,6 +846,24 @@ class DataService {
           updated_at: item.updated_at
         };
         supabase.from('cases').update(dbPayload).eq('id', caseId).then(() => {});
+      } catch (_) {}
+
+      // ── Sync back to Google Sheet via Apps Script doPost ─────────
+      try {
+        const settings = loadGSheetSettings();
+        if (settings.scriptUrl && item.file_number) {
+          const sheetUpdates: Record<string, string> = {};
+          if (updates.customer_phone !== undefined)             sheetUpdates['CUSTOMER_PHONE']    = item.customer_phone || '';
+          if (updates.customer_secondary_phone !== undefined)   sheetUpdates['REF_PHONE']         = item.customer_secondary_phone || '';
+          if (updates.customer_address_present !== undefined)   sheetUpdates['PRESENT_ADDRESS']   = item.customer_address_present || '';
+          if (updates.customer_address_permanent !== undefined) sheetUpdates['PERMANENT_ADDRESS'] = item.customer_address_permanent || '';
+          if (item.extra_attributes?.EMP_OFFICE_NAME !== undefined)   sheetUpdates['EMP_OFFICE_NAME']   = String(item.extra_attributes.EMP_OFFICE_NAME || '');
+          if (item.extra_attributes?.POSITION !== undefined)          sheetUpdates['POSITION']          = String(item.extra_attributes.POSITION || '');
+          if (item.extra_attributes?.EMP_OFFICE_ADDRESS !== undefined) sheetUpdates['EMP_OFFICE_ADDRESS'] = String(item.extra_attributes.EMP_OFFICE_ADDRESS || '');
+          if (Object.keys(sheetUpdates).length > 0) {
+            pushUpdateToSheet(settings.scriptUrl, item.file_number, sheetUpdates).catch(() => {});
+          }
+        }
       } catch (_) {}
     }
   }

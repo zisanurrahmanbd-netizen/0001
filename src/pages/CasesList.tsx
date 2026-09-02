@@ -111,6 +111,19 @@ export const CasesList: React.FC<CasesListProps> = ({ onSelectCase, searchQuery 
     return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
   }, [allCases]);
 
+  // Extract all unique FILE_STATUS values from actual data (SMA, SS, DF, BL, Write-off, etc.)
+  const allStatuses = useMemo(() => {
+    const map = new Map<string, number>();
+    allCases.forEach(c => {
+      const st = c.status || c.extra_attributes?.FILE_STATUS;
+      if (st && String(st).trim() && String(st).trim().toUpperCase() !== 'N/A') {
+        const clean = String(st).trim();
+        map.set(clean, (map.get(clean) || 0) + 1);
+      }
+    });
+    return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+  }, [allCases]);
+
   // Extract all unique agents with case counts
   const allAgents = useMemo(() => {
     const map = new Map<string, number>();
@@ -156,8 +169,11 @@ export const CasesList: React.FC<CasesListProps> = ({ onSelectCase, searchQuery 
         if (ft !== fileTypeFilter.trim().toLowerCase()) return false;
       }
 
-      // Status filter
-      if (statusFilter !== "all" && c.status !== statusFilter) return false;
+      // Status filter — match raw FILE_STATUS value (SMA, SS, DF, BL, Write-off, etc.)
+      if (statusFilter !== "all") {
+        const rawStatus = String(c.status || c.extra_attributes?.FILE_STATUS || '').trim().toLowerCase();
+        if (rawStatus !== statusFilter.trim().toLowerCase()) return false;
+      }
 
       // Agent filter
       if (agentFilter === "unassigned") {
@@ -419,18 +435,7 @@ export const CasesList: React.FC<CasesListProps> = ({ onSelectCase, searchQuery 
     doc.save(`Recovery_Cases_${new Date().toISOString().split("T")[0]}.pdf`);
   };
 
-  const statuses = [
 
-    { id: "all", label: "All Statuses" },
-    { id: "new", label: "New" },
-    { id: "in_progress", label: "In Progress" },
-    { id: "visited", label: "Visited" },
-    { id: "broken_promise", label: "Broken Promise" },
-    { id: "disputed", label: "Disputed" },
-    { id: "legal", label: "Legal" },
-    { id: "untraceable", label: "Untraceable" },
-    { id: "settled", label: "Settled" },
-  ];
 
   return (
     <div className="space-y-6">
@@ -568,7 +573,10 @@ export const CasesList: React.FC<CasesListProps> = ({ onSelectCase, searchQuery 
               onChange={(e) => setStatusFilter(e.target.value)}
               className="w-full px-3 py-2 text-xs rounded-xl bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500/40"
             >
-              {statuses.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+              <option value="all">All File Statuses ({allCases.length})</option>
+              {allStatuses.map(([status, count]) => (
+                <option key={status} value={status}>{status} ({count})</option>
+              ))}
             </select>
           </div>
 

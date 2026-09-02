@@ -105,12 +105,41 @@ function parseValue(field: string, raw: any): any {
     return str;
   }
   if (field === 'status') {
-    // Normalise status values
-    const lower = str.toLowerCase().replace(/[\s-]/g, '_');
-    const valid = ['new', 'in_progress', 'visited', 'broken_promise', 'disputed', 'legal', 'untraceable', 'settled', 'closed'];
-    return valid.includes(lower) ? lower : 'new';
+    // Keep raw FILE_STATUS value as-is (SMA, SS, DF, BL, Write-off, etc.)
+    // Do NOT normalize - just return the original value
+    return str;
+  }
+  if (field === 'dpd') {
+    const n = parseInt(str.replace(/[^0-9]/g, ''), 10);
+    return isNaN(n) ? str : n;
   }
   return str;
+}
+
+// ── Push a single row update back to Google Sheet via Apps Script ──────
+export async function pushUpdateToSheet(
+  scriptUrl: string,
+  fileNumber: string,
+  updates: Record<string, string>
+): Promise<{ ok: boolean; message?: string }> {
+  if (!scriptUrl || !fileNumber) return { ok: false, message: 'No script URL or file number' };
+  try {
+    const res = await fetch(scriptUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({
+        action: 'update',
+        fileNumber,
+        updates,
+      }),
+    });
+    const text = await res.text();
+    let json: any = {};
+    try { json = JSON.parse(text); } catch (_) { json = { status: 'ok' }; }
+    return { ok: json.status !== 'error', message: json.message };
+  } catch (e: any) {
+    return { ok: false, message: e?.message || 'Network error' };
+  }
 }
 
 // ── Fetch rows from Apps Script and map to CaseFile-like objects ──────

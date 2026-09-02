@@ -24,10 +24,13 @@ export const StatusBadge: React.FC<{ status: CaseStatus | string }> = ({ status 
     std: { bg: 'bg-emerald-500/10 dark:bg-emerald-950/60', text: 'text-emerald-600 dark:text-emerald-400 font-bold', border: 'border-emerald-500/30', label: 'STD (Standard)' },
     uc: { bg: 'bg-blue-500/10 dark:bg-blue-950/60', text: 'text-blue-600 dark:text-blue-400 font-bold', border: 'border-blue-500/30', label: 'UC' },
     npl: { bg: 'bg-red-600/15 dark:bg-red-950/80', text: 'text-red-600 dark:text-red-300 font-black', border: 'border-red-500/40', label: 'NPL' },
+    'write-off': { bg: 'bg-zinc-700/10 dark:bg-zinc-900/80', text: 'text-zinc-600 dark:text-zinc-300 font-black', border: 'border-zinc-500/40', label: 'Write-off' },
+    'write_off':  { bg: 'bg-zinc-700/10 dark:bg-zinc-900/80', text: 'text-zinc-600 dark:text-zinc-300 font-black', border: 'border-zinc-500/40', label: 'Write-off' },
+    writeoff:     { bg: 'bg-zinc-700/10 dark:bg-zinc-900/80', text: 'text-zinc-600 dark:text-zinc-300 font-black', border: 'border-zinc-500/40', label: 'Write-off' },
   };
 
-  const statusKey = String(status || '').toLowerCase().trim();
-  const c = configs[statusKey] || { bg: 'bg-slate-100 dark:bg-slate-800', text: 'text-slate-700 dark:text-slate-300 font-bold', border: 'border-slate-300 dark:border-slate-700', label: String(status) };
+  const statusKey = String(status || '').toLowerCase().trim().replace(/\s+/g, '-');
+  const c = configs[statusKey] || { bg: 'bg-slate-100 dark:bg-slate-800', text: 'text-slate-700 dark:text-slate-300 font-bold', border: 'border-slate-300 dark:border-slate-700', label: String(status || '—') };
 
   return (
     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border shadow-2xs ${c.bg} ${c.text} ${c.border}`}>

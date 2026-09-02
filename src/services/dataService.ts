@@ -820,6 +820,33 @@ class DataService {
     }
   }
 
+  public updateCase(caseId: number, updates: Partial<CaseFile>) {
+    const item = this.cases.find(c => c.id === caseId);
+    if (item) {
+      Object.assign(item, updates);
+      if (updates.extra_attributes) {
+        item.extra_attributes = {
+          ...(item.extra_attributes || {}),
+          ...updates.extra_attributes
+        };
+      }
+      item.updated_at = new Date().toISOString();
+      this.saveState();
+      this.notifySubscribers();
+      try {
+        const dbPayload: any = {
+          customer_phone: item.customer_phone,
+          customer_secondary_phone: item.customer_secondary_phone,
+          customer_address_present: item.customer_address_present,
+          customer_address_permanent: item.customer_address_permanent,
+          extra_attributes: item.extra_attributes,
+          updated_at: item.updated_at
+        };
+        supabase.from('cases').update(dbPayload).eq('id', caseId).then(() => {});
+      } catch (_) {}
+    }
+  }
+
   public addCheckIn(checkIn: Omit<CheckIn, 'id'>): CheckIn {
     const newCi: CheckIn = {
       ...checkIn,

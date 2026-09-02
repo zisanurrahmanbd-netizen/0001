@@ -10,7 +10,7 @@ import {
   ArrowLeft, MapPin, Phone, Coins, Calendar, Clock, 
   MessageSquare, Receipt, Navigation, UserCheck, Building2,
   ExternalLink, CheckCircle2, Compass, CreditCard, FileSpreadsheet,
-  User as UserIcon, ShieldCheck
+  User as UserIcon, ShieldCheck, Edit3, Briefcase
 } from 'lucide-react';
 
 export const CaseDetail: React.FC<{ caseId: number; onBack: () => void }> = ({ caseId, onBack }) => {
@@ -26,6 +26,16 @@ export const CaseDetail: React.FC<{ caseId: number; onBack: () => void }> = ({ c
   const [showCol, setShowCol] = useState(false);
   const [showRem, setShowRem] = useState(false);
   const [showReassign, setShowReassign] = useState(false);
+  const [showEditCustomer, setShowEditCustomer] = useState(false);
+
+  // Customer & Employment Edit form fields
+  const [editPhone, setEditPhone] = useState('');
+  const [editRefPhone, setEditRefPhone] = useState('');
+  const [editPresentAddress, setEditPresentAddress] = useState('');
+  const [editPermanentAddress, setEditPermanentAddress] = useState('');
+  const [editEmpOfficeName, setEditEmpOfficeName] = useState('');
+  const [editPosition, setEditPosition] = useState('');
+  const [editEmpOfficeAddress, setEditEmpOfficeAddress] = useState('');
 
   const [addrType, setAddrType] = useState<'present' | 'permanent'>('present');
   const [checkNotes, setCheckNotes] = useState('');
@@ -144,6 +154,38 @@ export const CaseDetail: React.FC<{ caseId: number; onBack: () => void }> = ({ c
     reload();
   };
 
+  const handleOpenEditCustomer = () => {
+    if (!caseItem) return;
+    setEditPhone(caseItem.customer_phone || '');
+    setEditRefPhone(caseItem.customer_secondary_phone || String(caseItem.extra_attributes?.REF_PHONE || caseItem.extra_attributes?.ref_phone || ''));
+    setEditPresentAddress(caseItem.customer_address_present || '');
+    setEditPermanentAddress(caseItem.customer_address_permanent || '');
+    setEditEmpOfficeName(String(caseItem.extra_attributes?.EMP_OFFICE_NAME || caseItem.extra_attributes?.emp_office_name || ''));
+    setEditPosition(String(caseItem.extra_attributes?.POSITION || caseItem.extra_attributes?.position || ''));
+    setEditEmpOfficeAddress(String(caseItem.extra_attributes?.EMP_OFFICE_ADDRESS || caseItem.extra_attributes?.emp_office_address || ''));
+    setShowEditCustomer(true);
+  };
+
+  const handleSaveCustomer = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!caseItem) return;
+    dataService.updateCase(caseItem.id, {
+      customer_phone: editPhone.trim(),
+      customer_secondary_phone: editRefPhone.trim(),
+      customer_address_present: editPresentAddress.trim(),
+      customer_address_permanent: editPermanentAddress.trim(),
+      extra_attributes: {
+        ...(caseItem.extra_attributes || {}),
+        EMP_OFFICE_NAME: editEmpOfficeName.trim(),
+        POSITION: editPosition.trim(),
+        EMP_OFFICE_ADDRESS: editEmpOfficeAddress.trim(),
+        REF_PHONE: editRefPhone.trim(),
+      }
+    });
+    setShowEditCustomer(false);
+    reload();
+  };
+
   const agents = users.filter(u => u.role === 'agent');
 
   return (
@@ -154,6 +196,14 @@ export const CaseDetail: React.FC<{ caseId: number; onBack: () => void }> = ({ c
         </button>
 
         <div className="flex flex-wrap items-center gap-2">
+          <button 
+            onClick={handleOpenEditCustomer} 
+            className="px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-amber-600/30 transition-all"
+            title="Edit mobile numbers, addresses, and employer workplace details"
+          >
+            <Edit3 className="w-3.5 h-3.5" />
+            <span>Edit Customer & Workplace</span>
+          </button>
           {can('gps_checkin') && (
             <button onClick={handleStartCheckIn} className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-purple-600/30 transition-all">
               <Navigation className="w-3.5 h-3.5" /> {t('detail.gps_checkin', 'GPS Visit Check-In')}
@@ -198,7 +248,16 @@ export const CaseDetail: React.FC<{ caseId: number; onBack: () => void }> = ({ c
                     </span>
                   )}
                 </div>
-                <h2 className="text-xl font-black text-slate-900 dark:text-white mt-0.5">{caseItem.customer_name}</h2>
+                <div className="flex items-center gap-3 mt-0.5">
+                  <h2 className="text-xl font-black text-slate-900 dark:text-white">{caseItem.customer_name}</h2>
+                  <button 
+                    onClick={handleOpenEditCustomer} 
+                    className="text-xs font-bold text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-1 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded-lg"
+                  >
+                    <Edit3 className="w-3 h-3" />
+                    <span>Edit</span>
+                  </button>
+                </div>
               </div>
               <StatusBadge status={caseItem.status} />
             </div>
@@ -294,6 +353,57 @@ export const CaseDetail: React.FC<{ caseId: number; onBack: () => void }> = ({ c
               </div>
             )}
           </div>
+
+          {/* 🏢 WORKPLACE & EMPLOYMENT INFORMATION CARD */}
+          {(caseItem.extra_attributes?.EMP_OFFICE_NAME || caseItem.extra_attributes?.POSITION || caseItem.extra_attributes?.EMP_OFFICE_ADDRESS || caseItem.customer_secondary_phone || caseItem.extra_attributes?.REF_PHONE) && (
+            <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
+              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2.5">
+                <h3 className="text-sm font-extrabold flex items-center gap-2 text-slate-900 dark:text-white">
+                  <Briefcase className="w-4 h-4 text-amber-500" />
+                  <span>Workplace & Employment Info</span>
+                </h3>
+                <button
+                  onClick={handleOpenEditCustomer}
+                  className="text-xs font-bold text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-1 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded-lg"
+                >
+                  <Edit3 className="w-3 h-3" />
+                  <span>Edit</span>
+                </button>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                {(caseItem.extra_attributes?.EMP_OFFICE_NAME) && (
+                  <div className="p-3 bg-amber-500/5 border border-amber-500/20 rounded-2xl">
+                    <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase block mb-0.5">Company / Employer</span>
+                    <span className="font-bold text-slate-800 dark:text-slate-200 block">{String(caseItem.extra_attributes.EMP_OFFICE_NAME)}</span>
+                  </div>
+                )}
+                {(caseItem.extra_attributes?.POSITION) && (
+                  <div className="p-3 bg-amber-500/5 border border-amber-500/20 rounded-2xl">
+                    <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase block mb-0.5">Job Position / Designation</span>
+                    <span className="font-bold text-slate-800 dark:text-slate-200 block">{String(caseItem.extra_attributes.POSITION)}</span>
+                  </div>
+                )}
+                {(caseItem.extra_attributes?.REF_PHONE || caseItem.customer_secondary_phone) && (
+                  <div className="p-3 bg-amber-500/5 border border-amber-500/20 rounded-2xl">
+                    <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase block mb-0.5">Reference Phone</span>
+                    <a 
+                      href={`tel:${caseItem.extra_attributes?.REF_PHONE || caseItem.customer_secondary_phone}`}
+                      className="font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1"
+                    >
+                      <Phone className="w-3 h-3" />
+                      <span>{String(caseItem.extra_attributes?.REF_PHONE || caseItem.customer_secondary_phone)}</span>
+                    </a>
+                  </div>
+                )}
+                {(caseItem.extra_attributes?.EMP_OFFICE_ADDRESS) && (
+                  <div className="p-3 bg-amber-500/5 border border-amber-500/20 rounded-2xl sm:col-span-3">
+                    <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase block mb-0.5">Employer / Office Address</span>
+                    <span className="font-bold text-slate-800 dark:text-slate-200 block">{String(caseItem.extra_attributes.EMP_OFFICE_ADDRESS)}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* VERIFIED GPS PINPOINT VISIT RECORDS & EMBEDDED MAP */}
           <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-4 shadow-sm">
@@ -601,6 +711,140 @@ export const CaseDetail: React.FC<{ caseId: number; onBack: () => void }> = ({ c
             <div className="flex justify-end gap-2 pt-2">
               <button type="button" onClick={() => setShowReassign(false)} className="px-3.5 py-2 bg-slate-100 dark:bg-slate-800 rounded-xl font-bold">{t('detail.cancel', 'Cancel')}</button>
               <button type="submit" className="px-3.5 py-2 bg-emerald-600 text-white rounded-xl font-bold">{t('detail.save_reassign', 'Save Assignment')}</button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Edit Customer & Workplace Info Modal */}
+      {showEditCustomer && (
+        <div className="fixed inset-0 z-[100] w-screen h-screen flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
+          <form
+            onSubmit={handleSaveCustomer}
+            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-3xl max-w-lg w-full space-y-4 text-xs shadow-2xl max-h-[90vh] overflow-y-auto"
+          >
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <h3 className="font-extrabold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                <Edit3 className="w-4 h-4 text-amber-500" />
+                Edit Customer & Workplace Info
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowEditCustomer(false)}
+                className="text-slate-400 hover:text-slate-700 dark:hover:text-white text-lg font-bold"
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Contact Numbers */}
+            <div>
+              <p className="text-[11px] font-extrabold text-slate-500 uppercase tracking-widest mb-2">📱 Contact Numbers</p>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1">Primary Mobile</label>
+                  <input
+                    type="tel"
+                    value={editPhone}
+                    onChange={e => setEditPhone(e.target.value)}
+                    placeholder="01XXXXXXXXX"
+                    className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl font-bold focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1">Reference Phone</label>
+                  <input
+                    type="tel"
+                    value={editRefPhone}
+                    onChange={e => setEditRefPhone(e.target.value)}
+                    placeholder="Ref / Alt number"
+                    className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl font-bold focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Addresses */}
+            <div>
+              <p className="text-[11px] font-extrabold text-slate-500 uppercase tracking-widest mb-2">📍 Addresses</p>
+              <div className="space-y-2">
+                <div>
+                  <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1">Present Residence Address</label>
+                  <textarea
+                    rows={2}
+                    value={editPresentAddress}
+                    onChange={e => setEditPresentAddress(e.target.value)}
+                    placeholder="Current residential address..."
+                    className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1">Permanent Origin Address</label>
+                  <textarea
+                    rows={2}
+                    value={editPermanentAddress}
+                    onChange={e => setEditPermanentAddress(e.target.value)}
+                    placeholder="Permanent / village address..."
+                    className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-purple-500/40"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Employment */}
+            <div>
+              <p className="text-[11px] font-extrabold text-slate-500 uppercase tracking-widest mb-2">🏢 Employment / Workplace</p>
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1">Company / Employer</label>
+                    <input
+                      type="text"
+                      value={editEmpOfficeName}
+                      onChange={e => setEditEmpOfficeName(e.target.value)}
+                      placeholder="Company name..."
+                      className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl font-bold focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1">Job Position / Designation</label>
+                    <input
+                      type="text"
+                      value={editPosition}
+                      onChange={e => setEditPosition(e.target.value)}
+                      placeholder="e.g. Manager, Engineer..."
+                      className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl font-bold focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1">Employer / Office Address</label>
+                  <textarea
+                    rows={2}
+                    value={editEmpOfficeAddress}
+                    onChange={e => setEditEmpOfficeAddress(e.target.value)}
+                    placeholder="Workplace address..."
+                    className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setShowEditCustomer(false)}
+                className="px-4 py-2 bg-slate-100 dark:bg-slate-800 rounded-xl font-bold text-slate-700 dark:text-slate-300"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-5 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl font-bold shadow-md shadow-amber-600/30 flex items-center gap-2"
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                Save Changes
+              </button>
             </div>
           </form>
         </div>

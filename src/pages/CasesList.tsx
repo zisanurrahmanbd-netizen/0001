@@ -26,6 +26,31 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
 
+interface FilterCache {
+  bankFilter: string;
+  statusFilter: string;
+  fileTypeFilter: string;
+  agentFilter: string;
+  collectorFilter: string;
+  dateFilter: string;
+  customDateFrom: string;
+  customDateTo: string;
+  localSearch: string;
+}
+
+// Module-level persistent cache: keeps filter state when opening/closing cases
+let cachedFilters: FilterCache = {
+  bankFilter: "all",
+  statusFilter: "all",
+  fileTypeFilter: "all",
+  agentFilter: "all",
+  collectorFilter: "all",
+  dateFilter: "all",
+  customDateFrom: "",
+  customDateTo: "",
+  localSearch: "",
+};
+
 interface CasesListProps {
   onSelectCase: (caseId: number) => void;
   searchQuery?: string;
@@ -35,17 +60,33 @@ export const CasesList: React.FC<CasesListProps> = ({ onSelectCase, searchQuery 
   const { user, users } = useAuth();
   const { can } = usePermissions();
   const { t } = useLanguage();
-  const [bankFilter, setBankFilter] = useState<string>("all");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [agentFilter, setAgentFilter] = useState<string>("all");
-  const [collectorFilter, setCollectorFilter] = useState<string>("all");
-  const [dateFilter, setDateFilter] = useState<string>("all");
-  const [customDateFrom, setCustomDateFrom] = useState<string>("");
-  const [customDateTo, setCustomDateTo] = useState<string>("");
-  const [localSearch, setLocalSearch] = useState<string>("");
+  const [bankFilter, setBankFilter] = useState<string>(cachedFilters.bankFilter);
+  const [statusFilter, setStatusFilter] = useState<string>(cachedFilters.statusFilter);
+  const [fileTypeFilter, setFileTypeFilter] = useState<string>(cachedFilters.fileTypeFilter);
+  const [agentFilter, setAgentFilter] = useState<string>(cachedFilters.agentFilter);
+  const [collectorFilter, setCollectorFilter] = useState<string>(cachedFilters.collectorFilter);
+  const [dateFilter, setDateFilter] = useState<string>(cachedFilters.dateFilter);
+  const [customDateFrom, setCustomDateFrom] = useState<string>(cachedFilters.customDateFrom);
+  const [customDateTo, setCustomDateTo] = useState<string>(cachedFilters.customDateTo);
+  const [localSearch, setLocalSearch] = useState<string>(cachedFilters.localSearch);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [dataVersion, setDataVersion] = useState(0);
+
+  // Keep module cache in sync so filters are never lost when navigating to Case Details and back
+  useEffect(() => {
+    cachedFilters = {
+      bankFilter,
+      statusFilter,
+      fileTypeFilter,
+      agentFilter,
+      collectorFilter,
+      dateFilter,
+      customDateFrom,
+      customDateTo,
+      localSearch,
+    };
+  }, [bankFilter, statusFilter, fileTypeFilter, agentFilter, collectorFilter, dateFilter, customDateFrom, customDateTo, localSearch]);
 
   useEffect(() => {
     const unsub = dataService.subscribe(() => {
@@ -56,6 +97,19 @@ export const CasesList: React.FC<CasesListProps> = ({ onSelectCase, searchQuery 
 
   const banks = dataService.getBanks();
   const allCases = useMemo(() => user ? dataService.getCases(user) : [], [user, dataVersion]);
+
+  // Extract all unique file types with counts
+  const allFileTypes = useMemo(() => {
+    const map = new Map<string, number>();
+    allCases.forEach(c => {
+      const ft = c.extra_attributes?.FILE_TYPE || c.extra_attributes?.file_type || c.product?.name;
+      if (ft && String(ft).trim() && String(ft).trim().toUpperCase() !== 'N/A') {
+        const clean = String(ft).trim();
+        map.set(clean, (map.get(clean) || 0) + 1);
+      }
+    });
+    return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+  }, [allCases]);
 
   // Extract all unique agents with case counts
   const allAgents = useMemo(() => {
@@ -95,6 +149,13 @@ export const CasesList: React.FC<CasesListProps> = ({ onSelectCase, searchQuery 
     return allCases.filter(c => {
       // Bank filter
       if (bankFilter !== "all" && String(c.bank_id) !== bankFilter) return false;
+      
+      // File Type filter
+      if (fileTypeFilter !== "all") {
+        const ft = String(c.extra_attributes?.FILE_TYPE || c.extra_attributes?.file_type || c.product?.name || '').trim().toLowerCase();
+        if (ft !== fileTypeFilter.trim().toLowerCase()) return false;
+      }
+
       // Status filter
       if (statusFilter !== "all" && c.status !== statusFilter) return false;
 
@@ -141,11 +202,12 @@ export const CasesList: React.FC<CasesListProps> = ({ onSelectCase, searchQuery 
         const matchesAcc = (c.account_number || "").toLowerCase().includes(q);
         const matchesAgent = (c.agent_name || "").toLowerCase().includes(q);
         const matchesCollector = (c.collector_name || "").toLowerCase().includes(q);
-        if (!matchesFile && !matchesCust && !matchesPhone && !matchesAcc && !matchesAgent && !matchesCollector) return false;
+        const matchesType = String(c.extra_attributes?.FILE_TYPE || c.product?.name || '').toLowerCase().includes(q);
+        if (!matchesFile && !matchesCust && !matchesPhone && !matchesAcc && !matchesAgent && !matchesCollector && !matchesType) return false;
       }
       return true;
     });
-  }, [allCases, bankFilter, statusFilter, agentFilter, collectorFilter, dateFilter, customDateFrom, customDateTo, searchQuery, localSearch]);
+  }, [allCases, bankFilter, statusFilter, fileTypeFilter, agentFilter, collectorFilter, dateFilter, customDateFrom, customDateTo, searchQuery, localSearch]);
 
   const allFilteredIds = filteredCases.map(c => c.id);
   const allSelected = allFilteredIds.length > 0 && allFilteredIds.every(id => selectedIds.has(id));
@@ -390,17 +452,29 @@ export const CasesList: React.FC<CasesListProps> = ({ onSelectCase, searchQuery 
 
         <div className="flex flex-wrap items-center gap-2">
           {/* Reset Filters Button */}
-          {(bankFilter !== "all" || statusFilter !== "all" || agentFilter !== "all" || collectorFilter !== "all" || dateFilter !== "all" || localSearch) && (
+          {(bankFilter !== "all" || statusFilter !== "all" || fileTypeFilter !== "all" || agentFilter !== "all" || collectorFilter !== "all" || dateFilter !== "all" || localSearch) && (
             <button
               onClick={() => {
                 setBankFilter("all");
                 setStatusFilter("all");
+                setFileTypeFilter("all");
                 setAgentFilter("all");
                 setCollectorFilter("all");
                 setDateFilter("all");
                 setCustomDateFrom("");
                 setCustomDateTo("");
                 setLocalSearch("");
+                cachedFilters = {
+                  bankFilter: "all",
+                  statusFilter: "all",
+                  fileTypeFilter: "all",
+                  agentFilter: "all",
+                  collectorFilter: "all",
+                  dateFilter: "all",
+                  customDateFrom: "",
+                  customDateTo: "",
+                  localSearch: "",
+                };
               }}
               className="px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs hover:bg-slate-200 transition-all"
             >
@@ -434,9 +508,9 @@ export const CasesList: React.FC<CasesListProps> = ({ onSelectCase, searchQuery 
 
       {/* Comprehensive Selective Filter Bar */}
       <div className="p-4 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 text-xs">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3 text-xs">
           {/* Search Query */}
-          <div className="sm:col-span-2 lg:col-span-2 relative">
+          <div className="sm:col-span-2 lg:col-span-1 relative">
             <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1">
               🔍 Search Cases
             </label>
@@ -444,7 +518,7 @@ export const CasesList: React.FC<CasesListProps> = ({ onSelectCase, searchQuery 
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input 
                 type="text" 
-                placeholder={t("cases.search", "Search file, customer, account, agent, collector...")} 
+                placeholder={t("cases.search", "Search file, customer, account...")} 
                 value={localSearch}
                 onChange={(e) => setLocalSearch(e.target.value)}
                 className="w-full pl-9 pr-3 py-2 text-xs rounded-xl bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/40" 
@@ -467,6 +541,37 @@ export const CasesList: React.FC<CasesListProps> = ({ onSelectCase, searchQuery 
             </select>
           </div>
 
+          {/* File Type Filter */}
+          <div>
+            <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1">
+              📁 File Type
+            </label>
+            <select 
+              value={fileTypeFilter} 
+              onChange={(e) => setFileTypeFilter(e.target.value)}
+              className="w-full px-3 py-2 text-xs rounded-xl bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 font-semibold focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
+            >
+              <option value="all">All File Types ({allCases.length})</option>
+              {allFileTypes.map(([type, count]) => (
+                <option key={type} value={type}>{type} ({count})</option>
+              ))}
+            </select>
+          </div>
+
+          {/* File Status Filter */}
+          <div>
+            <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1">
+              📌 File Status
+            </label>
+            <select 
+              value={statusFilter} 
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="w-full px-3 py-2 text-xs rounded-xl bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+            >
+              {statuses.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+            </select>
+          </div>
+
           {/* Assigned Agent & Unallocated Filter */}
           <div>
             <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1">
@@ -482,7 +587,7 @@ export const CasesList: React.FC<CasesListProps> = ({ onSelectCase, searchQuery 
                 <option value="unassigned">⚠️ Unallocated Files ({unassignedCount})</option>
               )}
               {allAgents.map(([name, count]) => (
-                <option key={name} value={name}>{name} ({count} files)</option>
+                <option key={name} value={name}>{name} ({count})</option>
               ))}
             </select>
           </div>
@@ -499,7 +604,7 @@ export const CasesList: React.FC<CasesListProps> = ({ onSelectCase, searchQuery 
             >
               <option value="all">All Bank Collectors</option>
               {allCollectors.map(([name, count]) => (
-                <option key={name} value={name}>{name} ({count} files)</option>
+                <option key={name} value={name}>{name} ({count})</option>
               ))}
             </select>
           </div>
@@ -641,8 +746,15 @@ export const CasesList: React.FC<CasesListProps> = ({ onSelectCase, searchQuery 
                       </div>
                     </td>
                     <td className="py-3.5 px-4">
-                      <div className="font-medium text-slate-800 dark:text-slate-200">{c.bank?.name}</div>
-                      <div className="text-[10px] text-slate-400">{c.product?.name}</div>
+                      <div className="font-bold text-slate-800 dark:text-slate-200">{c.bank?.name || "Bank"}</div>
+                      <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                        <span className="px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold text-[10px]">
+                          {c.extra_attributes?.FILE_TYPE || c.extra_attributes?.file_type || c.product?.name || "File"}
+                        </span>
+                        {c.extra_attributes?.CASA && (
+                          <span className="text-[10px] text-slate-400 font-mono">CASA: {c.extra_attributes.CASA}</span>
+                        )}
+                      </div>
                     </td>
 
                     {/* Bank Collector Column */}
@@ -715,7 +827,12 @@ export const CasesList: React.FC<CasesListProps> = ({ onSelectCase, searchQuery 
                     </td>
 
                     <td className="py-3.5 px-4">
-                      <StatusBadge status={c.legal_status && c.legal_status !== "Normal Recovery" ? c.legal_status : c.status} />
+                      <StatusBadge status={c.status} />
+                      {(c.extra_attributes?.LAP_STATUS || c.legal_status) && (
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 font-medium truncate max-w-[130px]" title={String(c.extra_attributes?.LAP_STATUS || c.legal_status)}>
+                          {String(c.extra_attributes?.LAP_STATUS || c.legal_status)}
+                        </div>
+                      )}
                     </td>
 
                     {/* Allocation & Expiry Dates */}

@@ -20,7 +20,8 @@ import {
   BellRing,
   Sparkles,
   AlertCircle,
-  X
+  X,
+  UserX
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -57,6 +58,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectCase, onNavigate }
 
   const { summary, charts, todayPtps = [], missedPtps = [] } = metrics;
   const expiringCases = cases.filter(c => c.expiry_date && !['settled', 'closed'].includes(c.status)).slice(0, 5);
+
+  // Unallocated cases calculation
+  const unallocatedCases = cases.filter(c => {
+    const hasAgentId = c.assigned_agent_id && c.assigned_agent_id > 0;
+    const hasAgentName = c.agent_name && c.agent_name.trim() !== '' && c.agent_name.toLowerCase() !== 'unassigned';
+    return !hasAgentId && !hasAgentName;
+  });
+  const unallocatedOutstanding = unallocatedCases.reduce((sum, c) => sum + (Number(c.outstanding_amount) || 0), 0);
 
   const totalActionAlerts = todayPtps.length + missedPtps.length;
 
@@ -244,8 +253,35 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectCase, onNavigate }
         </div>
       )}
 
+      {/* UNALLOCATED FILES ALERT BANNER */}
+      {unallocatedCases.length > 0 && (
+        <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-2xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center flex-shrink-0">
+              <UserX className="w-5 h-5" />
+            </div>
+            <div>
+              <span className="font-extrabold text-amber-900 dark:text-amber-200 text-sm flex items-center gap-1.5">
+                <span>{unallocatedCases.length} Recovery Files Unallocated</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500 text-white font-bold">Action Required</span>
+              </span>
+              <p className="text-amber-800/80 dark:text-amber-300/80 text-[11px] mt-0.5">
+                Total unassigned balance: <b>BDT {unallocatedOutstanding.toLocaleString()}</b>. These cases currently have no field recovery officer assigned.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => onNavigate('cases')}
+            className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold flex items-center justify-center gap-1.5 shadow-md shadow-amber-600/20 transition-all flex-shrink-0"
+          >
+            <span>Assign in Cases List</span>
+            <ArrowUpRight className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* KPI Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5 gap-4">
         {/* Today's PTP Card */}
         <div 
           onClick={() => { setActiveTab('today'); setShowPtpPopup(true); }}
@@ -292,6 +328,31 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectCase, onNavigate }
           </div>
         </div>
 
+        {/* Unallocated Files Card */}
+        <div 
+          onClick={() => onNavigate('cases')}
+          className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-amber-500/30 shadow-sm cursor-pointer hover:border-amber-500 transition-all"
+          title="Click to view all unallocated cases"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
+              Unallocated Files
+            </span>
+            <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+              <UserX className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-3">
+            <div className="text-2xl font-black text-amber-600 dark:text-amber-400 tracking-tight">
+              {unallocatedCases.length} Files
+            </div>
+            <div className="text-xs text-slate-500 mt-1">
+              {unallocatedOutstanding > 0 ? `BDT ${unallocatedOutstanding.toLocaleString()} unassigned` : 'All files assigned'}
+            </div>
+          </div>
+        </div>
+
+        {/* Total Portfolio Card */}
         <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
@@ -311,6 +372,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectCase, onNavigate }
           </div>
         </div>
 
+        {/* Total Collected Card */}
         <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">

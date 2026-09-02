@@ -44,9 +44,26 @@ export const ExpiryTrackerPage: React.FC = () => {
   // Selective filters state
   const [selectedBankId, setSelectedBankId] = useState<string>('all');
   const [selectedBucket, setSelectedBucket] = useState<string>('all');
+  const [selectedAgent, setSelectedAgent] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [viewMode, setViewMode] = useState<'matrix' | 'cases'>('matrix');
   const [selectedBanks, setSelectedBanks] = useState<Set<number>>(new Set());
+
+  // Extract all unique agents from cases with counts
+  const allAgents = useMemo(() => {
+    const map = new Map<string, number>();
+    cases.forEach(c => {
+      const name = c.agent_name?.trim();
+      if (name && name.toLowerCase() !== 'unassigned') {
+        map.set(name, (map.get(name) || 0) + 1);
+      }
+    });
+    return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+  }, [cases, dataVersion]);
+
+  const unassignedCount = useMemo(() => {
+    return cases.filter(c => !c.assigned_agent_id && (!c.agent_name || c.agent_name.trim() === '' || c.agent_name.toLowerCase() === 'unassigned')).length;
+  }, [cases, dataVersion]);
 
   // Initialize selectedBanks with all bank IDs
   useEffect(() => {
@@ -70,10 +87,18 @@ export const ExpiryTrackerPage: React.FC = () => {
     return 'active';
   };
 
-  // Compute Matrix per bank
+  // Compute Matrix per bank (respecting selectedAgent)
   const matrix = useMemo(() => {
     return banks.map(b => {
-      const bankCases = cases.filter(c => c.bank_id === b.id);
+      const bankCases = cases.filter(c => {
+        if (c.bank_id !== b.id) return false;
+        if (selectedAgent === 'unassigned') {
+          return !c.assigned_agent_id && (!c.agent_name || c.agent_name.trim() === '' || c.agent_name.toLowerCase() === 'unassigned');
+        } else if (selectedAgent !== 'all') {
+          return c.agent_name?.trim().toLowerCase() === selectedAgent.trim().toLowerCase();
+        }
+        return true;
+      });
       const active = bankCases.filter(c => !['settled', 'closed'].includes(c.status)).length;
       const expiring7 = bankCases.filter(c => {
         if (!c.expiry_date || ['settled', 'closed'].includes(c.status)) return false;
@@ -103,7 +128,7 @@ export const ExpiryTrackerPage: React.FC = () => {
         total: bankCases.length
       };
     });
-  }, [banks, cases, dataVersion]);
+  }, [banks, cases, selectedAgent, dataVersion]);
 
   // Filtered detailed cases based on selective options
   const filteredCases = useMemo(() => {
@@ -112,6 +137,14 @@ export const ExpiryTrackerPage: React.FC = () => {
       if (selectedBankId !== 'all' && c.bank_id !== Number(selectedBankId)) return false;
       // Selective checkboxes filter
       if (selectedBankId === 'all' && selectedBanks.size > 0 && !selectedBanks.has(c.bank_id)) return false;
+
+      // Agent filter
+      if (selectedAgent === 'unassigned') {
+        const isUnassigned = !c.assigned_agent_id && (!c.agent_name || c.agent_name.trim() === '' || c.agent_name.toLowerCase() === 'unassigned');
+        if (!isUnassigned) return false;
+      } else if (selectedAgent !== 'all') {
+        if (!c.agent_name || c.agent_name.trim().toLowerCase() !== selectedAgent.trim().toLowerCase()) return false;
+      }
 
       // Expiry bucket filter
       const cat = getExpiryCategory(c);
@@ -135,7 +168,7 @@ export const ExpiryTrackerPage: React.FC = () => {
 
       return true;
     });
-  }, [cases, selectedBankId, selectedBanks, selectedBucket, searchQuery, dataVersion]);
+  }, [cases, selectedBankId, selectedBanks, selectedAgent, selectedBucket, searchQuery, dataVersion]);
 
   // Matrix rows filtered by bank selection & checkboxes
   const filteredMatrix = useMemo(() => {
@@ -453,7 +486,7 @@ export const ExpiryTrackerPage: React.FC = () => {
           </span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 gap-3 text-xs">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
           {/* Select Bank */}
           <div>
             <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1">
@@ -490,8 +523,28 @@ export const ExpiryTrackerPage: React.FC = () => {
             </select>
           </div>
 
+          {/* Select Field Agent */}
+          <div>
+            <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1">
+              👮 Assigned Field Agent
+            </label>
+            <select
+              value={selectedAgent}
+              onChange={(e) => setSelectedAgent(e.target.value)}
+              className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+            >
+              <option value="all">All Field Agents ({cases.length})</option>
+              {unassignedCount > 0 && (
+                <option value="unassigned">⚠️ Unallocated / Unassigned ({unassignedCount})</option>
+              )}
+              {allAgents.map(([name, count]) => (
+                <option key={name} value={name}>{name} ({count} cases)</option>
+              ))}
+            </select>
+          </div>
+
           {/* Search Query */}
-          <div className="sm:col-span-1 md:col-span-2">
+          <div>
             <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1">
               🔍 Search Cases / Accounts
             </label>
@@ -501,7 +554,7 @@ export const ExpiryTrackerPage: React.FC = () => {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by file no, customer, account, or agent..."
+                placeholder="Search file, customer, account..."
                 className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/40"
               />
             </div>
@@ -721,9 +774,21 @@ export const ExpiryTrackerPage: React.FC = () => {
                           <div className="text-[10px] text-slate-400">{c.product?.name || 'Portfolio'}</div>
                         </td>
                         <td className="py-3.5 px-4">
-                          <div className="font-bold text-slate-800 dark:text-slate-200">
-                            {c.agent_name || 'Unassigned'}
-                          </div>
+                          {c.agent_name && c.agent_name.toLowerCase() !== 'unassigned' ? (
+                            <button
+                              onClick={() => setSelectedAgent(c.agent_name)}
+                              className="font-bold text-slate-800 dark:text-slate-200 hover:text-blue-500 hover:underline flex items-center gap-1 text-xs"
+                              title={`Filter all cases for ${c.agent_name}`}
+                            >
+                              <UserCheck className="w-3.5 h-3.5 text-emerald-500" />
+                              <span>{c.agent_name}</span>
+                            </button>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                              <AlertTriangle className="w-3 h-3" />
+                              <span>Unallocated</span>
+                            </span>
+                          )}
                         </td>
                         <td className="py-3.5 px-4 text-[11px]">
                           <div><span className="text-slate-400">Alloc:</span> {c.allocation_date || 'N/A'}</div>

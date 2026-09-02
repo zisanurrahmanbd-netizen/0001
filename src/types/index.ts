@@ -65,6 +65,7 @@ export interface CaseFile {
   availability_status?: string | null;
   assigned_agent_id?: number | null;
   agent_name?: string;
+  collector_name?: string;
   assigned_manager_id?: number | null;
   allocation_date?: string | null;
   expiry_date?: string | null;

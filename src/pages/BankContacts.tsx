@@ -19,9 +19,12 @@ export const BankContactsPage: React.FC = () => {
   const { user } = useAuth();
   const { t } = useLanguage();
   const banks = dataService.getBanks();
-  const [contacts, setContacts] = useState<BankContact[]>(() => dataService.getContacts());
+  const [contacts, setContacts] = useState<BankContact[]>(() => dataService.getContacts(user || undefined));
   const [bankFilter, setBankFilter] = useState<string>('all');
   const [searchQ, setSearchQ] = useState('');
+
+  // Missing collectors from uploaded files
+  const missingCollectors = dataService.getMissingCollectorContacts();
 
   // Add/Edit Modal
   const [showModal, setShowModal] = useState(false);
@@ -35,7 +38,7 @@ export const BankContactsPage: React.FC = () => {
   const [formBranch, setFormBranch] = useState('');
 
   const reload = () => {
-    setContacts(dataService.getContacts());
+    setContacts(dataService.getContacts(user || undefined));
   };
 
   const openAddModal = () => {
@@ -47,6 +50,18 @@ export const BankContactsPage: React.FC = () => {
     setFormPhone('');
     setFormEmail('');
     setFormBranch('');
+    setShowModal(true);
+  };
+
+  const openQuickAddMissing = (missing: { collectorName: string; bankId: number; bankName: string }) => {
+    setEditingContact(null);
+    setFormBankId(missing.bankId || 1);
+    setFormName(missing.collectorName);
+    setFormDesignation('Bank Recovery Officer / Collector');
+    setFormDept('Special Asset Management');
+    setFormPhone('');
+    setFormEmail('');
+    setFormBranch('Principal Branch');
     setShowModal(true);
   };
 
@@ -133,6 +148,51 @@ export const BankContactsPage: React.FC = () => {
           </button>
         )}
       </div>
+
+      {/* MISSING COLLECTORS DETECTED IN RECOVERY FILES BANNER (Admin/Manager) */}
+      {user?.role !== 'agent' && missingCollectors.length > 0 && (
+        <div className="p-4 rounded-2xl bg-gradient-to-r from-rose-500/10 via-pink-500/10 to-rose-500/10 border border-rose-500/30 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping"></span>
+              <span className="text-xs font-extrabold text-rose-900 dark:text-rose-200">
+                {missingCollectors.length} Bank Collectors Detected in Files without Directory Info
+              </span>
+            </div>
+            <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400">
+              Click to register phone & email
+            </span>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {missingCollectors.map(m => (
+              <div 
+                key={`${m.collectorName}_${m.bankId}`}
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-rose-300 dark:border-rose-900/60 shadow-xs text-xs"
+              >
+                <div>
+                  <span className="font-bold text-slate-800 dark:text-slate-200">{m.collectorName}</span>
+                  <span className="text-[10px] text-slate-400 ml-1.5">({m.bankName} • {m.caseCount} files)</span>
+                </div>
+                <button
+                  onClick={() => openQuickAddMissing(m)}
+                  className="px-2 py-0.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold text-[10px] transition-all"
+                >
+                  + Add Info
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Agent Scoped Access Notice */}
+      {user?.role === 'agent' && (
+        <div className="p-3 rounded-2xl bg-blue-500/10 border border-blue-500/30 text-xs text-blue-700 dark:text-blue-300 flex items-center gap-2">
+          <UserCheck className="w-4 h-4 text-blue-500 flex-shrink-0" />
+          <span>Showing bank collector and contact details exclusively for the recovery files assigned to your account.</span>
+        </div>
+      )}
 
       {/* Filter Bar */}
       <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm grid grid-cols-1 sm:grid-cols-2 gap-3">

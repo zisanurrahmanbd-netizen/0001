@@ -21,7 +21,8 @@ import {
   Sparkles,
   AlertCircle,
   X,
-  UserX
+  UserX,
+  PhoneCall
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -66,6 +67,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectCase, onNavigate }
     return !hasAgentId && !hasAgentName;
   });
   const unallocatedOutstanding = unallocatedCases.reduce((sum, c) => sum + (Number(c.outstanding_amount) || 0), 0);
+
+  // Missing collector contacts
+  const missingCollectors = dataService.getMissingCollectorContacts();
 
   const totalActionAlerts = todayPtps.length + missedPtps.length;
 
@@ -275,6 +279,33 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectCase, onNavigate }
             className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold flex items-center justify-center gap-1.5 shadow-md shadow-amber-600/20 transition-all flex-shrink-0"
           >
             <span>Assign in Cases List</span>
+            <ArrowUpRight className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* MISSING COLLECTOR CONTACTS ALERT BANNER */}
+      {missingCollectors.length > 0 && (
+        <div className="p-4 rounded-2xl bg-gradient-to-r from-rose-500/10 via-pink-500/10 to-rose-500/10 border border-rose-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-2xl bg-rose-500/20 text-rose-600 dark:text-rose-400 flex items-center justify-center flex-shrink-0">
+              <PhoneCall className="w-5 h-5" />
+            </div>
+            <div>
+              <span className="font-extrabold text-rose-900 dark:text-rose-200 text-sm flex items-center gap-1.5">
+                <span>{missingCollectors.length} Bank Collectors Missing Contact Info</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-rose-500 text-white font-bold animate-pulse">Missing Directory Info</span>
+              </span>
+              <p className="text-rose-800/80 dark:text-rose-300/80 text-[11px] mt-0.5">
+                New bank collectors/officers detected in recovery files (e.g., <b>{missingCollectors.slice(0, 2).map(m => m.collectorName).join(', ')}{missingCollectors.length > 2 ? ` +${missingCollectors.length - 2} more` : ''}</b>) do not have phone/email saved in Bank Contacts Directory.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => onNavigate('contacts')}
+            className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold flex items-center justify-center gap-1.5 shadow-md shadow-rose-600/20 transition-all flex-shrink-0"
+          >
+            <span>Add to Bank Contacts</span>
             <ArrowUpRight className="w-4 h-4" />
           </button>
         </div>

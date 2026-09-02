@@ -230,8 +230,12 @@ export class ExcelImporter {
       const minPay = cleanNumber(rawEmi);
 
       // 11. Agent Name
-      const rawAgent = findRowValue(row, ['AGENT_NAME', 'AGENT', 'AGENT_ID', 'OFFICER_NAME', 'RECOVERY_AGENT', 'FIELD_EXECUTIVE', 'FO_NAME', 'ASSIGNED_AGENT', 'EXECUTIVE_NAME']);
+      const rawAgent = findRowValue(row, ['AGENT_NAME', 'AGENT', 'AGENT_ID', 'RECOVERY_AGENT', 'FIELD_EXECUTIVE', 'FO_NAME', 'ASSIGNED_AGENT', 'EXECUTIVE_NAME']);
       const agentName = rawAgent ? String(rawAgent).trim() : '';
+
+      // 11b. Collector / Bank Officer Name
+      const rawCollector = findRowValue(row, ['COLLECTOR_NAME', 'COLLECTOR', 'BANK_COLLECTOR', 'BANK_OFFICER', 'OFFICER_NAME', 'CONTACT_PERSON', 'RELATIONSHIP_OFFICER', 'RO_NAME', 'BANK_MANAGER', 'PORTFOLIO_OFFICER', 'COORDINATOR', 'RM_NAME']);
+      const collectorName = rawCollector ? String(rawCollector).trim() : '';
 
       // 12. Allocation Date
       const rawAlloc = findRowValue(row, ['DATE_OF_ALLOCATION', 'ALLOCATION_DATE', 'ALLOC_DATE', 'ASSIGN_DATE', 'START_DATE', 'DATE_ALLOCATED', 'ALLOCATED_ON']);
@@ -263,6 +267,7 @@ export class ExcelImporter {
         overdue_amount: overdue,
         minimum_payment: minPay,
         agent_name: agentName,
+        collector_name: collectorName,
         allocation_date: formattedAlloc,
         expiry_date: formattedExpiry,
         legal_status: legalStatus,

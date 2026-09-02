@@ -1,4 +1,4 @@
-﻿import React, { useMemo } from "react";
+import React, { useMemo } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useBranding } from "../context/BrandingContext";
 import { usePermissions, PermissionKey } from "../context/PermissionsContext";
@@ -36,12 +36,23 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, isOpe
     return dataService.getUnregisteredAgents(users);
   }, [users, currentPage]);
 
+  // Real-time detection of collectors mentioned in files who are missing from Bank Contacts
+  const missingCollectors = useMemo(() => {
+    return dataService.getMissingCollectorContacts();
+  }, [currentPage]);
+
   const navItems: { id: string; label: string; icon: any; perm: PermissionKey; badge?: number }[] = [
     { id: "dashboard", label: t("nav.dashboard", "Dashboard"), icon: LayoutDashboard, perm: "view_dashboard" },
     { id: "cases", label: t("nav.cases", "Bank & MNC Files"), icon: Briefcase, perm: "view_cases" },
     { id: "map", label: t("nav.map", "Live Agent Map"), icon: MapPin, perm: "view_map" },
     { id: "imports", label: t("nav.imports", "Excel Templates & Import"), icon: FileSpreadsheet, perm: "view_imports" },
-    { id: "contacts", label: t("nav.contacts", "Bank Contacts"), icon: PhoneCall, perm: "view_contacts" },
+    { 
+      id: "contacts", 
+      label: t("nav.contacts", "Bank Contacts"), 
+      icon: PhoneCall, 
+      perm: "view_contacts",
+      badge: missingCollectors.length > 0 ? missingCollectors.length : undefined
+    },
     { id: "reports_perf", label: t("nav.reports_perf", "Agent Performance"), icon: TrendingUp, perm: "view_reports_perf" },
     { id: "reports_expiry", label: t("nav.reports_expiry", "Expiry Tracker"), icon: CalendarClock, perm: "view_reports_expiry" },
     { id: "reports_legal", label: t("nav.reports_legal", "Legal & Flagged Cases"), icon: ShieldAlert, perm: "view_reports_legal" },

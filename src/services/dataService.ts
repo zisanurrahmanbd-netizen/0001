@@ -199,12 +199,20 @@ export function enrichCase(c: CaseFile): CaseFile {
     bankStatus = String(rawStat);
   }
 
+  // 8. Collector / Bank Officer Name
+  let collectorName = c.collector_name || '';
+  if (!collectorName) {
+    const rawColl = findAttr(attrs, ['COLLECTOR_NAME', 'COLLECTOR', 'BANK_COLLECTOR', 'BANK_OFFICER', 'OFFICER_NAME', 'CONTACT_PERSON', 'RELATIONSHIP_OFFICER', 'RO_NAME', 'BANK_MANAGER', 'PORTFOLIO_OFFICER', 'COORDINATOR', 'RM_NAME']);
+    if (rawColl) collectorName = String(rawColl).trim();
+  }
+
   return {
     ...c,
     outstanding_amount: outstanding,
     overdue_amount: overdue,
     minimum_payment: emi,
     account_number: accountNo,
+    collector_name: collectorName,
     allocation_date: allocDate,
     expiry_date: expDate,
     legal_status: bankStatus,
@@ -233,6 +241,7 @@ function mapCaseToDb(c: CaseFile): any {
     status: c.status || 'new',
     legal_status: c.legal_status || 'Normal Recovery',
     availability_status: c.availability_status || null,
+    collector_name: c.collector_name || '',
     assigned_agent_id: c.assigned_agent_id ? Number(c.assigned_agent_id) : null,
     agent_name: c.agent_name || '',
     assigned_manager_id: c.assigned_manager_id ? Number(c.assigned_manager_id) : null,
@@ -268,6 +277,7 @@ function mapCaseFromDb(row: any): CaseFile {
     availability_status: row.availability_status || undefined,
     assigned_agent_id: row.assigned_agent_id ? Number(row.assigned_agent_id) : undefined,
     agent_name: row.agent_name || '',
+    collector_name: row.collector_name || '',
     assigned_manager_id: row.assigned_manager_id ? Number(row.assigned_manager_id) : undefined,
     allocation_date: row.allocation_date || undefined,
     expiry_date: row.expiry_date || undefined,
@@ -606,12 +616,65 @@ class DataService {
     return getAllSystemProducts();
   }
 
-  public getContacts(): BankContact[] {
+  public getContacts(user?: User): BankContact[] {
     const banks = getAllSystemBanks();
-    return this.contacts.map(c => ({
+    const all = this.contacts.map(c => ({
       ...c,
       bank: banks.find(b => b.id === c.bank_id) || INITIAL_BANKS.find(b => b.id === c.bank_id)
     }));
+
+    if (user && user.role === 'agent') {
+      const userCases = this.getCases(user);
+      const userCollectors = new Set(
+        userCases.map(c => (c.collector_name || '').toLowerCase().trim()).filter(Boolean)
+      );
+      const userBankIds = new Set(userCases.map(c => c.bank_id));
+
+      return all.filter(contact => {
+        // If contact name matches a collector assigned on this agent's cases
+        if (contact.name && userCollectors.has(contact.name.toLowerCase().trim())) {
+          return true;
+        }
+        // If no collector names are specified, show contacts from assigned banks
+        if (userCollectors.size === 0 && userBankIds.has(contact.bank_id)) {
+          return true;
+        }
+        return false;
+      });
+    }
+
+    return all;
+  }
+
+  public getMissingCollectorContacts(): { collectorName: string; bankId: number; bankName: string; caseCount: number }[] {
+    const contacts = this.getContacts();
+    const contactNames = new Set(contacts.map(c => c.name.toLowerCase().trim()));
+
+    const map = new Map<string, { collectorName: string; bankId: number; bankName: string; caseCount: number }>();
+    
+    this.cases.forEach(c => {
+      const enriched = enrichCase(c);
+      const collector = enriched.collector_name?.trim();
+      if (collector && collector.length > 1 && collector.toLowerCase() !== 'unassigned' && collector.toLowerCase() !== 'n/a') {
+        if (!contactNames.has(collector.toLowerCase())) {
+          const key = `${collector.toLowerCase()}___${enriched.bank_id}`;
+          const bankName = enriched.bank?.name || 'Bank';
+          const existing = map.get(key);
+          if (existing) {
+            existing.caseCount += 1;
+          } else {
+            map.set(key, {
+              collectorName: collector,
+              bankId: enriched.bank_id,
+              bankName,
+              caseCount: 1,
+            });
+          }
+        }
+      }
+    });
+
+    return Array.from(map.values());
   }
 
   public addContact(contact: Omit<BankContact, 'id'>): BankContact {

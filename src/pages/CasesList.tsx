@@ -8,6 +8,8 @@ import { CaseFile, CaseStatus } from "../types";
 import { 
   Search, 
   Download, 
+  FileText,
+  FileSpreadsheet,
   Phone, 
   MapPin, 
   CheckCircle2, 
@@ -22,6 +24,9 @@ import {
   Briefcase
 } from "lucide-react";
 import * as XLSX from "xlsx";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+
 
 interface CasesListProps {
   onSelectCase: (caseId: number) => void;
@@ -180,12 +185,17 @@ export const CasesList: React.FC<CasesListProps> = ({ onSelectCase, searchQuery 
     setLocalSearch(prev => prev + "");
   };
 
-  const handleExportCSV = () => {
-    const casesToExport = selectedIds.size > 0 
-      ? filteredCases.filter(c => selectedIds.has(c.id)) 
-      : filteredCases;
+  // ── Export helpers ──────────────────────────────────────────────
+  const getCasesToExport = () =>
+    selectedIds.size > 0 ? filteredCases.filter(c => selectedIds.has(c.id)) : filteredCases;
 
-    const data = casesToExport.map(c => ({
+  // Excel export — two sheets: Case Summary + Visit Details (with GPS, PTP, Remarks)
+  const handleExportExcel = () => {
+    const casesToExport = getCasesToExport();
+    const wb = XLSX.utils.book_new();
+
+    // Sheet 1 — Case Summary
+    const summaryData = casesToExport.map(c => ({
       "File No": c.file_number,
       "Bank": c.bank?.name || "",
       "Product": c.product?.name || "",
@@ -195,22 +205,253 @@ export const CasesList: React.FC<CasesListProps> = ({ onSelectCase, searchQuery 
       "Bank Collector": c.collector_name || "",
       "Agent Name": c.agent_name || c.agent?.name || "Unassigned",
       "Present Address": c.customer_address_present || "",
+      "Permanent Address": c.customer_address_permanent || "",
       "Outstanding (BDT)": c.outstanding_amount,
       "Overdue (BDT)": c.overdue_amount,
+      "Total Collected (BDT)": c.total_collected_amount,
       "Status": c.status,
       "Legal Status": c.legal_status || "",
+      "Present Visited": c.present_address_visited ? "Yes" : "No",
+      "Permanent Visited": c.permanent_address_visited ? "Yes" : "No",
       "Allocation Date": c.allocation_date || "",
       "Expiry Date": c.expiry_date || "",
-      "Total Collected (BDT)": c.total_collected_amount
     }));
+    const ws1 = XLSX.utils.json_to_sheet(summaryData);
+    XLSX.utils.book_append_sheet(wb, ws1, "Case Summary");
 
-    const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Cases");
-    XLSX.writeFile(wb, `Recovery_Cases_Export_${new Date().toISOString().split("T")[0]}.xlsx`);
+    // Sheet 2 — Visit Details (check-ins with GPS + remarks with PTP)
+    const visitRows: any[] = [];
+    casesToExport.forEach(c => {
+      const checkIns = dataService.getCheckInsByCase(c.id);
+      const remarks = dataService.getRemarksByCase(c.id);
+
+      // One row per check-in
+      checkIns.forEach(ci => {
+        // Find the latest remark around the same time for PTP info
+        const closeRemark = remarks.find(r => {
+          const diff = Math.abs(new Date(r.created_at).getTime() - new Date(ci.visited_at).getTime());
+          return diff < 24 * 3600000; // within 24h
+        });
+        const lat = ci.latitude ?? "";
+        const lng = ci.longitude ?? "";
+        const mapsUrl = (lat !== "" && lng !== "") ? `https://maps.google.com/?q=${lat},${lng}` : "";
+        visitRows.push({
+          "File No": c.file_number,
+          "Customer Name": c.customer_name,
+          "Bank": c.bank?.name || "",
+          "Agent Name": c.agent_name || "",
+          "Visit Date & Time": ci.visited_at ? new Date(ci.visited_at).toLocaleString() : "",
+          "Address Type": ci.address_type || "",
+          "Visit Latitude": lat,
+          "Visit Longitude": lng,
+          "Google Maps Link": mapsUrl,
+          "Visit Note": ci.notes || "",
+          "PTP Amount (BDT)": closeRemark?.promised_amount || "",
+          "PTP Date": closeRemark?.promise_date || "",
+          "Remark": closeRemark?.remarks || "",
+        });
+      });
+
+      // If there are remarks but no check-ins, still export PTP rows
+      if (checkIns.length === 0 && remarks.length > 0) {
+        remarks.forEach(r => {
+          visitRows.push({
+            "File No": c.file_number,
+            "Customer Name": c.customer_name,
+            "Bank": c.bank?.name || "",
+            "Agent Name": c.agent_name || "",
+            "Visit Date & Time": "",
+            "Address Type": "N/A",
+            "Visit Latitude": "",
+            "Visit Longitude": "",
+            "Google Maps Link": "",
+            "Visit Note": "",
+            "PTP Amount (BDT)": r.promised_amount || "",
+            "PTP Date": r.promise_date || "",
+            "Remark": r.remarks || "",
+          });
+        });
+      }
+    });
+
+    if (visitRows.length > 0) {
+      const ws2 = XLSX.utils.json_to_sheet(visitRows);
+      XLSX.utils.book_append_sheet(wb, ws2, "Visit Details");
+    }
+
+    XLSX.writeFile(wb, `Recovery_Cases_${new Date().toISOString().split("T")[0]}.xlsx`);
+  };
+
+  // PDF export — landscape, bank-grade report with visited files highlighted
+  const handleExportPDF = () => {
+    const casesToExport = getCasesToExport();
+    const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+    const pageW = doc.internal.pageSize.getWidth();
+    const today = new Date().toLocaleDateString("en-BD", { day: "2-digit", month: "short", year: "numeric" });
+
+    // Header
+    doc.setFillColor(15, 23, 42);
+    doc.rect(0, 0, pageW, 18, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(13);
+    doc.setFont("helvetica", "bold");
+    doc.text("Bank Recovery — Case Files Report", 10, 11);
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Generated: ${today}  |  Total Files: ${casesToExport.length}  |  Selected Filters Applied`, pageW - 10, 11, { align: "right" });
+
+    // Section 1: Case Summary Table
+    doc.setTextColor(15, 23, 42);
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "bold");
+    doc.text("CASE SUMMARY", 10, 24);
+
+    autoTable(doc, {
+      startY: 27,
+      head: [["File No", "Customer", "Bank / Product", "Collector", "Agent", "Outstanding\n(BDT)", "Status", "Visit", "Alloc Date", "Expiry Date"]],
+      body: casesToExport.map(c => [
+        c.file_number,
+        `${c.customer_name}\n${c.customer_phone || ""}`,
+        `${c.bank?.name || ""}\n${c.product?.name || ""}`,
+        c.collector_name || "—",
+        c.agent_name || "Unassigned",
+        c.outstanding_amount.toLocaleString(),
+        c.status.replace(/_/g, " ").toUpperCase(),
+        [
+          c.present_address_visited ? "Pres ✓" : "Pres ✗",
+          c.permanent_address_visited ? "Perm ✓" : "Perm ✗"
+        ].join(" | "),
+        c.allocation_date || "—",
+        c.expiry_date || "—",
+      ]),
+      styles: { fontSize: 7, cellPadding: 2 },
+      headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontStyle: "bold", fontSize: 7 },
+      columnStyles: {
+        0: { cellWidth: 20 },
+        1: { cellWidth: 36 },
+        2: { cellWidth: 36 },
+        3: { cellWidth: 28 },
+        4: { cellWidth: 28 },
+        5: { cellWidth: 22, halign: "right" },
+        6: { cellWidth: 22 },
+        7: { cellWidth: 22 },
+        8: { cellWidth: 24 },
+        9: { cellWidth: 24 },
+      },
+      willDrawCell: (data) => {
+        // Highlight visited rows in light green
+        if (data.section === "body") {
+          const cRow = casesToExport[data.row.index];
+          if (cRow && (cRow.present_address_visited || cRow.permanent_address_visited)) {
+            doc.setFillColor(236, 253, 245);
+          }
+        }
+      },
+    });
+
+    // Section 2: Visit Details (GPS + PTP + Remarks)
+    const visitedCases = casesToExport.filter(c => c.present_address_visited || c.permanent_address_visited);
+    if (visitedCases.length > 0) {
+      doc.addPage("a4", "landscape");
+      doc.setFillColor(15, 23, 42);
+      doc.rect(0, 0, pageW, 18, "F");
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(13);
+      doc.setFont("helvetica", "bold");
+      doc.text("Bank Recovery — Visit Details (GPS · PTP · Remarks)", 10, 11);
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "normal");
+      doc.text(`Generated: ${today}`, pageW - 10, 11, { align: "right" });
+
+      const visitPdfRows: string[][] = [];
+      visitedCases.forEach(c => {
+        const checkIns = dataService.getCheckInsByCase(c.id);
+        const remarks = dataService.getRemarksByCase(c.id);
+
+        if (checkIns.length > 0) {
+          checkIns.forEach(ci => {
+            const closeRemark = remarks.find(r => {
+              const diff = Math.abs(new Date(r.created_at).getTime() - new Date(ci.visited_at).getTime());
+              return diff < 24 * 3600000;
+            });
+            const lat = ci.latitude ?? "";
+            const lng = ci.longitude ?? "";
+            const coords = (lat !== "" && lng !== "") ? `${lat}, ${lng}` : "—";
+            visitPdfRows.push([
+              c.file_number,
+              c.customer_name,
+              c.bank?.name || "",
+              c.agent_name || "—",
+              ci.visited_at ? new Date(ci.visited_at).toLocaleString() : "—",
+              ci.address_type || "—",
+              coords,
+              ci.notes || "—",
+              closeRemark?.promised_amount ? `BDT ${Number(closeRemark.promised_amount).toLocaleString()}` : "—",
+              closeRemark?.promise_date || "—",
+              closeRemark?.remarks || "—",
+            ]);
+          });
+        } else {
+          // No check-in but has remarks — show PTP info
+          remarks.forEach(r => {
+            visitPdfRows.push([
+              c.file_number,
+              c.customer_name,
+              c.bank?.name || "",
+              c.agent_name || "—",
+              "—",
+              "—",
+              "—",
+              "—",
+              r.promised_amount ? `BDT ${Number(r.promised_amount).toLocaleString()}` : "—",
+              r.promise_date || "—",
+              r.remarks || "—",
+            ]);
+          });
+        }
+      });
+
+      doc.setTextColor(15, 23, 42);
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "bold");
+      doc.text("VISIT DETAILS — GPS COORDINATES, PTP & REMARKS", 10, 24);
+
+      autoTable(doc, {
+        startY: 27,
+        head: [["File No", "Customer", "Bank", "Agent", "Visit Date/Time", "Addr Type", "GPS Coordinates", "Visit Note", "PTP Amount", "PTP Date", "Remarks"]],
+        body: visitPdfRows,
+        styles: { fontSize: 6.5, cellPadding: 2 },
+        headStyles: { fillColor: [5, 150, 105], textColor: [255, 255, 255], fontStyle: "bold", fontSize: 7 },
+        columnStyles: {
+          0: { cellWidth: 20 },
+          1: { cellWidth: 30 },
+          2: { cellWidth: 24 },
+          3: { cellWidth: 24 },
+          4: { cellWidth: 30 },
+          5: { cellWidth: 18 },
+          6: { cellWidth: 32 },
+          7: { cellWidth: 30 },
+          8: { cellWidth: 22 },
+          9: { cellWidth: 20 },
+          10: { cellWidth: 36 },
+        },
+      });
+    }
+
+    // Page numbering
+    const totalPages = doc.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      doc.setFontSize(7);
+      doc.setTextColor(150, 150, 150);
+      doc.text(`Page ${i} / ${totalPages}  |  Bank Recovery System — Confidential`, pageW / 2, doc.internal.pageSize.getHeight() - 5, { align: "center" });
+    }
+
+    doc.save(`Recovery_Cases_${new Date().toISOString().split("T")[0]}.pdf`);
   };
 
   const statuses = [
+
     { id: "all", label: "All Statuses" },
     { id: "new", label: "New" },
     { id: "in_progress", label: "In Progress" },
@@ -272,13 +513,27 @@ export const CasesList: React.FC<CasesListProps> = ({ onSelectCase, searchQuery 
           )}
 
           {can("export_excel") && (
-            <button 
-              onClick={handleExportCSV}
-              className="px-3.5 py-2 rounded-xl bg-slate-900 dark:bg-slate-800 text-white font-bold text-xs hover:bg-slate-800 dark:hover:bg-slate-700 flex items-center gap-2 transition-all shadow-sm border border-slate-700/50"
-            >
-              <Download className="w-4 h-4" />
-              <span>{selectedIds.size > 0 ? `Export Selected (${selectedIds.size})` : t("cases.export_excel", "Export Excel (.XLSX)")}</span>
-            </button>
+            <>
+              {/* Export Excel — Case Summary + Visit Details (multi-sheet) */}
+              <button 
+                onClick={handleExportExcel}
+                className="px-3.5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs flex items-center gap-2 transition-all shadow-md shadow-emerald-700/30"
+                title="Export to Excel (.xlsx) with Case Summary + Visit Details sheets"
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+                <span>{selectedIds.size > 0 ? `Excel (${selectedIds.size})` : "Export Excel"}</span>
+              </button>
+
+              {/* Export PDF — Landscape bank report with GPS/PTP/Remarks */}
+              <button 
+                onClick={handleExportPDF}
+                className="px-3.5 py-2 rounded-xl bg-rose-700 hover:bg-rose-600 text-white font-bold text-xs flex items-center gap-2 transition-all shadow-md shadow-rose-700/30"
+                title="Export to PDF — includes visit GPS coordinates, PTP amounts, PTP dates and field remarks"
+              >
+                <FileText className="w-4 h-4" />
+                <span>{selectedIds.size > 0 ? `PDF (${selectedIds.size})` : "Export PDF"}</span>
+              </button>
+            </>
           )}
         </div>
       </div>

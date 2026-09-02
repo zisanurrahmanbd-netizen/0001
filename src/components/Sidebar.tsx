@@ -46,7 +46,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, isOpe
     { id: "dashboard", label: t("nav.dashboard", "Dashboard"), icon: LayoutDashboard, perm: "view_dashboard" },
     { id: "cases", label: t("nav.cases", "Bank & MNC Files"), icon: Briefcase, perm: "view_cases" },
     { id: "map", label: t("nav.map", "Live Agent Map"), icon: MapPin, perm: "view_map" },
-    { id: "imports", label: t("nav.imports", "Excel Templates & Import"), icon: FileSpreadsheet, perm: "view_imports" },
     { id: "gsheet_sync", label: "Google Sheet Live Sync", icon: Sheet, perm: "view_imports" },
     { 
       id: "contacts", 

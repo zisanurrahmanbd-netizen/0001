@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { usePermissions, DEFAULT_ROLE_PERMISSIONS, AppPermissions, PermissionKey } from '../context/PermissionsContext';
 import { UserRole, User } from '../types';
@@ -35,7 +35,7 @@ const PERMISSION_GROUPS: {
       { key: 'view_dashboard', label: 'View Dashboard', desc: 'Can access recovery metrics & KPI cards' },
       { key: 'view_cases', label: 'View Bank & MNC Files', desc: 'Can view allocated loan and credit card files' },
       { key: 'view_map', label: 'Live GPS Agent Map', desc: 'Can view real-time location pins of field agents' },
-      { key: 'view_imports', label: 'Excel Templates & Ingestion', desc: 'Can access Excel importer and template builder' },
+      { key: 'view_imports', label: 'Google Sheet Live Sync', desc: 'Can access and configure Google Sheet live sync' },
       { key: 'view_contacts', label: 'Bank Contacts Directory', desc: 'Can view institution contacts and phone directory' },
       { key: 'view_reports_perf', label: 'Agent Performance Reports', desc: 'Can view collection rankings and visit stats' },
       { key: 'view_reports_expiry', label: 'Expiry Matrix Tracker', desc: 'Can view contract expiry & overdue buckets' },
@@ -58,7 +58,7 @@ const PERMISSION_GROUPS: {
     icon: Shield,
     items: [
       { key: 'record_payment', label: 'Record Cash & Bank Collections', desc: 'Can submit money collections and receipt numbers' },
-      { key: 'export_excel', label: 'Export Accounts to Excel (.XLSX)', desc: 'Can download bulk file spreadsheets' },
+      { key: 'export_excel', label: 'Export Reports to PDF', desc: 'Can download landscape audit and case PDF reports' },
       { key: 'manage_contacts', label: 'Create & Edit Bank Contacts', desc: 'Can add new banker numbers and branches' },
       { key: 'manage_team_users', label: 'Create, Edit & Deactivate Users', desc: 'Can manage employee credentials and status' },
       { key: 'manage_branding', label: 'Brand & Logo Customizer', desc: 'Can change system logos, titles, and themes' },

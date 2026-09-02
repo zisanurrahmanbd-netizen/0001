@@ -22,7 +22,8 @@ import {
   AlertCircle,
   X,
   UserX,
-  PhoneCall
+  PhoneCall,
+  Sheet
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -99,11 +100,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectCase, onNavigate }
 
         <div className="flex items-center gap-2">
           <button
-            onClick={() => onNavigate('imports')}
+            onClick={() => onNavigate('gsheet_sync')}
             className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-600/30 flex items-center gap-2 transition-all"
           >
-            <i className="fa-solid fa-file-excel"></i>
-            <span>Import / Templates</span>
+            <Sheet className="w-4 h-4" />
+            <span>Google Sheet Live Sync</span>
           </button>
         </div>
       </div>

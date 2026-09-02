@@ -1,5 +1,3 @@
-import * as XLSX from 'xlsx';
-
 export interface TemplateDefinition {
   type: string;
   name: string;
@@ -103,48 +101,3 @@ export const PREBUILT_TEMPLATES: Record<string, TemplateDefinition> = {
     ]
   }
 };
-
-export class TemplateService {
-  public static downloadTemplate(type: string) {
-    const tpl = PREBUILT_TEMPLATES[type] || PREBUILT_TEMPLATES['one_bank_cc'];
-    this.generateAndDownload(tpl.bankName, tpl.productName, tpl.headers, [tpl.sampleRow]);
-  }
-
-  public static generateAndDownload(bankName: string, productName: string, headers: string[], sampleRows: any[][] = []) {
-    const wsData = [
-      headers,
-      ...sampleRows
-    ];
-
-    const ws = XLSX.utils.aoa_to_sheet(wsData);
-
-    // Auto calculate column widths
-    const colWidths = headers.map((h, i) => {
-      const headerLen = h.length;
-      const sampleLen = sampleRows[0] && sampleRows[0][i] ? String(sampleRows[0][i]).length : 0;
-      return { wch: Math.max(headerLen, sampleLen, 14) + 2 };
-    });
-    ws['!cols'] = colWidths;
-
-    const wb = XLSX.utils.book_new();
-    const sheetName = (bankName.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 25)) || 'Sheet1';
-    XLSX.utils.book_append_sheet(wb, ws, sheetName);
-
-    const fileName = `${bankName.replace(/[^a-zA-Z0-9]/g, '_')}_${productName.replace(/[^a-zA-Z0-9]/g, '_')}_Template.xlsx`;
-    XLSX.writeFile(wb, fileName);
-  }
-
-  public static downloadMasterWorkbook() {
-    const wb = XLSX.utils.book_new();
-
-    Object.values(PREBUILT_TEMPLATES).forEach(tpl => {
-      const wsData = [tpl.headers, tpl.sampleRow];
-      const ws = XLSX.utils.aoa_to_sheet(wsData);
-      ws['!cols'] = tpl.headers.map(h => ({ wch: Math.max(h.length, 14) + 2 }));
-      const sheetName = tpl.badge.substring(0, 30);
-      XLSX.utils.book_append_sheet(wb, ws, sheetName);
-    });
-
-    XLSX.writeFile(wb, 'Master_Multi_Bank_Recovery_Workbook.xlsx');
-  }
-}

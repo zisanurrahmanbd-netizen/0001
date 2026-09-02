@@ -6,7 +6,6 @@ import { Dashboard } from './pages/Dashboard';
 import { CasesList } from './pages/CasesList';
 import { CaseDetail } from './pages/CaseDetail';
 import { TrackingMap } from './pages/TrackingMap';
-import { ExcelImporterPage } from './pages/ExcelImporter';
 import { BankContactsPage } from './pages/BankContacts';
 import { AgentPerformancePage } from './pages/AgentPerformance';
 import { ExpiryTrackerPage } from './pages/ExpiryTracker';
@@ -46,8 +45,6 @@ export const App: React.FC = () => {
         return <CasesList onSelectCase={handleSelectCase} searchQuery={searchQuery} />;
       case 'map':
         return <TrackingMap />;
-      case 'imports':
-        return <ExcelImporterPage />;
       case 'gsheet_sync':
         return <GoogleSheetSyncPage />;
       case 'contacts':

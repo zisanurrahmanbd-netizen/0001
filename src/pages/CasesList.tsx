@@ -9,7 +9,6 @@ import {
   Search, 
   Download, 
   FileText,
-  FileSpreadsheet,
   Phone, 
   MapPin, 
   CheckCircle2, 
@@ -23,7 +22,6 @@ import {
   Filter,
   Briefcase
 } from "lucide-react";
-import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -189,98 +187,7 @@ export const CasesList: React.FC<CasesListProps> = ({ onSelectCase, searchQuery 
   const getCasesToExport = () =>
     selectedIds.size > 0 ? filteredCases.filter(c => selectedIds.has(c.id)) : filteredCases;
 
-  // Excel export — two sheets: Case Summary + Visit Details (with GPS, PTP, Remarks)
-  const handleExportExcel = () => {
-    const casesToExport = getCasesToExport();
-    const wb = XLSX.utils.book_new();
-
-    // Sheet 1 — Case Summary
-    const summaryData = casesToExport.map(c => ({
-      "File No": c.file_number,
-      "Bank": c.bank?.name || "",
-      "Product": c.product?.name || "",
-      "Account / Card": c.account_number || "",
-      "Customer Name": c.customer_name,
-      "Phone": c.customer_phone || "",
-      "Bank Collector": c.collector_name || "",
-      "Agent Name": c.agent_name || c.agent?.name || "Unassigned",
-      "Present Address": c.customer_address_present || "",
-      "Permanent Address": c.customer_address_permanent || "",
-      "Outstanding (BDT)": c.outstanding_amount,
-      "Overdue (BDT)": c.overdue_amount,
-      "Total Collected (BDT)": c.total_collected_amount,
-      "Status": c.status,
-      "Legal Status": c.legal_status || "",
-      "Present Visited": c.present_address_visited ? "Yes" : "No",
-      "Permanent Visited": c.permanent_address_visited ? "Yes" : "No",
-      "Allocation Date": c.allocation_date || "",
-      "Expiry Date": c.expiry_date || "",
-    }));
-    const ws1 = XLSX.utils.json_to_sheet(summaryData);
-    XLSX.utils.book_append_sheet(wb, ws1, "Case Summary");
-
-    // Sheet 2 — Visit Details (check-ins with GPS + remarks with PTP)
-    const visitRows: any[] = [];
-    casesToExport.forEach(c => {
-      const checkIns = dataService.getCheckInsByCase(c.id);
-      const remarks = dataService.getRemarksByCase(c.id);
-
-      // One row per check-in
-      checkIns.forEach(ci => {
-        // Find the latest remark around the same time for PTP info
-        const closeRemark = remarks.find(r => {
-          const diff = Math.abs(new Date(r.created_at).getTime() - new Date(ci.visited_at).getTime());
-          return diff < 24 * 3600000; // within 24h
-        });
-        const lat = ci.latitude ?? "";
-        const lng = ci.longitude ?? "";
-        const mapsUrl = (lat !== "" && lng !== "") ? `https://maps.google.com/?q=${lat},${lng}` : "";
-        visitRows.push({
-          "File No": c.file_number,
-          "Customer Name": c.customer_name,
-          "Bank": c.bank?.name || "",
-          "Agent Name": c.agent_name || "",
-          "Visit Date & Time": ci.visited_at ? new Date(ci.visited_at).toLocaleString() : "",
-          "Address Type": ci.address_type || "",
-          "Visit Latitude": lat,
-          "Visit Longitude": lng,
-          "Google Maps Link": mapsUrl,
-          "Visit Note": ci.notes || "",
-          "PTP Amount (BDT)": closeRemark?.promised_amount || "",
-          "PTP Date": closeRemark?.promise_date || "",
-          "Remark": closeRemark?.remarks || "",
-        });
-      });
-
-      // If there are remarks but no check-ins, still export PTP rows
-      if (checkIns.length === 0 && remarks.length > 0) {
-        remarks.forEach(r => {
-          visitRows.push({
-            "File No": c.file_number,
-            "Customer Name": c.customer_name,
-            "Bank": c.bank?.name || "",
-            "Agent Name": c.agent_name || "",
-            "Visit Date & Time": "",
-            "Address Type": "N/A",
-            "Visit Latitude": "",
-            "Visit Longitude": "",
-            "Google Maps Link": "",
-            "Visit Note": "",
-            "PTP Amount (BDT)": r.promised_amount || "",
-            "PTP Date": r.promise_date || "",
-            "Remark": r.remarks || "",
-          });
-        });
-      }
-    });
-
-    if (visitRows.length > 0) {
-      const ws2 = XLSX.utils.json_to_sheet(visitRows);
-      XLSX.utils.book_append_sheet(wb, ws2, "Visit Details");
-    }
-
-    XLSX.writeFile(wb, `Recovery_Cases_${new Date().toISOString().split("T")[0]}.xlsx`);
-  };
+  // PDF export — landscape, bank-grade report with visited files highlighted
 
   // PDF export — landscape, bank-grade report with visited files highlighted
   const handleExportPDF = () => {
@@ -513,27 +420,14 @@ export const CasesList: React.FC<CasesListProps> = ({ onSelectCase, searchQuery 
           )}
 
           {can("export_excel") && (
-            <>
-              {/* Export Excel — Case Summary + Visit Details (multi-sheet) */}
-              <button 
-                onClick={handleExportExcel}
-                className="px-3.5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs flex items-center gap-2 transition-all shadow-md shadow-emerald-700/30"
-                title="Export to Excel (.xlsx) with Case Summary + Visit Details sheets"
-              >
-                <FileSpreadsheet className="w-4 h-4" />
-                <span>{selectedIds.size > 0 ? `Excel (${selectedIds.size})` : "Export Excel"}</span>
-              </button>
-
-              {/* Export PDF — Landscape bank report with GPS/PTP/Remarks */}
-              <button 
-                onClick={handleExportPDF}
-                className="px-3.5 py-2 rounded-xl bg-rose-700 hover:bg-rose-600 text-white font-bold text-xs flex items-center gap-2 transition-all shadow-md shadow-rose-700/30"
-                title="Export to PDF — includes visit GPS coordinates, PTP amounts, PTP dates and field remarks"
-              >
-                <FileText className="w-4 h-4" />
-                <span>{selectedIds.size > 0 ? `PDF (${selectedIds.size})` : "Export PDF"}</span>
-              </button>
-            </>
+            <button 
+              onClick={handleExportPDF}
+              className="px-3.5 py-2 rounded-xl bg-slate-900 dark:bg-slate-800 text-white font-bold text-xs flex items-center gap-2 transition-all shadow-md shadow-slate-900/30 border border-slate-700/50 hover:bg-slate-800"
+              title="Export to PDF — includes case summary, visit GPS coordinates, PTP amounts, PTP dates and field remarks"
+            >
+              <FileText className="w-4 h-4 text-rose-400" />
+              <span>{selectedIds.size > 0 ? `Export PDF (${selectedIds.size})` : "Export PDF Report"}</span>
+            </button>
           )}
         </div>
       </div>

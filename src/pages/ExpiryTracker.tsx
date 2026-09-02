@@ -8,7 +8,6 @@ import {
   AlertTriangle, 
   CheckCircle2, 
   Download, 
-  FileSpreadsheet, 
   FileText, 
   Printer, 
   Filter, 
@@ -22,7 +21,6 @@ import {
   UserCheck, 
   TrendingUp 
 } from 'lucide-react';
-import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -209,74 +207,6 @@ export const ExpiryTrackerPage: React.FC = () => {
     }
   };
 
-  // 📗 Selective Export to Excel (.xlsx)
-  const handleExportExcel = () => {
-    const wb = XLSX.utils.book_new();
-
-    // Sheet 1: Summary Matrix
-    const summaryData = [
-      ['BANK / INSTITUTION', 'ACTIVE PIPELINE', 'EXPIRING <= 7 DAYS', 'EXPIRING 8-30 DAYS', 'EXPIRED MANDATES', 'SETTLED ACCOUNTS', 'TOTAL CASES'],
-      ...filteredMatrix.map(r => [
-        r.bankName,
-        r.active,
-        r.expiring7,
-        r.expiring30,
-        r.expired,
-        r.settled,
-        r.total
-      ]),
-      ['TOTAL', totals.active, totals.expiring7, totals.expiring30, totals.expired, totals.settled, totals.total]
-    ];
-
-    const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
-    wsSummary['!cols'] = [
-      { wch: 30 }, { wch: 18 }, { wch: 22 }, { wch: 22 }, { wch: 20 }, { wch: 18 }, { wch: 15 }
-    ];
-    XLSX.utils.book_append_sheet(wb, wsSummary, 'Expiry Matrix Summary');
-
-    // Sheet 2: Filtered Case Records Detail
-    const detailHeaders = [
-      'FILE NO', 'ACCOUNT NO', 'CUSTOMER NAME', 'PHONE', 'BANK', 'PRODUCT', 
-      'AGENT NAME', 'ALLOCATION DATE', 'EXPIRY DATE', 'EXPIRY STATUS', 
-      'OUTSTANDING (BDT)', 'OVERDUE (BDT)', 'LEGAL STATUS'
-    ];
-
-    const detailRows = filteredCases.map(c => {
-      const cat = getExpiryCategory(c);
-      const catLabel = 
-        cat === 'expiring7' ? 'Expiring <= 7 Days' :
-        cat === 'expiring30' ? 'Expiring 8-30 Days' :
-        cat === 'expired' ? 'Expired' :
-        cat === 'settled' ? 'Settled' : 'Active Pipeline';
-
-      return [
-        c.file_number,
-        c.account_number || '',
-        c.customer_name,
-        c.customer_phone || '',
-        c.bank?.name || '',
-        c.product?.name || '',
-        c.agent_name || '',
-        c.allocation_date || '',
-        c.expiry_date || '',
-        catLabel,
-        Number(c.outstanding_amount) || 0,
-        Number(c.overdue_amount) || 0,
-        c.legal_status || 'Normal Recovery'
-      ];
-    });
-
-    const wsDetail = XLSX.utils.aoa_to_sheet([detailHeaders, ...detailRows]);
-    wsDetail['!cols'] = [
-      { wch: 18 }, { wch: 18 }, { wch: 24 }, { wch: 15 }, { wch: 25 }, { wch: 18 },
-      { wch: 18 }, { wch: 15 }, { wch: 15 }, { wch: 20 }, { wch: 18 }, { wch: 16 }, { wch: 20 }
-    ];
-    XLSX.utils.book_append_sheet(wb, wsDetail, 'Selective Case Details');
-
-    const dateStr = new Date().toISOString().split('T')[0];
-    XLSX.writeFile(wb, `Portfolio_Expiry_Tracker_${dateStr}.xlsx`);
-  };
-
   // 📕 Selective Export to PDF (.pdf)
   const handleExportPDF = () => {
     const doc = new jsPDF('l', 'mm', 'a4'); // Landscape for rich table width
@@ -443,15 +373,6 @@ export const ExpiryTrackerPage: React.FC = () => {
             <span>{viewMode === 'matrix' ? 'View Cases Detail' : 'View Matrix Table'}</span>
           </button>
 
-          {/* Export Excel Button */}
-          <button
-            onClick={handleExportExcel}
-            className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-600/30 flex items-center gap-1.5 transition-all"
-            title="Export selective data to styled Excel workbook"
-          >
-            <FileSpreadsheet className="w-3.5 h-3.5" />
-            <span>Export Excel (.xlsx)</span>
-          </button>
 
           {/* Export PDF Button */}
           <button

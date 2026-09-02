@@ -1,9 +1,8 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { dataService } from '../services/dataService';
-import { TrendingUp, Download, Award, Users, Search } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import { TrendingUp, Printer, Award, Users, Search } from 'lucide-react';
 
 export const AgentPerformancePage: React.FC = () => {
   const { user, users } = useAuth();
@@ -36,13 +35,6 @@ export const AgentPerformancePage: React.FC = () => {
     };
   }).sort((a, b) => b.totalCollected - a.totalCollected);
 
-  const handleExportCSV = () => {
-    const ws = XLSX.utils.json_to_sheet(performanceData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Agent Performance');
-    XLSX.writeFile(wb, `Agent_Performance_Report_${new Date().toISOString().split('T')[0]}.xlsx`);
-  };
-
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -56,11 +48,12 @@ export const AgentPerformancePage: React.FC = () => {
         </div>
 
         <button
-          onClick={handleExportCSV}
+          onClick={() => window.print()}
           className="px-3.5 py-2 rounded-xl bg-slate-900 dark:bg-slate-800 text-white font-bold text-xs hover:bg-slate-800 flex items-center gap-2 transition-all border border-slate-700/50"
+          title="Print or save as PDF"
         >
-          <Download className="w-4 h-4" />
-          <span>{t('cases.export_excel', 'Export Excel (.XLSX)')}</span>
+          <Printer className="w-4 h-4 text-emerald-400" />
+          <span>Print / PDF Report</span>
         </button>
       </div>
 

@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from './context/AuthContext';
 import { Layout } from './components/Layout';
 import { Login } from './pages/Login';
@@ -12,6 +12,7 @@ import { AgentPerformancePage } from './pages/AgentPerformance';
 import { ExpiryTrackerPage } from './pages/ExpiryTracker';
 import { FlaggedCasesPage } from './pages/FlaggedCases';
 import { TeamManagementPage } from './pages/TeamManagement';
+import { GoogleSheetSyncPage } from './pages/GoogleSheetSync';
 
 export const App: React.FC = () => {
   const { user } = useAuth();
@@ -47,6 +48,8 @@ export const App: React.FC = () => {
         return <TrackingMap />;
       case 'imports':
         return <ExcelImporterPage />;
+      case 'gsheet_sync':
+        return <GoogleSheetSyncPage />;
       case 'contacts':
         return <BankContactsPage />;
       case 'reports_perf':

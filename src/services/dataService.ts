@@ -729,6 +729,84 @@ class DataService {
     return enrichCase(item);
   }
 
+  // ── Google Sheets full-replace sync ─────────────────────────────────
+  public replaceAllCasesFromSheet(caseDataList: Record<string, any>[]) {
+    const banks = getAllSystemBanks();
+    const products = getAllSystemProducts();
+    const now = new Date().toISOString();
+
+    const newCases: CaseFile[] = caseDataList.map((data, idx) => {
+      // Resolve bank
+      let bankId = 1;
+      if (data.bank_name) {
+        const bName = String(data.bank_name).trim().toLowerCase();
+        const bank = banks.find(b => b.name.toLowerCase() === bName || b.code.toLowerCase() === bName);
+        if (bank) bankId = bank.id;
+        else {
+          // Auto-create bank id from name hash
+          let hash = 0;
+          for (let i = 0; i < bName.length; i++) hash = ((hash << 5) - hash) + bName.charCodeAt(i);
+          bankId = Math.abs(hash % 100000) + 100;
+        }
+      }
+
+      // Resolve product
+      let productId = 1;
+      if (data.product_name) {
+        const pName = String(data.product_name).trim().toLowerCase();
+        const prod = products.find(p => p.bank_id === bankId && p.name.toLowerCase() === pName);
+        if (prod) productId = prod.id;
+        else {
+          let hash = 0;
+          const combined = `${bankId}_${pName}`;
+          for (let i = 0; i < combined.length; i++) hash = ((hash << 5) - hash) + combined.charCodeAt(i);
+          productId = Math.abs(hash % 100000) + 100;
+        }
+      }
+
+      // Try to reuse existing case id by file number to preserve visit/remark references
+      const existingCase = this.cases.find(c =>
+        c.file_number.trim().toLowerCase() === String(data.file_number || '').trim().toLowerCase()
+      );
+
+      return {
+        id: existingCase?.id ?? (Date.now() + idx),
+        file_number: String(data.file_number || `GS-${idx + 1}`).trim(),
+        bank_id: bankId,
+        product_id: productId,
+        account_number: data.account_number || '',
+        customer_name: String(data.customer_name || 'Unknown').trim(),
+        customer_phone: data.customer_phone || '',
+        customer_secondary_phone: data.customer_secondary_phone || '',
+        customer_address_present: data.customer_address_present || '',
+        customer_address_permanent: data.customer_address_permanent || '',
+        present_address_visited: existingCase?.present_address_visited ?? false,
+        permanent_address_visited: existingCase?.permanent_address_visited ?? false,
+        outstanding_amount: Number(data.outstanding_amount) || 0,
+        overdue_amount: Number(data.overdue_amount) || 0,
+        minimum_payment: data.minimum_payment ? Number(data.minimum_payment) : null,
+        status: (data.status as any) || existingCase?.status || 'new',
+        legal_status: data.legal_status || existingCase?.legal_status || 'Normal Recovery',
+        availability_status: existingCase?.availability_status || null,
+        agent_name: data.agent_name || existingCase?.agent_name || '',
+        collector_name: data.collector_name || existingCase?.collector_name || '',
+        assigned_agent_id: existingCase?.assigned_agent_id ?? null,
+        assigned_manager_id: existingCase?.assigned_manager_id ?? null,
+        allocation_date: data.allocation_date || existingCase?.allocation_date || null,
+        expiry_date: data.expiry_date || existingCase?.expiry_date || null,
+        last_visit_at: existingCase?.last_visit_at || null,
+        total_collected_amount: existingCase?.total_collected_amount ?? 0,
+        extra_attributes: existingCase?.extra_attributes || {},
+        created_at: existingCase?.created_at || now,
+        updated_at: now,
+      };
+    });
+
+    this.cases = newCases;
+    this.saveState();
+    this.notifySubscribers();
+  }
+
   public reassignCase(caseId: number, agentId: number) {
     const item = this.cases.find(c => c.id === caseId);
     if (item) {

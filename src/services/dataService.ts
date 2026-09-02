@@ -796,7 +796,7 @@ class DataService {
         expiry_date: data.expiry_date || existingCase?.expiry_date || null,
         last_visit_at: existingCase?.last_visit_at || null,
         total_collected_amount: existingCase?.total_collected_amount ?? 0,
-        extra_attributes: existingCase?.extra_attributes || {},
+        extra_attributes: { ...(existingCase?.extra_attributes || {}), ...(data.extra_attributes || {}) },
         created_at: existingCase?.created_at || now,
         updated_at: now,
       };

@@ -7,12 +7,14 @@ const COL_MAP: Record<string, string> = {
   CASE_NO:                    'file_number',
   BANK_NAME:                  'bank_name',
   BANK:                       'bank_name',
+  FILE_TYPE:                  'file_type',
   PRODUCT_NAME:               'product_name',
   PRODUCT:                    'product_name',
   CARD_TYPE:                  'product_name',
   ACCOUNT_NUMBER:             'account_number',
   ACCOUNT_NO:                 'account_number',
   CARD_NUMBER:                'account_number',
+  CASA:                       'casa',
   CUSTOMER_NAME:              'customer_name',
   CLIENT_NAME:                'customer_name',
   NAME:                       'customer_name',
@@ -21,7 +23,11 @@ const COL_MAP: Record<string, string> = {
   MOBILE:                     'customer_phone',
   CUSTOMER_SECONDARY_PHONE:   'customer_secondary_phone',
   SECONDARY_PHONE:            'customer_secondary_phone',
+  REF_PHONE:                  'customer_secondary_phone',
   ALT_PHONE:                  'customer_secondary_phone',
+  EMP_OFFICE_NAME:            'emp_office_name',
+  POSITION:                   'position',
+  EMP_OFFICE_ADDRESS:         'emp_office_address',
   PRESENT_ADDRESS:            'customer_address_present',
   CURRENT_ADDRESS:            'customer_address_present',
   PERMANENT_ADDRESS:          'customer_address_permanent',
@@ -32,7 +38,9 @@ const COL_MAP: Record<string, string> = {
   OVERDUE:                    'overdue_amount',
   MINIMUM_PAYMENT:            'minimum_payment',
   MIN_PAYMENT:                'minimum_payment',
+  DPD:                        'dpd',
   STATUS:                     'status',
+  FILE_STATUS:                'status',
   LEGAL_STATUS:               'legal_status',
   AGENT_NAME:                 'agent_name',
   AGENT:                      'agent_name',
@@ -41,10 +49,13 @@ const COL_MAP: Record<string, string> = {
   COLLECTOR:                  'collector_name',
   BANK_COLLECTOR:             'collector_name',
   BANK_OFFICER:               'collector_name',
+  BRANCH_NAME:                'branch_name',
+  AREA:                       'area',
   ALLOCATION_DATE:            'allocation_date',
   ALLOC_DATE:                 'allocation_date',
   EXPIRY_DATE:                'expiry_date',
   EXPIRY:                     'expiry_date',
+  LAP_STATUS:                 'lap_status',
 };
 
 export interface SyncStatus {
@@ -115,7 +126,9 @@ async function fetchSheetRows(scriptUrl: string): Promise<any[]> {
 }
 
 function mapRowToCaseData(row: Record<string, any>): Record<string, any> | null {
-  const mapped: Record<string, any> = {};
+  const mapped: Record<string, any> = {
+    extra_attributes: { ...row }
+  };
 
   for (const [sheetCol, rawVal] of Object.entries(row)) {
     const normalKey = String(sheetCol).trim().toUpperCase().replace(/\s+/g, '_');

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   loadGSheetSettings,
   saveGSheetSettings,
+  fetchGSheetSettingsFromCloud,
   startSyncInterval,
   stopSyncInterval,
   syncFromGoogleSheet,
@@ -21,6 +22,7 @@ import {
   Wifi,
   WifiOff,
   FileSpreadsheet,
+  Save,
 } from 'lucide-react';
 
 const APPS_SCRIPT_CODE = `// ═══════════════════════════════════════════════════════════════
@@ -111,14 +113,25 @@ export const GoogleSheetSyncPage: React.FC = () => {
   const [copied, setCopied] = useState<'script' | 'col' | null>(null);
   const [urlInput, setUrlInput] = useState(settings.scriptUrl);
   const [intervalInput, setIntervalInput] = useState(String(settings.intervalSeconds || 60));
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
   const handleStatus = useCallback((s: SyncStatus) => setStatus(s), []);
 
-  // Restart interval if already enabled when page loads
+  // Fetch settings from cloud on mount so URL is never lost across devices
   useEffect(() => {
-    if (settings.enabled && settings.scriptUrl) {
-      startSyncInterval(settings.scriptUrl, settings.intervalSeconds || 60, handleStatus);
-    }
+    fetchGSheetSettingsFromCloud().then((cloudSet) => {
+      if (cloudSet && cloudSet.scriptUrl) {
+        setSettings(cloudSet);
+        setUrlInput(cloudSet.scriptUrl);
+        setIntervalInput(String(cloudSet.intervalSeconds || 60));
+        if (cloudSet.enabled) {
+          startSyncInterval(cloudSet.scriptUrl, cloudSet.intervalSeconds || 60, handleStatus);
+        }
+      } else if (settings.enabled && settings.scriptUrl) {
+        startSyncInterval(settings.scriptUrl, settings.intervalSeconds || 60, handleStatus);
+      }
+    });
+
     return () => {
       const curr = loadGSheetSettings();
       if (!curr.enabled) {
@@ -127,12 +140,17 @@ export const GoogleSheetSyncPage: React.FC = () => {
     };
   }, []);
 
-  const handleSaveAndStart = () => {
+  const handleSaveAndStart = async () => {
+    const trimmed = urlInput.trim();
+    if (!trimmed) return;
     const secs = Math.max(30, parseInt(intervalInput) || 60);
-    const newSettings = { scriptUrl: urlInput.trim(), enabled: true, intervalSeconds: secs };
+    const newSettings = { scriptUrl: trimmed, enabled: true, intervalSeconds: secs };
     saveGSheetSettings(newSettings);
     setSettings(newSettings);
-    startSyncInterval(urlInput.trim(), secs, handleStatus);
+    setSaveMessage('✓ Apps Script URL saved to Cloud! Syncing data across all devices...');
+    startSyncInterval(trimmed, secs, handleStatus);
+    await syncFromGoogleSheet(trimmed, handleStatus);
+    setTimeout(() => setSaveMessage(null), 6000);
   };
 
   const handleStop = () => {
@@ -141,6 +159,8 @@ export const GoogleSheetSyncPage: React.FC = () => {
     saveGSheetSettings(newSettings);
     setSettings(newSettings);
     setStatus({ state: 'idle' });
+    setSaveMessage('Auto-sync paused.');
+    setTimeout(() => setSaveMessage(null), 4000);
   };
 
   const handleManualSync = () => {
@@ -208,11 +228,29 @@ export const GoogleSheetSyncPage: React.FC = () => {
         </div>
       )}
 
+      {/* Save Success Banner */}
+      {saveMessage && (
+        <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-300 dark:border-emerald-800 flex items-center gap-3 animate-in fade-in">
+          <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+          <div>
+            <p className="font-bold text-emerald-800 dark:text-emerald-300 text-xs">{saveMessage}</p>
+            <p className="text-[11px] text-emerald-700 dark:text-emerald-400">The script URL has been stored in Supabase. All active devices and user accounts will automatically use this URL.</p>
+          </div>
+        </div>
+      )}
+
       {/* Connection Settings */}
       <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
-        <h3 className="font-bold text-slate-800 dark:text-white text-sm flex items-center gap-2">
-          <Wifi className="w-4 h-4 text-emerald-500" /> Connection Settings
-        </h3>
+        <div className="flex items-center justify-between">
+          <h3 className="font-bold text-slate-800 dark:text-white text-sm flex items-center gap-2">
+            <Wifi className="w-4 h-4 text-emerald-500" /> Connection & Cloud Sync Settings
+          </h3>
+          {settings.scriptUrl && (
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/20">
+              Cloud Synced ✓
+            </span>
+          )}
+        </div>
 
         <div className="space-y-3">
           <div>
@@ -226,12 +264,12 @@ export const GoogleSheetSyncPage: React.FC = () => {
               placeholder="https://script.google.com/macros/s/AKfyc.../exec"
               className="w-full px-4 py-2.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 placeholder-slate-400 font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
             />
-            <p className="text-[11px] text-slate-400 mt-1">Paste the Google Apps Script deployment URL here (see setup steps below)</p>
+            <p className="text-[11px] text-slate-400 mt-1">Paste the Google Apps Script deployment URL here. Saving this syncs it across all devices and accounts automatically.</p>
           </div>
 
           <div className="w-48">
             <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
-              <Clock className="w-3.5 h-3.5 inline mr-1" /> Sync Every (seconds)
+              <Clock className="w-3.5 h-3.5 inline mr-1" /> Auto-Sync Interval (seconds)
             </label>
             <input
               type="number"
@@ -246,20 +284,31 @@ export const GoogleSheetSyncPage: React.FC = () => {
         </div>
 
         <div className="flex flex-wrap gap-2 pt-1">
+          {/* Dedicated Save & Sync Button */}
+          <button
+            onClick={handleSaveAndStart}
+            disabled={!urlInput.trim() || status.state === 'syncing'}
+            className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-xs flex items-center gap-2 transition-all shadow-md shadow-emerald-600/30"
+            title="Save URL to Supabase and immediately sync fresh cases to all devices"
+          >
+            <Save className="w-3.5 h-3.5" />
+            <span>Save URL & Sync to All Devices</span>
+          </button>
+
           {!settings.enabled ? (
             <button
               onClick={handleSaveAndStart}
               disabled={!urlInput.trim()}
-              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-xs flex items-center gap-2 transition-all shadow-md shadow-emerald-600/30"
+              className="px-4 py-2 rounded-xl bg-slate-800 dark:bg-slate-700 hover:bg-slate-700 text-white font-bold text-xs flex items-center gap-2 transition-all"
             >
-              <Play className="w-3.5 h-3.5" /> Start Live Sync
+              <Play className="w-3.5 h-3.5 text-emerald-400" /> Start Live Auto-Sync
             </button>
           ) : (
             <button
               onClick={handleStop}
               className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs flex items-center gap-2 transition-all shadow-md shadow-rose-600/30"
             >
-              <Square className="w-3.5 h-3.5" /> Stop Sync
+              <Square className="w-3.5 h-3.5" /> Pause Auto-Sync
             </button>
           )}
 

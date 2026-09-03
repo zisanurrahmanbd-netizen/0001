@@ -16,7 +16,8 @@ import {
   CalendarClock,
   AlertTriangle,
   UserPlus,
-  Sheet
+  Sheet,
+  Laptop
 } from "lucide-react";
 
 interface SidebarProps {
@@ -63,6 +64,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, isOpe
       icon: Users, 
       perm: "view_team",
       badge: unregisteredAgents.length > 0 ? unregisteredAgents.length : undefined
+    },
+    { 
+      id: "device_logins", 
+      label: "Device Logins & Activity", 
+      icon: Laptop, 
+      perm: "view_team" 
     },
   ];
 

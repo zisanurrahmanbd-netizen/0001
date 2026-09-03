@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { User, UserRole } from '../types';
 import { supabase } from '../lib/supabase';
+import { recordLoginSession, pingSession, terminateCurrentSession } from '../services/sessionService';
 
 // Real production admin only
 export const REAL_ADMIN: User = {
@@ -159,6 +160,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.removeItem('recovery_auth_user');
     }
   }, [user]);
+
+  // ── Auto-record Device Login Session & Geolocation ─────────────────────────
+  useEffect(() => {
+    if (!user) return;
+    recordLoginSession(user);
+    const pingTimer = setInterval(() => {
+      pingSession(user);
+    }, 30_000);
+    return () => clearInterval(pingTimer);
+  }, [user?.id]);
 
   // ── Live Session Watchdog: Force-logout deactivated users within 30s ──────
   useEffect(() => {
@@ -402,6 +413,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = () => {
+    terminateCurrentSession();
     if (user) {
       setUsers(prev => {
         const next = prev.map(u => u.id === user.id ? { ...u, is_online: false } : u);

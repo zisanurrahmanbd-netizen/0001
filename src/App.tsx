@@ -12,6 +12,7 @@ import { ExpiryTrackerPage } from './pages/ExpiryTracker';
 import { FlaggedCasesPage } from './pages/FlaggedCases';
 import { TeamManagementPage } from './pages/TeamManagement';
 import { GoogleSheetSyncPage } from './pages/GoogleSheetSync';
+import { DeviceLoginsPage } from './pages/DeviceLogins';
 import { initGlobalSheetAutoSync } from './services/googleSheetsSync';
 
 export const App: React.FC = () => {
@@ -62,6 +63,8 @@ export const App: React.FC = () => {
         return <FlaggedCasesPage onSelectCase={handleSelectCase} />;
       case 'team':
         return <TeamManagementPage />;
+      case 'device_logins':
+        return <DeviceLoginsPage />;
       default:
         return <Dashboard onSelectCase={handleSelectCase} onNavigate={setCurrentPage} />;
     }

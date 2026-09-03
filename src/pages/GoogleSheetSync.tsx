@@ -73,48 +73,57 @@ function doGet(e) {
 
 function doPost(e) {
   try {
-    var body = JSON.parse(e.postData.contents);
+    var rawText = e.postData.contents;
+    var body = JSON.parse(rawText);
     var action = body.action;
-    var fileNumber = body.fileNumber;
+    var fileNumber = String(body.fileNumber || '').trim();
     var updates = body.updates;
 
     if (action !== 'update' || !fileNumber || !updates) {
-      return response({ success: false, error: 'Invalid request' });
+      return response({ success: false, error: 'Invalid request: action, fileNumber or updates missing' });
     }
 
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var sheet = ss.getSheetByName('Cases') || ss.getSheets()[0];
     var data = sheet.getDataRange().getValues();
 
-    if (data.length < 2) return response({ success: false, error: 'No data' });
+    if (data.length < 2) return response({ success: false, error: 'No data in sheet' });
 
     var headers = data[0].map(function(h) {
-      return String(h).trim().toUpperCase().replace(/\\s+/g, '_');
+      return String(h).trim().toUpperCase().replace(/\s+/g, '_');
     });
 
-    // Find the row with matching FILE_NO
+    // Find the file identifier column (FILE_NO, FILE_NUMBER, CASE_NO, or first col)
     var fileNoIdx = headers.indexOf('FILE_NO');
-    if (fileNoIdx === -1) return response({ success: false, error: 'FILE_NO column not found' });
+    if (fileNoIdx === -1) fileNoIdx = headers.indexOf('FILE_NUMBER');
+    if (fileNoIdx === -1) fileNoIdx = headers.indexOf('CASE_NO');
+    if (fileNoIdx === -1) fileNoIdx = 0; // fallback to column A
 
     var targetRow = -1;
+    var searchClean = fileNumber.toLowerCase().replace(/[^a-z0-9]/g, '');
+
     for (var i = 1; i < data.length; i++) {
-      if (String(data[i][fileNoIdx]).trim() === String(fileNumber).trim()) {
+      var cellVal = String(data[i][fileNoIdx]).trim();
+      var cellClean = cellVal.toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (cellVal.toLowerCase() === fileNumber.toLowerCase() || (searchClean && cellClean === searchClean)) {
         targetRow = i + 1; // 1-indexed for Sheets API
         break;
       }
     }
 
-    if (targetRow === -1) return response({ success: false, error: 'File not found: ' + fileNumber });
+    if (targetRow === -1) {
+      return response({ success: false, error: 'File not found in sheet: ' + fileNumber, searchedCol: headers[fileNoIdx] });
+    }
 
     // For each key in updates, find the column index and update the cell.
     // If the column does not exist yet, dynamically append it to header row 1!
     var updated = [];
     Object.keys(updates).forEach(function(key) {
-      var colName = key.toUpperCase();
+      var colName = String(key).trim().toUpperCase().replace(/\s+/g, '_');
       var colIdx = headers.indexOf(colName);
       if (colIdx === -1) {
         // Automatically add the missing column header to row 1
-        var newColIdx = headers.length + 1;
+        var newColIdx = sheet.getLastColumn() + 1;
         sheet.getRange(1, newColIdx).setValue(colName);
         headers.push(colName);
         colIdx = headers.length - 1;
@@ -123,7 +132,8 @@ function doPost(e) {
       updated.push(colName);
     });
 
-    return response({ success: true, updated: updated, row: targetRow });
+    SpreadsheetApp.flush();
+    return response({ success: true, updated: updated, row: targetRow, fileNumber: fileNumber });
   } catch (err) {
     return response({ success: false, error: err.toString() });
   }
@@ -160,7 +170,19 @@ const SHEET_COLUMNS = [
   { col: 'AREA', desc: 'Recovery zone / territory area', example: 'Dhaka North' },
   { col: 'ALLOCATION_DATE', desc: 'Date allocated to agency (YYYY-MM-DD)', example: '2026-09-01' },
   { col: 'EXPIRY_DATE', desc: 'Assignment expiry date (YYYY-MM-DD)', example: '2026-09-30' },
-  { col: 'LAP_STATUS', desc: 'Physical file details / Loan Against Property / Legal status', example: 'Physical File Available / Mortgage Verified' },
+  { col: 'LAP_STATUS', desc: 'Physical file details / Loan Against Property / Legal status', example: 'Physical File Available' },
+  { col: 'LAST_VISIT_DATE', desc: 'Date and time of last field visit check-in', example: '2026-09-03 14:30:00' },
+  { col: 'LAST_VISIT_TYPE', desc: 'Visited address type (present / permanent)', example: 'present' },
+  { col: 'LAST_VISIT_NOTES', desc: 'Field agent observation and visit remarks', example: 'Met customer, agreed to settle' },
+  { col: 'LAST_REMARK', desc: 'Latest case conversation remarks / updates', example: 'Customer promised payment' },
+  { col: 'LAST_PTP_AMOUNT', desc: 'Promise to Pay amount committed by customer', example: '15000' },
+  { col: 'LAST_PTP_DATE', desc: 'Promise to Pay deadline date (YYYY-MM-DD)', example: '2026-09-10' },
+  { col: 'CONTACT_STATUS', desc: 'Contact status (contacted / uncontacted / door_locked / shifted)', example: 'contacted' },
+  { col: 'LAST_PAYMENT_AMOUNT', desc: 'Last recorded collection amount', example: '5000' },
+  { col: 'LAST_PAYMENT_DATE', desc: 'Date of last collection receipt', example: '2026-09-03' },
+  { col: 'PAYMENT_METHOD', desc: 'Method of payment (cash / bank_deposit / cheque)', example: 'cash' },
+  { col: 'RECEIPT_NO', desc: 'Money receipt number for collection', example: 'MR-98421' },
+  { col: 'GUARANTORS', desc: 'Multiple reference / guarantor phone and addresses (JSON or formatted text)', example: '[{"name":"Rahim","phone":"01700000000","address":"Dhaka"}]' },
 ];
 
 export const GoogleSheetSyncPage: React.FC = () => {

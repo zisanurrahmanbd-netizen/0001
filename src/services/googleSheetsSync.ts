@@ -143,12 +143,17 @@ export async function pushUpdateToSheet(
   scriptUrl: string,
   fileNumber: string,
   updates: Record<string, string>
-): Promise<{ ok: boolean; message?: string }> {
-  if (!scriptUrl || !fileNumber) return { ok: false, message: 'No script URL or file number' };
+): Promise<{ ok: boolean; message?: string; response?: any }> {
+  if (!scriptUrl || !fileNumber) {
+    console.warn('[pushUpdateToSheet] Skipped: scriptUrl or fileNumber missing', { scriptUrl, fileNumber });
+    return { ok: false, message: 'No script URL or file number' };
+  }
   try {
+    console.log(`[pushUpdateToSheet] Sending update for ${fileNumber}...`, updates);
     const res = await fetch(scriptUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'text/plain' },
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      redirect: 'follow',
       body: JSON.stringify({
         action: 'update',
         fileNumber,
@@ -157,9 +162,11 @@ export async function pushUpdateToSheet(
     });
     const text = await res.text();
     let json: any = {};
-    try { json = JSON.parse(text); } catch (_) { json = { status: 'ok' }; }
-    return { ok: json.status !== 'error', message: json.message };
+    try { json = JSON.parse(text); } catch (_) { json = { status: 'ok', raw: text }; }
+    console.log(`[pushUpdateToSheet] Response for ${fileNumber}:`, json);
+    return { ok: json.success !== false && json.status !== 'error', message: json.error || json.message, response: json };
   } catch (e: any) {
+    console.error(`[pushUpdateToSheet] Network error for ${fileNumber}:`, e);
     return { ok: false, message: e?.message || 'Network error' };
   }
 }

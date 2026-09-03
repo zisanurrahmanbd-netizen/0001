@@ -71,6 +71,57 @@ function doGet(e) {
   }
 }
 
+function doPost(e) {
+  try {
+    var body = JSON.parse(e.postData.contents);
+    var action = body.action;
+    var fileNumber = body.fileNumber;
+    var updates = body.updates;
+
+    if (action !== 'update' || !fileNumber || !updates) {
+      return response({ success: false, error: 'Invalid request' });
+    }
+
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName('Cases') || ss.getSheets()[0];
+    var data = sheet.getDataRange().getValues();
+
+    if (data.length < 2) return response({ success: false, error: 'No data' });
+
+    var headers = data[0].map(function(h) {
+      return String(h).trim().toUpperCase().replace(/\\s+/g, '_');
+    });
+
+    // Find the row with matching FILE_NO
+    var fileNoIdx = headers.indexOf('FILE_NO');
+    if (fileNoIdx === -1) return response({ success: false, error: 'FILE_NO column not found' });
+
+    var targetRow = -1;
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][fileNoIdx]).trim() === String(fileNumber).trim()) {
+        targetRow = i + 1; // 1-indexed for Sheets API
+        break;
+      }
+    }
+
+    if (targetRow === -1) return response({ success: false, error: 'File not found: ' + fileNumber });
+
+    // For each key in updates, find the column index and update the cell
+    var updated = [];
+    Object.keys(updates).forEach(function(key) {
+      var colIdx = headers.indexOf(key.toUpperCase());
+      if (colIdx !== -1) {
+        sheet.getRange(targetRow, colIdx + 1).setValue(updates[key]);
+        updated.push(key);
+      }
+    });
+
+    return response({ success: true, updated: updated, row: targetRow });
+  } catch (err) {
+    return response({ success: false, error: err.toString() });
+  }
+}
+
 function response(obj) {
   return ContentService
     .createTextOutput(JSON.stringify(obj))

@@ -1058,6 +1058,20 @@ class DataService {
         }).eq('id', item.id).then(() => {});
       }
     } catch (_) {}
+
+    // ── Push visit details to Google Sheet ──────────────────────────
+    try {
+      const settings = loadGSheetSettings();
+      if (settings.scriptUrl && item?.file_number) {
+        pushUpdateToSheet(settings.scriptUrl, item.file_number, {
+          LAST_VISIT_DATE: newCi.visited_at,
+          LAST_VISIT_TYPE: newCi.address_type,
+          LAST_VISIT_NOTES: newCi.notes || '',
+          FILE_STATUS: 'visited',
+        }).catch(() => {});
+      }
+    } catch (_) {}
+
     return newCi;
   }
 
@@ -1082,6 +1096,20 @@ class DataService {
     try {
       supabase.from('case_remarks').insert([newR]).then(() => {});
     } catch (_) {}
+
+    // ── Push remark details to Google Sheet ─────────────────────────
+    try {
+      const settings = loadGSheetSettings();
+      if (settings.scriptUrl && item?.file_number) {
+        pushUpdateToSheet(settings.scriptUrl, item.file_number, {
+          LAST_REMARK: newR.remarks,
+          LAST_PTP_AMOUNT: String(newR.promised_amount || ''),
+          LAST_PTP_DATE: newR.promise_date || '',
+          CONTACT_STATUS: newR.contact_status,
+        }).catch(() => {});
+      }
+    } catch (_) {}
+
     return newR;
   }
 
@@ -1115,6 +1143,20 @@ class DataService {
         }).eq('id', item.id).then(() => {});
       }
     } catch (_) {}
+
+    // ── Push payment details to Google Sheet ────────────────────────
+    try {
+      const settings = loadGSheetSettings();
+      if (settings.scriptUrl && item?.file_number) {
+        pushUpdateToSheet(settings.scriptUrl, item.file_number, {
+          LAST_PAYMENT_AMOUNT: String(newCol.amount),
+          LAST_PAYMENT_DATE: newCol.collected_at,
+          PAYMENT_METHOD: newCol.payment_method,
+          RECEIPT_NO: newCol.receipt_number || '',
+        }).catch(() => {});
+      }
+    } catch (_) {}
+
     return newCol;
   }
 

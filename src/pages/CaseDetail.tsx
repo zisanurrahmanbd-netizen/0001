@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { usePermissions } from '../context/PermissionsContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -10,7 +10,7 @@ import {
   ArrowLeft, MapPin, Phone, Coins, Calendar, Clock, 
   MessageSquare, Receipt, Navigation, UserCheck, Building2,
   ExternalLink, CheckCircle2, Compass, CreditCard, FileSpreadsheet,
-  User as UserIcon, ShieldCheck, Edit3, Briefcase
+  User as UserIcon, ShieldCheck, Edit3, Briefcase, Camera, Plus, X, Image
 } from 'lucide-react';
 
 export const CaseDetail: React.FC<{ caseId: number; onBack: () => void }> = ({ caseId, onBack }) => {
@@ -37,6 +37,19 @@ export const CaseDetail: React.FC<{ caseId: number; onBack: () => void }> = ({ c
   const [editPosition, setEditPosition] = useState('');
   const [editEmpOfficeAddress, setEditEmpOfficeAddress] = useState('');
 
+  // Multiple Guarantors / References (dynamic array)
+  const [editGuarantors, setEditGuarantors] = useState<{ name: string; phone: string; address: string }[]>([]);
+
+  // Photo upload states (base64)
+  const [checkPhoto, setCheckPhoto] = useState('');
+  const [colPhoto, setColPhoto] = useState('');
+  const [remPhoto, setRemPhoto] = useState('');
+
+  // Hidden file input refs
+  const checkPhotoRef = useRef<HTMLInputElement>(null);
+  const colPhotoRef = useRef<HTMLInputElement>(null);
+  const remPhotoRef = useRef<HTMLInputElement>(null);
+
   const [addrType, setAddrType] = useState<'present' | 'permanent'>('present');
   const [checkNotes, setCheckNotes] = useState('');
   const [isLocating, setIsLocating] = useState(false);
@@ -51,6 +64,15 @@ export const CaseDetail: React.FC<{ caseId: number; onBack: () => void }> = ({ c
   const [remPtpDate, setRemPtpDate] = useState('');
   const [remText, setRemText] = useState('');
   const [selAgentId, setSelAgentId] = useState(4);
+
+  // Helper: convert File to base64
+  const fileToBase64 = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
 
   const reload = () => {
     setCaseItem(dataService.getCaseById(caseId));
@@ -107,10 +129,12 @@ export const CaseDetail: React.FC<{ caseId: number; onBack: () => void }> = ({ c
       longitude: gpsCoords?.lng || 90.4125,
       accuracy: gpsCoords?.accuracy || 8,
       notes: checkNotes,
+      photo_url: checkPhoto || undefined,
       visited_at: new Date().toISOString(),
     });
     setShowCheckIn(false);
     setCheckNotes('');
+    setCheckPhoto('');
     reload();
   };
 
@@ -123,10 +147,12 @@ export const CaseDetail: React.FC<{ caseId: number; onBack: () => void }> = ({ c
       amount: Number(colAmt),
       payment_method: colMethod,
       receipt_number: colRec || ('REC-' + Date.now().toString().slice(-6)),
+      photo_url: colPhoto || undefined,
       collected_at: new Date().toISOString(),
     });
     setShowCol(false);
     setColAmt('');
+    setColPhoto('');
     reload();
   };
 
@@ -140,10 +166,12 @@ export const CaseDetail: React.FC<{ caseId: number; onBack: () => void }> = ({ c
       promised_amount: remPtpAmt ? Number(remPtpAmt) : undefined,
       promise_date: remPtpDate || undefined,
       remarks: remText,
+      photo_url: remPhoto || undefined,
       created_at: new Date().toISOString(),
     });
     setShowRem(false);
     setRemText('');
+    setRemPhoto('');
     reload();
   };
 
@@ -163,6 +191,12 @@ export const CaseDetail: React.FC<{ caseId: number; onBack: () => void }> = ({ c
     setEditEmpOfficeName(String(caseItem.extra_attributes?.EMP_OFFICE_NAME || caseItem.extra_attributes?.emp_office_name || ''));
     setEditPosition(String(caseItem.extra_attributes?.POSITION || caseItem.extra_attributes?.position || ''));
     setEditEmpOfficeAddress(String(caseItem.extra_attributes?.EMP_OFFICE_ADDRESS || caseItem.extra_attributes?.emp_office_address || ''));
+    // Load guarantors from extra_attributes
+    try {
+      const raw = caseItem.extra_attributes?.GUARANTORS;
+      const parsed = typeof raw === 'string' ? JSON.parse(raw) : (Array.isArray(raw) ? raw : []);
+      setEditGuarantors(Array.isArray(parsed) ? parsed : []);
+    } catch { setEditGuarantors([]); }
     setShowEditCustomer(true);
   };
 
@@ -180,6 +214,7 @@ export const CaseDetail: React.FC<{ caseId: number; onBack: () => void }> = ({ c
         POSITION: editPosition.trim(),
         EMP_OFFICE_ADDRESS: editEmpOfficeAddress.trim(),
         REF_PHONE: editRefPhone.trim(),
+        GUARANTORS: JSON.stringify(editGuarantors),
       }
     });
     setShowEditCustomer(false);
@@ -402,6 +437,35 @@ export const CaseDetail: React.FC<{ caseId: number; onBack: () => void }> = ({ c
                   </div>
                 )}
               </div>
+
+              {/* Guarantors / References list */}
+              {(() => {
+                try {
+                  const raw = caseItem.extra_attributes?.GUARANTORS;
+                  const guarantors = typeof raw === 'string' ? JSON.parse(raw) : (Array.isArray(raw) ? raw : []);
+                  if (!Array.isArray(guarantors) || guarantors.length === 0) return null;
+                  return (
+                    <div className="pt-2 border-t border-amber-500/10">
+                      <p className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase mb-2">👥 Ref / Guarantors</p>
+                      <div className="space-y-2">
+                        {guarantors.map((g: any, idx: number) => (
+                          <div key={idx} className="p-3 bg-amber-500/5 border border-amber-500/20 rounded-2xl text-xs">
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-slate-800 dark:text-slate-200">{g.name || `Guarantor ${idx + 1}`}</span>
+                              {g.phone && (
+                                <a href={`tel:${g.phone}`} className="font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 hover:underline">
+                                  <Phone className="w-3 h-3" />{g.phone}
+                                </a>
+                              )}
+                            </div>
+                            {g.address && <p className="text-slate-500 mt-0.5">{g.address}</p>}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                } catch { return null; }
+              })()}
             </div>
           )}
 
@@ -492,6 +556,12 @@ export const CaseDetail: React.FC<{ caseId: number; onBack: () => void }> = ({ c
                           <span className="font-bold text-slate-900 dark:text-white">{t('detail.visit_outcome', 'Visit Outcome')}:</span> {ci.notes}
                         </div>
                       )}
+                      {ci.photo_url && (
+                        <div className="mt-1">
+                          <span className="text-[10px] font-bold text-purple-500 flex items-center gap-1 mb-1"><Camera className="w-3 h-3" /> Visit Proof Photo</span>
+                          <img src={ci.photo_url} alt="visit proof" className="rounded-xl max-h-40 object-cover border border-purple-500/20 w-full" />
+                        </div>
+                      )}
                     </div>
                   );
                 })
@@ -536,11 +606,21 @@ export const CaseDetail: React.FC<{ caseId: number; onBack: () => void }> = ({ c
           <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-3">
             <h3 className="text-sm font-bold flex items-center gap-2 text-slate-900 dark:text-white"><Receipt className="w-4 h-4 text-emerald-500" /> {t('detail.receipts', 'Receipts')}</h3>
             {collections.map(c => (
-              <div key={c.id} className="p-3 bg-emerald-500/10 rounded-2xl text-xs">
+              <div key={c.id} className="p-3 bg-emerald-500/10 rounded-2xl text-xs space-y-1.5">
                 <div className="flex justify-between font-bold text-emerald-600 dark:text-emerald-400">
                   <span>BDT {c.amount.toLocaleString()}</span>
                   <span className="font-mono text-[10px]">{c.receipt_number}</span>
                 </div>
+                <div className="flex justify-between text-[10px] text-slate-500">
+                  <span className="capitalize">{c.payment_method?.replace('_', ' ')}</span>
+                  <span>{new Date(c.collected_at).toLocaleDateString()}</span>
+                </div>
+                {c.photo_url && (
+                  <div>
+                    <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-1 mb-1"><Camera className="w-3 h-3" /> Payment Proof</span>
+                    <img src={c.photo_url} alt="payment proof" className="rounded-xl max-h-32 object-cover border border-emerald-500/20 w-full" />
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -643,6 +723,40 @@ export const CaseDetail: React.FC<{ caseId: number; onBack: () => void }> = ({ c
               />
             </div>
 
+            {/* Photo Upload */}
+            <div>
+              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                <Camera className="w-3.5 h-3.5 text-purple-500" /> Proof Photo (optional)
+              </label>
+              <input
+                ref={checkPhotoRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={async e => {
+                  const file = e.target.files?.[0];
+                  if (file) setCheckPhoto(await fileToBase64(file));
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => checkPhotoRef.current?.click()}
+                className="w-full p-2.5 rounded-xl border-2 border-dashed border-purple-400/40 hover:border-purple-500 bg-purple-500/5 text-purple-600 dark:text-purple-400 font-bold text-xs flex items-center justify-center gap-2 transition-all"
+              >
+                <Camera className="w-4 h-4" />
+                {checkPhoto ? 'Change Photo' : 'Capture / Upload Photo'}
+              </button>
+              {checkPhoto && (
+                <div className="mt-2 relative">
+                  <img src={checkPhoto} alt="preview" className="rounded-xl max-h-36 object-cover w-full border border-purple-500/20" />
+                  <button type="button" onClick={() => setCheckPhoto('')} className="absolute top-1 right-1 bg-rose-600 text-white rounded-full p-0.5 hover:bg-rose-500">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+            </div>
+
             <div className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
               <button type="button" onClick={() => setShowCheckIn(false)} className="px-3.5 py-2 bg-slate-100 dark:bg-slate-800 rounded-xl font-bold text-slate-700 dark:text-slate-300">
                 {t('detail.cancel', 'Cancel')}
@@ -663,11 +777,46 @@ export const CaseDetail: React.FC<{ caseId: number; onBack: () => void }> = ({ c
             <h3 className="font-bold text-sm text-slate-900 dark:text-white">{t('detail.record_payment', 'Record Payment')}</h3>
             <input type="number" required value={colAmt} onChange={e => setColAmt(e.target.value)} placeholder="Amount (BDT)" className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl font-bold" />
             <select value={colMethod} onChange={e => setColMethod(e.target.value as any)} className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl">
-              <option value="cash">{t('top.switch_lang') === 'English' ? 'à¦¨à¦—à¦¦ (Cash)' : 'Cash'}</option>
-              <option value="bank_deposit">{t('top.switch_lang') === 'English' ? 'à¦¬à§à¦¯à¦¾à¦‚à¦• à¦œà¦®à¦¾' : 'Bank Deposit'}</option>
-              <option value="cheque">{t('top.switch_lang') === 'English' ? 'à¦šà§‡à¦•' : 'Cheque'}</option>
+              <option value="cash">{t('top.switch_lang') === 'English' ? 'নগদ (Cash)' : 'Cash'}</option>
+              <option value="bank_deposit">{t('top.switch_lang') === 'English' ? 'ব্যাংক জমা' : 'Bank Deposit'}</option>
+              <option value="cheque">{t('top.switch_lang') === 'English' ? 'চেক' : 'Cheque'}</option>
             </select>
             <input type="text" value={colRec} onChange={e => setColRec(e.target.value)} placeholder="Receipt # (optional)" className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl" />
+
+            {/* Payment Proof Photo */}
+            <div>
+              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                <Camera className="w-3.5 h-3.5 text-emerald-500" /> Payment Proof Photo (optional)
+              </label>
+              <input
+                ref={colPhotoRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={async e => {
+                  const file = e.target.files?.[0];
+                  if (file) setColPhoto(await fileToBase64(file));
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => colPhotoRef.current?.click()}
+                className="w-full p-2.5 rounded-xl border-2 border-dashed border-emerald-400/40 hover:border-emerald-500 bg-emerald-500/5 text-emerald-600 dark:text-emerald-400 font-bold text-xs flex items-center justify-center gap-2 transition-all"
+              >
+                <Camera className="w-4 h-4" />
+                {colPhoto ? 'Change Photo' : 'Capture / Upload Receipt Photo'}
+              </button>
+              {colPhoto && (
+                <div className="mt-2 relative">
+                  <img src={colPhoto} alt="preview" className="rounded-xl max-h-32 object-cover w-full border border-emerald-500/20" />
+                  <button type="button" onClick={() => setColPhoto('')} className="absolute top-1 right-1 bg-rose-600 text-white rounded-full p-0.5 hover:bg-rose-500">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+            </div>
+
             <div className="flex justify-end gap-2 pt-2">
               <button type="button" onClick={() => setShowCol(false)} className="px-3.5 py-2 bg-slate-100 dark:bg-slate-800 rounded-xl font-bold">{t('detail.cancel', 'Cancel')}</button>
               <button type="submit" className="px-3.5 py-2 bg-emerald-600 text-white rounded-xl font-bold shadow-md shadow-emerald-600/30">{t('detail.save_payment', 'Save Payment')}</button>
@@ -679,19 +828,54 @@ export const CaseDetail: React.FC<{ caseId: number; onBack: () => void }> = ({ c
       {/* Log Remark Modal */}
       {showRem && (
         <div className="fixed inset-0 z-[100] w-screen h-screen flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
-          <form onSubmit={handleRemark} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-3xl max-w-sm w-full space-y-3 text-xs shadow-2xl">
+          <form onSubmit={handleRemark} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-3xl max-w-sm w-full space-y-3 text-xs shadow-2xl max-h-[90vh] overflow-y-auto">
             <h3 className="font-bold text-sm text-slate-900 dark:text-white">{t('detail.log_remark', 'Log Contact Remark / PTP')}</h3>
             <select value={remContact} onChange={e => setRemContact(e.target.value as any)} className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl">
-              <option value="contacted">{t('top.switch_lang') === 'English' ? 'à¦—à§à¦°à¦¾à¦¹à¦•à§‡à¦° à¦¸à¦¾à¦¥à§‡ à¦•à¦¥à¦¾ à¦¹à§Ÿà§‡à¦›à§‡' : 'Customer Contacted'}</option>
-              <option value="uncontacted">{t('top.switch_lang') === 'English' ? 'à¦¯à§‹à¦—à¦¾à¦¯à§‹à¦— à¦¸à¦®à§à¦­à¦¬ à¦¹à§Ÿà¦¨à¦¿' : 'Unreachable'}</option>
-              <option value="door_locked">{t('top.switch_lang') === 'English' ? 'à¦¦à¦°à¦œà¦¾à§Ÿ à¦¤à¦¾à¦²à¦¾à¦¬à¦¦à§à¦§' : 'Door Locked'}</option>
-              <option value="shifted">{t('top.switch_lang') === 'English' ? 'à¦ à¦¿à¦•à¦¾à¦¨à¦¾ à¦ªà¦°à¦¿à¦¬à¦°à§à¦¤à¦¨ à¦•à¦°à§‡à¦›à§‡' : 'Shifted'}</option>
+              <option value="contacted">{t('top.switch_lang') === 'English' ? 'গ্রাহকের সাথে কথা হয়েছে' : 'Customer Contacted'}</option>
+              <option value="uncontacted">{t('top.switch_lang') === 'English' ? 'যোগাযোগ সম্ভব হয়নি' : 'Unreachable'}</option>
+              <option value="door_locked">{t('top.switch_lang') === 'English' ? 'দরজায় তালাবদ্ধ' : 'Door Locked'}</option>
+              <option value="shifted">{t('top.switch_lang') === 'English' ? 'ঠিকানা পরিবর্তন করেছে' : 'Shifted'}</option>
             </select>
             <div className="grid grid-cols-2 gap-2">
               <input type="number" value={remPtpAmt} onChange={e => setRemPtpAmt(e.target.value)} placeholder="PTP Amount" className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl" />
               <input type="date" value={remPtpDate} onChange={e => setRemPtpDate(e.target.value)} className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl" />
             </div>
             <textarea required rows={3} value={remText} onChange={e => setRemText(e.target.value)} placeholder="Customer conversation notes..." className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl" />
+
+            {/* Remark Proof Photo */}
+            <div>
+              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                <Camera className="w-3.5 h-3.5 text-blue-500" /> Remark Proof Photo (optional)
+              </label>
+              <input
+                ref={remPhotoRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={async e => {
+                  const file = e.target.files?.[0];
+                  if (file) setRemPhoto(await fileToBase64(file));
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => remPhotoRef.current?.click()}
+                className="w-full p-2.5 rounded-xl border-2 border-dashed border-blue-400/40 hover:border-blue-500 bg-blue-500/5 text-blue-600 dark:text-blue-400 font-bold text-xs flex items-center justify-center gap-2 transition-all"
+              >
+                <Camera className="w-4 h-4" />
+                {remPhoto ? 'Change Photo' : 'Capture / Upload Proof Photo'}
+              </button>
+              {remPhoto && (
+                <div className="mt-2 relative">
+                  <img src={remPhoto} alt="preview" className="rounded-xl max-h-32 object-cover w-full border border-blue-500/20" />
+                  <button type="button" onClick={() => setRemPhoto('')} className="absolute top-1 right-1 bg-rose-600 text-white rounded-full p-0.5 hover:bg-rose-500">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+            </div>
+
             <div className="flex justify-end gap-2 pt-2">
               <button type="button" onClick={() => setShowRem(false)} className="px-3.5 py-2 bg-slate-100 dark:bg-slate-800 rounded-xl font-bold">{t('detail.cancel', 'Cancel')}</button>
               <button type="submit" className="px-3.5 py-2 bg-blue-600 text-white rounded-xl font-bold shadow-md shadow-blue-600/30">{t('detail.save_remark', 'Save Remark')}</button>
@@ -827,6 +1011,62 @@ export const CaseDetail: React.FC<{ caseId: number; onBack: () => void }> = ({ c
                     className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-amber-500/40"
                   />
                 </div>
+              </div>
+            </div>
+
+            {/* Guarantors / References – multiple entries */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[11px] font-extrabold text-slate-500 uppercase tracking-widest">👥 Ref / Guarantor Details</p>
+                <button
+                  type="button"
+                  onClick={() => setEditGuarantors(g => [...g, { name: '', phone: '', address: '' }])}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 font-bold text-[11px] hover:bg-amber-500/20 transition-all"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Add Ref / Guarantor
+                </button>
+              </div>
+
+              {editGuarantors.length === 0 && (
+                <p className="text-[11px] text-slate-400 italic text-center py-2">
+                  No guarantors added yet. Tap "+ Add Ref / Guarantor" to begin.
+                </p>
+              )}
+
+              <div className="space-y-3">
+                {editGuarantors.map((g, idx) => (
+                  <div key={idx} className="p-3 rounded-2xl bg-amber-500/5 border border-amber-500/20 space-y-2 relative">
+                    <button
+                      type="button"
+                      onClick={() => setEditGuarantors(prev => prev.filter((_, i) => i !== idx))}
+                      className="absolute top-2 right-2 w-5 h-5 rounded-full bg-rose-600 hover:bg-rose-500 text-white flex items-center justify-center"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                    <p className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase">Guarantor #{idx + 1}</p>
+                    <input
+                      type="text"
+                      value={g.name}
+                      onChange={e => setEditGuarantors(prev => prev.map((item, i) => i === idx ? { ...item, name: e.target.value } : item))}
+                      placeholder="Guarantor / Ref Name"
+                      className="w-full p-2 bg-white dark:bg-slate-900 border border-amber-500/20 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                    />
+                    <input
+                      type="tel"
+                      value={g.phone}
+                      onChange={e => setEditGuarantors(prev => prev.map((item, i) => i === idx ? { ...item, phone: e.target.value } : item))}
+                      placeholder="Phone number"
+                      className="w-full p-2 bg-white dark:bg-slate-900 border border-amber-500/20 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                    />
+                    <textarea
+                      rows={2}
+                      value={g.address}
+                      onChange={e => setEditGuarantors(prev => prev.map((item, i) => i === idx ? { ...item, address: e.target.value } : item))}
+                      placeholder="Address"
+                      className="w-full p-2 bg-white dark:bg-slate-900 border border-amber-500/20 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                    />
+                  </div>
+                ))}
               </div>
             </div>
 

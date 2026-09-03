@@ -98,6 +98,7 @@ export interface CheckIn {
   longitude: number;
   accuracy?: number;
   notes?: string;
+  photo_url?: string;
   visited_at: string;
   agent?: User;
   case_file?: CaseFile;
@@ -111,6 +112,7 @@ export interface Collection {
   payment_method: 'cash' | 'cheque' | 'bank_deposit' | 'online';
   receipt_number?: string;
   notes?: string;
+  photo_url?: string;
   collected_at: string;
   agent?: User;
   case_file?: CaseFile;
@@ -124,6 +126,7 @@ export interface CaseRemark {
   promised_amount?: number | null;
   promise_date?: string | null;
   remarks: string;
+  photo_url?: string;
   created_at: string;
   user?: User;
 }

@@ -20,7 +20,8 @@ import {
   UserX,
   Calendar,
   Filter,
-  Briefcase
+  Briefcase,
+  FileSpreadsheet
 } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -95,8 +96,19 @@ export const CasesList: React.FC<CasesListProps> = ({ onSelectCase, searchQuery 
     return unsub;
   }, []);
 
-  const banks = dataService.getBanks();
   const allCases = useMemo(() => user ? dataService.getCases(user) : [], [user, dataVersion]);
+
+  // Extract all unique BANK_NAME values from actual case data
+  const allBanks = useMemo(() => {
+    const map = new Map<string, number>();
+    allCases.forEach(c => {
+      const name = c.bank_name?.trim() || c.bank?.name?.trim() || String(c.extra_attributes?.BANK_NAME || '').trim();
+      if (name && name.toUpperCase() !== 'N/A') {
+        map.set(name, (map.get(name) || 0) + 1);
+      }
+    });
+    return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+  }, [allCases]);
 
   // Extract all unique file types with counts
   const allFileTypes = useMemo(() => {
@@ -115,7 +127,7 @@ export const CasesList: React.FC<CasesListProps> = ({ onSelectCase, searchQuery 
   const allStatuses = useMemo(() => {
     const map = new Map<string, number>();
     allCases.forEach(c => {
-      const st = c.status || c.extra_attributes?.FILE_STATUS;
+      const st = c.extra_attributes?.FILE_STATUS || c.status;
       if (st && String(st).trim() && String(st).trim().toUpperCase() !== 'N/A') {
         const clean = String(st).trim();
         map.set(clean, (map.get(clean) || 0) + 1);
@@ -160,8 +172,11 @@ export const CasesList: React.FC<CasesListProps> = ({ onSelectCase, searchQuery 
   const filteredCases = useMemo(() => {
     const q = (searchQuery || localSearch).toLowerCase().trim();
     return allCases.filter(c => {
-      // Bank filter
-      if (bankFilter !== "all" && String(c.bank_id) !== bankFilter) return false;
+      // Bank filter — match by bank name string (dynamic from sheet data)
+      if (bankFilter !== "all") {
+        const caseBankName = (c.bank_name?.trim() || c.bank?.name?.trim() || String(c.extra_attributes?.BANK_NAME || '').trim()).toLowerCase();
+        if (caseBankName !== bankFilter.trim().toLowerCase()) return false;
+      }
       
       // File Type filter
       if (fileTypeFilter !== "all") {
@@ -435,6 +450,73 @@ export const CasesList: React.FC<CasesListProps> = ({ onSelectCase, searchQuery 
     doc.save(`Recovery_Cases_${new Date().toISOString().split("T")[0]}.pdf`);
   };
 
+  // ── Excel Export (CSV format, opens natively in Excel) ──────────────
+  const handleExportExcel = () => {
+    const targetCases = selectedIds.size > 0
+      ? filteredCases.filter(c => selectedIds.has(c.id))
+      : filteredCases;
+
+    const headers = [
+      "FILE_NO", "BANK_NAME", "FILE_TYPE", "ACCOUNT_NUMBER", "CASA",
+      "CUSTOMER_NAME", "CUSTOMER_PHONE", "REF_PHONE",
+      "PRESENT_ADDRESS", "PERMANENT_ADDRESS",
+      "EMP_OFFICE_NAME", "POSITION", "EMP_OFFICE_ADDRESS",
+      "OUTSTANDING_AMOUNT", "OVERDUE_AMOUNT", "DPD",
+      "FILE_STATUS", "AGENT_NAME", "COLLECTOR_NAME",
+      "BRANCH_NAME", "AREA", "ALLOCATION_DATE", "EXPIRY_DATE", "LAP_STATUS",
+      "VISITED_PRESENT", "VISITED_PERMANENT",
+      "LAST_PTP_AMOUNT", "LAST_PTP_DATE", "LAST_REMARK"
+    ];
+
+    const rows = targetCases.map(c => {
+      const remarks = dataService.getRemarksByCase(c.id);
+      const lastRemark = remarks[0];
+      return [
+        c.file_number,
+        c.bank_name || c.bank?.name || String(c.extra_attributes?.BANK_NAME || ''),
+        String(c.extra_attributes?.FILE_TYPE || c.product?.name || ''),
+        c.account_number || '',
+        String(c.extra_attributes?.CASA || ''),
+        c.customer_name,
+        c.customer_phone || '',
+        c.customer_secondary_phone || String(c.extra_attributes?.REF_PHONE || ''),
+        c.customer_address_present || '',
+        c.customer_address_permanent || '',
+        String(c.extra_attributes?.EMP_OFFICE_NAME || ''),
+        String(c.extra_attributes?.POSITION || ''),
+        String(c.extra_attributes?.EMP_OFFICE_ADDRESS || ''),
+        c.outstanding_amount || 0,
+        c.overdue_amount || 0,
+        String(c.extra_attributes?.DPD || ''),
+        c.status || String(c.extra_attributes?.FILE_STATUS || ''),
+        c.agent_name || '',
+        c.collector_name || '',
+        String(c.extra_attributes?.BRANCH_NAME || ''),
+        String(c.extra_attributes?.AREA || ''),
+        c.allocation_date || '',
+        c.expiry_date || '',
+        String(c.extra_attributes?.LAP_STATUS || ''),
+        c.present_address_visited ? 'Yes' : 'No',
+        c.permanent_address_visited ? 'Yes' : 'No',
+        lastRemark?.promised_amount || '',
+        lastRemark?.promise_date || '',
+        lastRemark?.remarks || '',
+      ].map(v => `"${String(v).replace(/"/g, '""')}"`);
+    });
+
+    const csv = [headers.map(h => `"${h}"`).join(','), ...rows.map(r => r.join(','))].join('\n');
+    const bom = '\uFEFF'; // UTF-8 BOM so Excel opens with correct encoding
+    const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Recovery_Cases_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
 
 
   return (
@@ -500,6 +582,17 @@ export const CasesList: React.FC<CasesListProps> = ({ onSelectCase, searchQuery 
 
           {can("export_excel") && (
             <button 
+              onClick={handleExportExcel}
+              className="px-3.5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs flex items-center gap-2 transition-all shadow-md shadow-emerald-700/30 border border-emerald-600/50"
+              title="Export to Excel (CSV) — all columns including visit updates, PTP, and remarks"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-emerald-200" />
+              <span>{selectedIds.size > 0 ? `Export Excel (${selectedIds.size})` : "Export Excel"}</span>
+            </button>
+          )}
+
+          {can("export_excel") && (
+            <button 
               onClick={handleExportPDF}
               className="px-3.5 py-2 rounded-xl bg-slate-900 dark:bg-slate-800 text-white font-bold text-xs flex items-center gap-2 transition-all shadow-md shadow-slate-900/30 border border-slate-700/50 hover:bg-slate-800"
               title="Export to PDF — includes case summary, visit GPS coordinates, PTP amounts, PTP dates and field remarks"
@@ -541,8 +634,10 @@ export const CasesList: React.FC<CasesListProps> = ({ onSelectCase, searchQuery 
               onChange={(e) => setBankFilter(e.target.value)}
               className="w-full px-3 py-2 text-xs rounded-xl bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/40"
             >
-              <option value="all">All Partner Banks</option>
-              {banks.map(b => <option key={b.id} value={String(b.id)}>{b.name}</option>)}
+              <option value="all">All Partner Banks ({allCases.length})</option>
+              {allBanks.map(([name, count]) => (
+                <option key={name} value={name}>{name} ({count})</option>
+              ))}
             </select>
           </div>
 

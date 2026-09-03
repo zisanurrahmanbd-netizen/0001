@@ -74,6 +74,13 @@ export interface CaseFile {
   extra_attributes?: Record<string, any>;
   created_at?: string;
   updated_at?: string;
+
+  // Denormalized sheet columns (stored flat for easy access)
+  bank_name?: string;
+  product_name?: string;
+  branch_name?: string;
+  area?: string;
+  lap_status?: string;
   
   // Relations
   bank?: Bank;

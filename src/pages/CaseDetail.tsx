@@ -56,6 +56,7 @@ export const CaseDetail: React.FC<{ caseId: number; onBack: () => void }> = ({ c
   const [gpsCoords, setGpsCoords] = useState<{ lat: number; lng: number; accuracy?: number; time: string } | null>(null);
 
   const [colAmt, setColAmt] = useState('');
+  const [colDate, setColDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [colMethod, setColMethod] = useState<'cash' | 'bank_deposit' | 'cheque'>('cash');
   const [colRec, setColRec] = useState('');
 
@@ -121,6 +122,10 @@ export const CaseDetail: React.FC<{ caseId: number; onBack: () => void }> = ({ c
   const handleCheckInSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
+    if (!checkPhoto) {
+      alert('Photo proof is required for GPS Check-In! Please capture or upload a photo.');
+      return;
+    }
     dataService.addCheckIn({
       case_file_id: caseItem.id,
       agent_id: user.id,
@@ -129,7 +134,7 @@ export const CaseDetail: React.FC<{ caseId: number; onBack: () => void }> = ({ c
       longitude: gpsCoords?.lng || 90.4125,
       accuracy: gpsCoords?.accuracy || 8,
       notes: checkNotes,
-      photo_url: checkPhoto || undefined,
+      photo_url: checkPhoto,
       visited_at: new Date().toISOString(),
     });
     setShowCheckIn(false);
@@ -148,11 +153,12 @@ export const CaseDetail: React.FC<{ caseId: number; onBack: () => void }> = ({ c
       payment_method: colMethod,
       receipt_number: colRec || ('REC-' + Date.now().toString().slice(-6)),
       photo_url: colPhoto || undefined,
-      collected_at: new Date().toISOString(),
+      collected_at: colDate ? new Date(colDate).toISOString() : new Date().toISOString(),
     });
     setShowCol(false);
     setColAmt('');
     setColPhoto('');
+    setColDate(new Date().toISOString().split('T')[0]);
     reload();
   };
 
@@ -723,10 +729,10 @@ export const CaseDetail: React.FC<{ caseId: number; onBack: () => void }> = ({ c
               />
             </div>
 
-            {/* Photo Upload */}
+            {/* Photo Upload - Mandatory */}
             <div>
               <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
-                <Camera className="w-3.5 h-3.5 text-purple-500" /> Proof Photo (optional)
+                <Camera className="w-3.5 h-3.5 text-purple-500" /> Proof Photo <span className="text-rose-500 font-black">* (Required)</span>
               </label>
               <input
                 ref={checkPhotoRef}
@@ -742,18 +748,26 @@ export const CaseDetail: React.FC<{ caseId: number; onBack: () => void }> = ({ c
               <button
                 type="button"
                 onClick={() => checkPhotoRef.current?.click()}
-                className="w-full p-2.5 rounded-xl border-2 border-dashed border-purple-400/40 hover:border-purple-500 bg-purple-500/5 text-purple-600 dark:text-purple-400 font-bold text-xs flex items-center justify-center gap-2 transition-all"
+                className={`w-full p-2.5 rounded-xl border-2 border-dashed font-bold text-xs flex items-center justify-center gap-2 transition-all ${
+                  checkPhoto 
+                    ? 'border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' 
+                    : 'border-purple-400/40 hover:border-purple-500 bg-purple-500/5 text-purple-600 dark:text-purple-400'
+                }`}
               >
                 <Camera className="w-4 h-4" />
-                {checkPhoto ? 'Change Photo' : 'Capture / Upload Photo'}
+                {checkPhoto ? '✓ Photo Selected (Tap to Change)' : '📷 Capture / Upload Proof Photo (Required)'}
               </button>
-              {checkPhoto && (
+              {checkPhoto ? (
                 <div className="mt-2 relative">
                   <img src={checkPhoto} alt="preview" className="rounded-xl max-h-36 object-cover w-full border border-purple-500/20" />
                   <button type="button" onClick={() => setCheckPhoto('')} className="absolute top-1 right-1 bg-rose-600 text-white rounded-full p-0.5 hover:bg-rose-500">
                     <X className="w-3.5 h-3.5" />
                   </button>
                 </div>
+              ) : (
+                <p className="text-[10px] text-rose-500 font-semibold mt-1">
+                  * A live camera or gallery photo is required to submit GPS check-in.
+                </p>
               )}
             </div>
 
@@ -775,13 +789,26 @@ export const CaseDetail: React.FC<{ caseId: number; onBack: () => void }> = ({ c
         <div className="fixed inset-0 z-[100] w-screen h-screen flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
           <form onSubmit={handleCollection} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-3xl max-w-sm w-full space-y-3 text-xs shadow-2xl">
             <h3 className="font-bold text-sm text-slate-900 dark:text-white">{t('detail.record_payment', 'Record Payment')}</h3>
-            <input type="number" required value={colAmt} onChange={e => setColAmt(e.target.value)} placeholder="Amount (BDT)" className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl font-bold" />
-            <select value={colMethod} onChange={e => setColMethod(e.target.value as any)} className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl">
-              <option value="cash">{t('top.switch_lang') === 'English' ? 'নগদ (Cash)' : 'Cash'}</option>
-              <option value="bank_deposit">{t('top.switch_lang') === 'English' ? 'ব্যাংক জমা' : 'Bank Deposit'}</option>
-              <option value="cheque">{t('top.switch_lang') === 'English' ? 'চেক' : 'Cheque'}</option>
-            </select>
-            <input type="text" value={colRec} onChange={e => setColRec(e.target.value)} placeholder="Receipt # (optional)" className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl" />
+            <div>
+              <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1">Collection Amount (BDT) *</label>
+              <input type="number" required value={colAmt} onChange={e => setColAmt(e.target.value)} placeholder="Amount (BDT)" className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl font-bold" />
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1">Payment Date *</label>
+              <input type="date" required value={colDate} onChange={e => setColDate(e.target.value)} className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl font-bold" />
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1">Payment Method</label>
+              <select value={colMethod} onChange={e => setColMethod(e.target.value as any)} className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl">
+                <option value="cash">{t('top.switch_lang') === 'English' ? 'নগদ (Cash)' : 'Cash'}</option>
+                <option value="bank_deposit">{t('top.switch_lang') === 'English' ? 'ব্যাংক জমা' : 'Bank Deposit'}</option>
+                <option value="cheque">{t('top.switch_lang') === 'English' ? 'চেক' : 'Cheque'}</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1">Money Receipt Number (optional)</label>
+              <input type="text" value={colRec} onChange={e => setColRec(e.target.value)} placeholder="Receipt # (optional)" className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl" />
+            </div>
 
             {/* Payment Proof Photo */}
             <div>

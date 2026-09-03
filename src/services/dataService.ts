@@ -1068,6 +1068,7 @@ class DataService {
           LAST_VISIT_DATE: newCi.visited_at,
           LAST_VISIT_TYPE: newCi.address_type,
           LAST_VISIT_NOTES: newCi.notes || '',
+          VISIT_PHOTO: newCi.photo_url || '',
           FILE_STATUS: 'visited',
         }).catch(() => {});
       }
@@ -1154,6 +1155,7 @@ class DataService {
           LAST_PAYMENT_DATE: newCol.collected_at,
           PAYMENT_METHOD: newCol.payment_method,
           RECEIPT_NO: newCol.receipt_number || '',
+          PAYMENT_PHOTO: newCol.photo_url || '',
         }).catch(() => {});
       }
     } catch (_) {}

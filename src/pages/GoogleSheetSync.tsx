@@ -174,6 +174,7 @@ const SHEET_COLUMNS = [
   { col: 'LAST_VISIT_DATE', desc: 'Date and time of last field visit check-in', example: '2026-09-03 14:30:00' },
   { col: 'LAST_VISIT_TYPE', desc: 'Visited address type (present / permanent)', example: 'present' },
   { col: 'LAST_VISIT_NOTES', desc: 'Field agent observation and visit remarks', example: 'Met customer, agreed to settle' },
+  { col: 'VISIT_PHOTO', desc: 'Photo proof captured during GPS check-in (image data/link)', example: 'data:image/jpeg;base64,...' },
   { col: 'LAST_REMARK', desc: 'Latest case conversation remarks / updates', example: 'Customer promised payment' },
   { col: 'LAST_PTP_AMOUNT', desc: 'Promise to Pay amount committed by customer', example: '15000' },
   { col: 'LAST_PTP_DATE', desc: 'Promise to Pay deadline date (YYYY-MM-DD)', example: '2026-09-10' },
@@ -182,6 +183,7 @@ const SHEET_COLUMNS = [
   { col: 'LAST_PAYMENT_DATE', desc: 'Date of last collection receipt', example: '2026-09-03' },
   { col: 'PAYMENT_METHOD', desc: 'Method of payment (cash / bank_deposit / cheque)', example: 'cash' },
   { col: 'RECEIPT_NO', desc: 'Money receipt number for collection', example: 'MR-98421' },
+  { col: 'PAYMENT_PHOTO', desc: 'Payment receipt photo proof (image data/link)', example: 'data:image/jpeg;base64,...' },
   { col: 'GUARANTORS', desc: 'Multiple reference / guarantor phone and addresses (JSON or formatted text)', example: '[{"name":"Rahim","phone":"01700000000","address":"Dhaka"}]' },
 ];
 

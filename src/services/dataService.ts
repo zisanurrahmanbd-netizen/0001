@@ -250,13 +250,23 @@ function mapCaseToDb(c: CaseFile): any {
     expiry_date: c.expiry_date || null,
     last_visit_at: c.last_visit_at || null,
     total_collected_amount: Number(c.total_collected_amount) || 0,
-    extra_attributes: c.extra_attributes || {},
+    extra_attributes: {
+      ...(c.extra_attributes || {}),
+      BANK_NAME: c.bank_name || c.extra_attributes?.BANK_NAME || c.bank?.name || '',
+      PRODUCT_NAME: c.product_name || c.extra_attributes?.PRODUCT_NAME || c.product?.name || '',
+      FILE_TYPE: c.extra_attributes?.FILE_TYPE || c.product_name || '',
+      BRANCH_NAME: c.branch_name || c.extra_attributes?.BRANCH_NAME || '',
+      AREA: c.area || c.extra_attributes?.AREA || '',
+      LAP_STATUS: c.lap_status || c.extra_attributes?.LAP_STATUS || '',
+      FILE_STATUS: c.status || c.extra_attributes?.FILE_STATUS || '',
+    },
     created_at: c.created_at || new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };
 }
 
 function mapCaseFromDb(row: any): CaseFile {
+  const extraAttrs = typeof row.extra_attributes === 'object' && row.extra_attributes !== null ? row.extra_attributes : {};
   return enrichCase({
     id: Number(row.id),
     file_number: String(row.file_number || row.case_no || `FILE-${row.id}`),
@@ -273,18 +283,23 @@ function mapCaseFromDb(row: any): CaseFile {
     outstanding_amount: Number(row.outstanding_amount) || 0,
     overdue_amount: Number(row.overdue_amount) || 0,
     minimum_payment: row.minimum_payment ? Number(row.minimum_payment) : undefined,
-    status: row.status || 'new',
+    status: row.status || extraAttrs.FILE_STATUS || 'new',
     legal_status: row.legal_status || 'Normal Recovery',
     availability_status: row.availability_status || undefined,
     assigned_agent_id: row.assigned_agent_id ? Number(row.assigned_agent_id) : undefined,
     agent_name: row.agent_name || '',
-    collector_name: row.collector_name || '',
+    collector_name: row.collector_name || extraAttrs.COLLECTOR_NAME || '',
     assigned_manager_id: row.assigned_manager_id ? Number(row.assigned_manager_id) : undefined,
     allocation_date: row.allocation_date || undefined,
     expiry_date: row.expiry_date || undefined,
     last_visit_at: row.last_visit_at || undefined,
     total_collected_amount: Number(row.total_collected_amount) || 0,
-    extra_attributes: typeof row.extra_attributes === 'object' && row.extra_attributes !== null ? row.extra_attributes : {},
+    extra_attributes: extraAttrs,
+    bank_name: extraAttrs.BANK_NAME || row.bank_name || undefined,
+    product_name: extraAttrs.PRODUCT_NAME || extraAttrs.FILE_TYPE || row.product_name || undefined,
+    branch_name: extraAttrs.BRANCH_NAME || row.branch_name || undefined,
+    area: extraAttrs.AREA || row.area || undefined,
+    lap_status: extraAttrs.LAP_STATUS || row.lap_status || undefined,
     created_at: row.created_at,
     updated_at: row.updated_at,
   });
@@ -297,18 +312,104 @@ class DataService {
   private collections: Collection[] = [];
   private contacts: BankContact[] = [];
   private listeners: Set<() => void> = new Set();
-  private syncTimer: any = null;
+  private realtimeChannel: any = null;
 
   constructor() {
     this.loadState();
-    // Initial sync with cloud
+    // Initial pull from Supabase on startup
     this.syncWithCloud();
-    // Auto-sync every 15 seconds across all logged-in devices
+    // Set up real-time subscriptions for instant cross-device sync
+    this.setupRealtime();
+
     if (typeof window !== 'undefined') {
-      this.syncTimer = setInterval(() => {
+      // Periodic background poll every 15s across all logged-in devices
+      setInterval(() => {
         this.syncWithCloud();
       }, 15_000);
+
+      // Instant refresh whenever user focuses window or turns on device screen
+      window.addEventListener('focus', () => {
+        this.syncWithCloud();
+      });
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+          this.syncWithCloud();
+        }
+      });
     }
+  }
+
+  // ── Real-time Supabase subscriptions ─────────────────────────────────────
+  private setupRealtime() {
+    if (typeof window === 'undefined') return;
+    try {
+      this.realtimeChannel = supabase
+        .channel('recovery-realtime')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'cases' }, () => {
+          this.syncWithCloud();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'case_remarks' }, () => {
+          this.syncRemarks();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'check_ins' }, () => {
+          this.syncCheckIns();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'collections' }, () => {
+          this.syncCollections();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'bank_contacts' }, () => {
+          this.syncContacts();
+        })
+        .subscribe();
+    } catch (_) {
+      // Fallback to polling every 15s if real-time unavailable
+      setInterval(() => this.syncWithCloud(), 15_000);
+    }
+  }
+
+  // ── Individual table sync helpers ─────────────────────────────────────────
+  private async syncRemarks() {
+    try {
+      const { data } = await supabase.from('case_remarks').select('*').order('created_at', { ascending: false });
+      if (Array.isArray(data) && data.length > 0) {
+        this.remarks = data as CaseRemark[];
+        this.saveState();
+        this.notifySubscribers();
+      }
+    } catch (_) {}
+  }
+
+  private async syncCheckIns() {
+    try {
+      const { data } = await supabase.from('check_ins').select('*').order('created_at', { ascending: false });
+      if (Array.isArray(data) && data.length > 0) {
+        this.checkIns = data as CheckIn[];
+        this.saveState();
+        this.notifySubscribers();
+      }
+    } catch (_) {}
+  }
+
+  private async syncCollections() {
+    try {
+      const { data } = await supabase.from('collections').select('*').order('created_at', { ascending: false });
+      if (Array.isArray(data) && data.length > 0) {
+        this.collections = data as Collection[];
+        this.saveState();
+        this.notifySubscribers();
+      }
+    } catch (_) {}
+  }
+
+  private async syncContacts() {
+    try {
+      const { data } = await supabase.from('bank_contacts').select('*');
+      if (Array.isArray(data) && data.length > 0) {
+        this.contacts = data as BankContact[];
+        this.saveState();
+        this.notifySubscribers();
+      }
+    } catch (_) {}
   }
 
   public subscribe(listener: () => void): () => void {
@@ -388,32 +489,19 @@ class DataService {
 
       if (Array.isArray(cloudCases)) {
         if (cloudCases.length > 0) {
-          const map = new Map<string, CaseFile>();
-          // Cloud records
-          cloudCases.forEach(row => {
-            const parsed = mapCaseFromDb(row);
-            map.set(parsed.file_number, parsed);
-          });
-          // Merge local cases that might not have pushed yet
-          this.cases.forEach(localC => {
-            if (!map.has(localC.file_number)) {
-              map.set(localC.file_number, localC);
-            }
-          });
-          const merged = Array.from(map.values());
-          if (merged.length !== this.cases.length || JSON.stringify(merged) !== JSON.stringify(this.cases)) {
-            this.cases = merged;
+          const freshCases = cloudCases.map(row => mapCaseFromDb(row));
+          const hasDiff = freshCases.length !== this.cases.length ||
+            freshCases.some((fc, i) => {
+              const lc = this.cases[i];
+              return !lc || lc.id !== fc.id || lc.updated_at !== fc.updated_at || lc.status !== fc.status;
+            });
+          if (hasDiff) {
+            this.cases = freshCases;
             this.saveState();
             this.notifySubscribers();
           }
-
-          // Also push any local cases that were not in cloud
-          const unpushed = this.cases.filter(c => !cloudCases.some(cc => cc.file_number === c.file_number));
-          if (unpushed.length > 0) {
-            await this.pushCasesToCloud(unpushed);
-          }
         } else if (this.cases.length > 0) {
-          // If cloud is empty but local has cases (e.g. newly uploaded device), push to cloud
+          // If cloud is empty but local has cases (e.g. initial upload), push to cloud
           const pushRes = await this.pushCasesToCloud(this.cases);
           if (pushRes.error) {
             return { success: false, count: this.cases.length, error: `Cloud push error: ${pushRes.error}` };
@@ -526,6 +614,20 @@ class DataService {
       } catch (_) {}
 
 
+      // 6. Sync Google Sheet Settings from Cloud across all devices
+      try {
+        const { data: tpl } = await supabase.from('file_templates').select('definition').eq('template_key', 'system_gsheet_settings').maybeSingle();
+        if (tpl && tpl.definition) {
+          const cloudSettings = typeof tpl.definition === 'string' ? JSON.parse(tpl.definition) : tpl.definition;
+          if (cloudSettings && cloudSettings.scriptUrl) {
+            const current = loadGSheetSettings();
+            if (current.scriptUrl !== cloudSettings.scriptUrl || current.enabled !== cloudSettings.enabled || current.intervalSeconds !== cloudSettings.intervalSeconds) {
+              localStorage.setItem('gsheet_sync_settings', JSON.stringify(cloudSettings));
+            }
+          }
+        }
+      } catch (_) {}
+
       return { success: true, count: this.cases.length };
     } catch (err: any) {
       console.warn('Cloud sync error:', err);
@@ -605,6 +707,60 @@ class DataService {
       return { count: caseList.length };
     } catch (err: any) {
       console.error('Pushing cases to cloud exception:', err);
+      return { count: 0, error: err?.message || String(err) };
+    }
+  }
+
+  // Strictly push a new list of cases to Supabase, deleting any old cases that are no longer present
+  public async pushAllCasesToCloudStrict(caseList: CaseFile[]): Promise<{ count: number; error?: string }> {
+    if (!caseList || caseList.length === 0) return { count: 0 };
+    try {
+      let existingRows: any[] = [];
+      try {
+        const res = await supabase.from('cases').select('id, file_number');
+        if (Array.isArray(res.data)) existingRows = res.data;
+      } catch (_) {}
+
+      const existingMap = new Map<string, number>();
+      existingRows.forEach((r: any) => {
+        if (r.file_number && r.id) existingMap.set(String(r.file_number).trim().toLowerCase(), Number(r.id));
+      });
+
+      // 1. Delete obsolete cases from cloud that are no longer in this sheet
+      const activeFileNos = new Set(caseList.map(c => String(c.file_number || '').trim().toLowerCase()));
+      const staleIds = existingRows
+        .filter((r: any) => !activeFileNos.has(String(r.file_number || '').trim().toLowerCase()))
+        .map((r: any) => r.id);
+
+      if (staleIds.length > 0) {
+        for (let i = 0; i < staleIds.length; i += 50) {
+          const chunk = staleIds.slice(i, i + 50);
+          await supabase.from('cases').delete().in('id', chunk);
+        }
+      }
+
+      // 2. Prepare DB rows
+      const dbRows = caseList.map((c, idx) => {
+        const existingId = existingMap.get(String(c.file_number).trim().toLowerCase());
+        const finalId = existingId || c.id || (Date.now() + idx);
+        c.id = finalId;
+        return mapCaseToDb(c);
+      });
+
+      // 3. Upsert active cases in batches of 25
+      for (let i = 0; i < dbRows.length; i += 25) {
+        const chunk = dbRows.slice(i, i + 25);
+        const { error } = await supabase.from('cases').upsert(chunk, { onConflict: 'id' });
+        if (error) {
+          console.error('Error upserting chunk on id, falling back to file_number:', error);
+          await supabase.from('cases').upsert(chunk, { onConflict: 'file_number' });
+        }
+      }
+
+      this.saveState();
+      return { count: caseList.length };
+    } catch (err: any) {
+      console.error('pushAllCasesToCloudStrict exception:', err);
       return { count: 0, error: err?.message || String(err) };
     }
   }
@@ -731,7 +887,7 @@ class DataService {
   }
 
   // ── Google Sheets full-replace sync ─────────────────────────────────
-  public replaceAllCasesFromSheet(caseDataList: Record<string, any>[]) {
+  public async replaceAllCasesFromSheet(caseDataList: Record<string, any>[]) {
     const banks = getAllSystemBanks();
     const products = getAllSystemProducts();
     const now = new Date().toISOString();
@@ -798,6 +954,11 @@ class DataService {
         last_visit_at: existingCase?.last_visit_at || null,
         total_collected_amount: existingCase?.total_collected_amount ?? 0,
         extra_attributes: { ...(existingCase?.extra_attributes || {}), ...(data.extra_attributes || {}) },
+        bank_name: data.bank_name || existingCase?.bank_name || undefined,
+        product_name: data.product_name || existingCase?.product_name || undefined,
+        branch_name: data.branch_name || existingCase?.branch_name || undefined,
+        area: data.area || existingCase?.area || undefined,
+        lap_status: data.lap_status || existingCase?.lap_status || undefined,
         created_at: existingCase?.created_at || now,
         updated_at: now,
       };
@@ -806,6 +967,9 @@ class DataService {
     this.cases = newCases;
     this.saveState();
     this.notifySubscribers();
+
+    // Push immediately to Supabase Cloud so all devices and users receive the exact data
+    await this.pushAllCasesToCloudStrict(newCases);
   }
 
   public reassignCase(caseId: number, agentId: number) {

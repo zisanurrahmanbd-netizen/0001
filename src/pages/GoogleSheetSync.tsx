@@ -119,7 +119,12 @@ export const GoogleSheetSyncPage: React.FC = () => {
     if (settings.enabled && settings.scriptUrl) {
       startSyncInterval(settings.scriptUrl, settings.intervalSeconds || 60, handleStatus);
     }
-    return () => stopSyncInterval();
+    return () => {
+      const curr = loadGSheetSettings();
+      if (!curr.enabled) {
+        stopSyncInterval();
+      }
+    };
   }, []);
 
   const handleSaveAndStart = () => {

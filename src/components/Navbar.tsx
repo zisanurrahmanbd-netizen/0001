@@ -69,23 +69,6 @@ export const Navbar: React.FC<NavbarProps> = ({ onSearch, onMenuToggle }) => {
             </button>
           )}
 
-          {/* Live Supabase Cloud Sync Button */}
-          <button
-            onClick={async () => {
-              const res = await dataService.syncWithCloud(true);
-              if (res.success) {
-                alert(`Cloud Sync Successful: ${res.count} cases active & synchronized across all devices!`);
-              } else {
-                alert(`Cloud Sync Status: ${res.count} local cases. Supabase message: ${res.error || 'Connected'}`);
-              }
-            }}
-            title="Click to force 2-way Cloud Sync with Supabase across all devices"
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-xs font-semibold border border-emerald-500/20 transition-all shadow-sm"
-          >
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span className="hidden sm:inline">☁️ Sync Cloud</span>
-          </button>
-
           {/* 1-Click Language Switcher (EN / বাংলা) */}
           <LanguageToggle />
 

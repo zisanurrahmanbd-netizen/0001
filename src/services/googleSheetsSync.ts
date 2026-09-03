@@ -1,4 +1,5 @@
 import { dataService } from './dataService';
+import { supabase } from '../lib/supabase';
 
 // ── Column mapping: Google Sheet header → CaseFile field ──────────────
 const COL_MAP: Record<string, string> = {
@@ -85,6 +86,27 @@ export function loadGSheetSettings(): GSheetSettings {
 
 export function saveGSheetSettings(settings: GSheetSettings) {
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  try {
+    supabase.from('file_templates').upsert({
+      template_key: 'system_gsheet_settings',
+      definition: JSON.stringify(settings),
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'template_key' }).then(() => {});
+  } catch (_) {}
+}
+
+export async function fetchGSheetSettingsFromCloud(): Promise<GSheetSettings> {
+  try {
+    const { data } = await supabase.from('file_templates').select('definition').eq('template_key', 'system_gsheet_settings').maybeSingle();
+    if (data?.definition) {
+      const parsed = typeof data.definition === 'string' ? JSON.parse(data.definition) : data.definition;
+      if (parsed && typeof parsed === 'object' && parsed.scriptUrl) {
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify(parsed));
+        return parsed;
+      }
+    }
+  } catch (_) {}
+  return loadGSheetSettings();
 }
 
 // ── Parse a value from the sheet row into a CaseFile field ────────────
@@ -195,8 +217,8 @@ export async function syncFromGoogleSheet(
       return;
     }
 
-    // Replace all cases in dataService with the sheet data
-    dataService.replaceAllCasesFromSheet(caseDataList);
+    // Replace all cases in dataService with the sheet data and push to cloud
+    await dataService.replaceAllCasesFromSheet(caseDataList);
 
     onStatus({
       state: 'success',
@@ -235,3 +257,12 @@ export function stopSyncInterval() {
     _syncInterval = null;
   }
 }
+
+export function initGlobalSheetAutoSync() {
+  fetchGSheetSettingsFromCloud().then((settings) => {
+    if (settings.enabled && settings.scriptUrl) {
+      startSyncInterval(settings.scriptUrl, settings.intervalSeconds || 60, () => {});
+    }
+  });
+}
+

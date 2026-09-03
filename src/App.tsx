@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from './context/AuthContext';
 import { Layout } from './components/Layout';
 import { Login } from './pages/Login';
@@ -12,10 +12,15 @@ import { ExpiryTrackerPage } from './pages/ExpiryTracker';
 import { FlaggedCasesPage } from './pages/FlaggedCases';
 import { TeamManagementPage } from './pages/TeamManagement';
 import { GoogleSheetSyncPage } from './pages/GoogleSheetSync';
+import { initGlobalSheetAutoSync } from './services/googleSheetsSync';
 
 export const App: React.FC = () => {
   const { user } = useAuth();
   const [currentPage, setCurrentPage] = useState<string>('dashboard');
+
+  useEffect(() => {
+    initGlobalSheetAutoSync();
+  }, []);
   const [selectedCaseId, setSelectedCaseId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
 

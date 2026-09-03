@@ -26,7 +26,7 @@ export const Layout: React.FC<LayoutProps> = ({ currentPage, onNavigate, onSearc
           onSearch={onSearch}
           onMenuToggle={() => setIsSidebarOpen(!isSidebarOpen)}
         />
-        <main className="flex-1 p-3 sm:p-5 md:p-7 max-w-7xl w-full mx-auto min-w-0">
+        <main className="flex-1 p-3 sm:p-5 md:p-7 w-full max-w-[1700px] mx-auto min-w-0">
           {children}
         </main>
       </div>

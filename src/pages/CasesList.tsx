@@ -606,9 +606,9 @@ export const CasesList: React.FC<CasesListProps> = ({ onSelectCase, searchQuery 
 
       {/* Comprehensive Selective Filter Bar */}
       <div className="p-4 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3 text-xs">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3 text-xs">
           {/* Search Query */}
-          <div className="sm:col-span-2 lg:col-span-1 relative">
+          <div className="sm:col-span-2 md:col-span-1 xl:col-span-1 relative">
             <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1">
               🔍 Search Cases
             </label>
@@ -760,7 +760,7 @@ export const CasesList: React.FC<CasesListProps> = ({ onSelectCase, searchQuery 
       {/* Case Table with Checkboxes, Collector, Agent, and Dates */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
+          <table className="w-full min-w-[950px] text-left text-xs">
             <thead className="bg-slate-50 dark:bg-slate-950/60 border-b border-slate-200 dark:border-slate-800 text-slate-400 uppercase tracking-wider text-[11px]">
               <tr>
                 {/* Select All Checkbox Header */}

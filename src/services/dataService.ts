@@ -1024,6 +1024,7 @@ class DataService {
           if (item.extra_attributes?.EMP_OFFICE_NAME !== undefined)   sheetUpdates['EMP_OFFICE_NAME']   = String(item.extra_attributes.EMP_OFFICE_NAME || '');
           if (item.extra_attributes?.POSITION !== undefined)          sheetUpdates['POSITION']          = String(item.extra_attributes.POSITION || '');
           if (item.extra_attributes?.EMP_OFFICE_ADDRESS !== undefined) sheetUpdates['EMP_OFFICE_ADDRESS'] = String(item.extra_attributes.EMP_OFFICE_ADDRESS || '');
+          if (item.extra_attributes?.GUARANTORS !== undefined)         sheetUpdates['GUARANTORS']         = String(item.extra_attributes.GUARANTORS || '');
           if (Object.keys(sheetUpdates).length > 0) {
             pushUpdateToSheet(settings.scriptUrl, item.file_number, sheetUpdates).catch(() => {});
           }

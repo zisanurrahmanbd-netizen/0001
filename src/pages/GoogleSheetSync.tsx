@@ -106,14 +106,21 @@ function doPost(e) {
 
     if (targetRow === -1) return response({ success: false, error: 'File not found: ' + fileNumber });
 
-    // For each key in updates, find the column index and update the cell
+    // For each key in updates, find the column index and update the cell.
+    // If the column does not exist yet, dynamically append it to header row 1!
     var updated = [];
     Object.keys(updates).forEach(function(key) {
-      var colIdx = headers.indexOf(key.toUpperCase());
-      if (colIdx !== -1) {
-        sheet.getRange(targetRow, colIdx + 1).setValue(updates[key]);
-        updated.push(key);
+      var colName = key.toUpperCase();
+      var colIdx = headers.indexOf(colName);
+      if (colIdx === -1) {
+        // Automatically add the missing column header to row 1
+        var newColIdx = headers.length + 1;
+        sheet.getRange(1, newColIdx).setValue(colName);
+        headers.push(colName);
+        colIdx = headers.length - 1;
       }
+      sheet.getRange(targetRow, colIdx + 1).setValue(updates[key]);
+      updated.push(colName);
     });
 
     return response({ success: true, updated: updated, row: targetRow });

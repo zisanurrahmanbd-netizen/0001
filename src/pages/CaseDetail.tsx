@@ -7,7 +7,7 @@ import { StatusBadge } from '../components/StatusBadge';
 import { CaseVisitMap } from '../components/CaseVisitMap';
 import { CaseFile, CheckIn, Collection, CaseRemark } from '../types';
 import { 
-  ArrowLeft, MapPin, Phone, Coins, Calendar, Clock, 
+  ArrowLeft, MapPin, Phone, PhoneCall, Mail, Coins, Calendar, Clock, 
   MessageSquare, Receipt, Navigation, UserCheck, Building2,
   ExternalLink, CheckCircle2, Compass, CreditCard, FileSpreadsheet,
   User as UserIcon, ShieldCheck, Edit3, Briefcase, Camera, Plus, X, Image
@@ -347,6 +347,64 @@ export const CaseDetail: React.FC<{ caseId: number; onBack: () => void }> = ({ c
                 <p className="text-slate-500 text-[11px] truncate font-semibold">{caseItem.legal_status || 'Normal Recovery'}</p>
               </div>
             </div>
+
+            {/* Bank Officer & Institutional Contact for this File */}
+            {(() => {
+              const allBankContacts = dataService.getContacts();
+              const matchingContacts = allBankContacts.filter(c => {
+                if (c.bank_id !== caseItem.bank_id) return false;
+                if (caseItem.collector_name && c.name && c.name.toLowerCase().trim() === caseItem.collector_name.toLowerCase().trim()) return true;
+                return true;
+              });
+              if (matchingContacts.length === 0 && !caseItem.collector_name) return null;
+
+              return (
+                <div className="p-4 rounded-2xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200/80 dark:border-blue-900/40 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-blue-900 dark:text-blue-200 flex items-center gap-1.5">
+                      <Building2 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                      <span>Bank Recovery Liaison & Officer Contact</span>
+                    </span>
+                    {caseItem.collector_name && (
+                      <span className="text-[11px] font-mono px-2 py-0.5 rounded-md bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 font-semibold">
+                        Assigned Officer: {caseItem.collector_name}
+                      </span>
+                    )}
+                  </div>
+                  {matchingContacts.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 text-xs">
+                      {matchingContacts.map((bc, idx) => (
+                        <div key={idx} className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-blue-100 dark:border-slate-800 shadow-xs flex flex-col justify-between">
+                          <div>
+                            <div className="font-bold text-slate-900 dark:text-white truncate">{bc.name}</div>
+                            <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{bc.designation || 'Bank Official'}{bc.department ? ` • ${bc.department}` : ''}</div>
+                            {bc.branch && <div className="text-[10px] text-slate-400 font-mono mt-0.5 truncate">Branch: {bc.branch}</div>}
+                          </div>
+                          <div className="flex items-center gap-2 mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-[11px]">
+                            {bc.phone && (
+                              <a href={`tel:${bc.phone}`} className="flex items-center gap-1 font-bold text-blue-600 dark:text-blue-400 hover:underline">
+                                <PhoneCall className="w-3 h-3" />
+                                <span>{bc.phone}</span>
+                              </a>
+                            )}
+                            {bc.email && (
+                              <a href={`mailto:${bc.email}`} className="flex items-center gap-1 text-slate-500 hover:text-blue-600 truncate ml-auto" title={bc.email}>
+                                <Mail className="w-3 h-3" />
+                                <span className="truncate max-w-[110px]">{bc.email}</span>
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-blue-700/80 dark:text-blue-300/80">
+                      Officer named in file: <strong>{caseItem.collector_name}</strong>. You can register their direct phone number in the Bank Contacts directory.
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Target Address Visit Status */}
             <div className="space-y-3 pt-2">

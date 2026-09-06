@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { dataService } from '../services/dataService';
@@ -40,6 +40,12 @@ export const BankContactsPage: React.FC = () => {
   const reload = () => {
     setContacts(dataService.getContacts(user || undefined));
   };
+
+  useEffect(() => {
+    reload();
+    const unsub = dataService.subscribe(reload);
+    return () => unsub();
+  }, [user]);
 
   const openAddModal = () => {
     setEditingContact(null);

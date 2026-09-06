@@ -145,6 +145,7 @@ export interface BankContact {
   email: string;
   branch: string;
   notes?: string;
+  created_at?: string;
   bank?: Bank;
 }
 

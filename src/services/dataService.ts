@@ -402,14 +402,87 @@ class DataService {
   }
 
   private async syncContacts() {
+    const SUPABASE_URL = 'https://wbgacppzdyqextjxlgwq.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_0FCYjpPT8_7AJOa5aYIXgg_xZhkayuN';
+
     try {
+      // 1. Try Supabase client
       const { data } = await supabase.from('bank_contacts').select('*');
       if (Array.isArray(data) && data.length > 0) {
         this.contacts = data as BankContact[];
         this.saveState();
         this.notifySubscribers();
+        return;
       }
     } catch (_) {}
+
+    // 2. Direct REST fallback
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/bank_contacts?select=*`, {
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
+          'Accept': 'application/json',
+        }
+      });
+      if (res.ok) {
+        const rows = await res.json();
+        if (Array.isArray(rows) && rows.length > 0) {
+          this.contacts = rows as BankContact[];
+          this.saveState();
+          this.notifySubscribers();
+          return;
+        }
+      }
+    } catch (_) {}
+
+    // 3. If cloud is empty but local has contacts, auto-push to cloud
+    if (this.contacts.length > 0) {
+      this.pushContactsToCloud(this.contacts).catch(() => {});
+    }
+  }
+
+  public async pushContactsToCloud(contactList: BankContact[]): Promise<{ count: number; error?: string }> {
+    if (!contactList || contactList.length === 0) return { count: 0 };
+    const SUPABASE_URL = 'https://wbgacppzdyqextjxlgwq.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_0FCYjpPT8_7AJOa5aYIXgg_xZhkayuN';
+
+    const rows = contactList.map(c => ({
+      id: c.id,
+      bank_id: c.bank_id,
+      name: c.name || '',
+      designation: c.designation || '',
+      department: c.department || '',
+      phone: c.phone || '',
+      email: c.email || '',
+      branch: c.branch || '',
+      notes: c.notes || '',
+      created_at: c.created_at || new Date().toISOString()
+    }));
+
+    // Try Supabase JS client
+    try {
+      const { error } = await supabase.from('bank_contacts').upsert(rows, { onConflict: 'id' });
+      if (!error) return { count: rows.length };
+    } catch (_) {}
+
+    // Fallback: direct REST upsert
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/bank_contacts`, {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'resolution=merge-duplicates'
+        },
+        body: JSON.stringify(rows)
+      });
+      if (res.ok) return { count: rows.length };
+    } catch (err: any) {
+      return { count: 0, error: err?.message || String(err) };
+    }
+    return { count: 0 };
   }
 
   public subscribe(listener: () => void): () => void {
@@ -788,12 +861,12 @@ class DataService {
       const userBankIds = new Set(userCases.map(c => c.bank_id));
 
       return all.filter(contact => {
-        // If contact name matches a collector assigned on this agent's cases
+        // 1. If contact name matches a collector assigned on this agent's cases
         if (contact.name && userCollectors.has(contact.name.toLowerCase().trim())) {
           return true;
         }
-        // If no collector names are specified, show contacts from assigned banks
-        if (userCollectors.size === 0 && userBankIds.has(contact.bank_id)) {
+        // 2. Or if contact belongs to a bank where the agent has allocated cases
+        if (userBankIds.has(contact.bank_id)) {
           return true;
         }
         return false;
@@ -842,9 +915,55 @@ class DataService {
     this.contacts.unshift(newContact);
     this.saveState();
     this.notifySubscribers();
-    try {
-      supabase.from('bank_contacts').insert([newContact]).then(() => {});
-    } catch (_) {}
+
+    // Direct Cloud sync with REST fallback
+    const SUPABASE_URL = 'https://wbgacppzdyqextjxlgwq.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_0FCYjpPT8_7AJOa5aYIXgg_xZhkayuN';
+    const row = {
+      id: newContact.id,
+      bank_id: newContact.bank_id,
+      name: newContact.name || '',
+      designation: newContact.designation || '',
+      department: newContact.department || '',
+      phone: newContact.phone || '',
+      email: newContact.email || '',
+      branch: newContact.branch || '',
+      notes: newContact.notes || '',
+      created_at: new Date().toISOString()
+    };
+
+    const performCloudInsert = async () => {
+      try {
+        const { error } = await supabase.from('bank_contacts').insert([row]);
+        if (error) {
+          await fetch(`${SUPABASE_URL}/rest/v1/bank_contacts`, {
+            method: 'POST',
+            headers: {
+              'apikey': SUPABASE_KEY,
+              'Authorization': `Bearer ${SUPABASE_KEY}`,
+              'Content-Type': 'application/json',
+              'Prefer': 'return=minimal'
+            },
+            body: JSON.stringify(row)
+          });
+        }
+      } catch (_) {
+        try {
+          await fetch(`${SUPABASE_URL}/rest/v1/bank_contacts`, {
+            method: 'POST',
+            headers: {
+              'apikey': SUPABASE_KEY,
+              'Authorization': `Bearer ${SUPABASE_KEY}`,
+              'Content-Type': 'application/json',
+              'Prefer': 'return=minimal'
+            },
+            body: JSON.stringify(row)
+          });
+        } catch (__) {}
+      }
+    };
+    performCloudInsert();
+
     return newContact;
   }
 
@@ -854,9 +973,39 @@ class DataService {
       Object.assign(existing, contact);
       this.saveState();
       this.notifySubscribers();
-      try {
-        supabase.from('bank_contacts').update(contact).eq('id', id).then(() => {});
-      } catch (_) {}
+
+      const SUPABASE_URL = 'https://wbgacppzdyqextjxlgwq.supabase.co';
+      const SUPABASE_KEY = 'sb_publishable_0FCYjpPT8_7AJOa5aYIXgg_xZhkayuN';
+
+      const performCloudUpdate = async () => {
+        try {
+          const { error } = await supabase.from('bank_contacts').update(contact).eq('id', id);
+          if (error) {
+            await fetch(`${SUPABASE_URL}/rest/v1/bank_contacts?id=eq.${id}`, {
+              method: 'PATCH',
+              headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(contact)
+            });
+          }
+        } catch (_) {
+          try {
+            await fetch(`${SUPABASE_URL}/rest/v1/bank_contacts?id=eq.${id}`, {
+              method: 'PATCH',
+              headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(contact)
+            });
+          } catch (__) {}
+        }
+      };
+      performCloudUpdate();
     }
   }
 
@@ -864,9 +1013,35 @@ class DataService {
     this.contacts = this.contacts.filter(c => c.id !== id);
     this.saveState();
     this.notifySubscribers();
-    try {
-      supabase.from('bank_contacts').delete().eq('id', id).then(() => {});
-    } catch (_) {}
+
+    const SUPABASE_URL = 'https://wbgacppzdyqextjxlgwq.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_0FCYjpPT8_7AJOa5aYIXgg_xZhkayuN';
+
+    const performCloudDelete = async () => {
+      try {
+        const { error } = await supabase.from('bank_contacts').delete().eq('id', id);
+        if (error) {
+          await fetch(`${SUPABASE_URL}/rest/v1/bank_contacts?id=eq.${id}`, {
+            method: 'DELETE',
+            headers: {
+              'apikey': SUPABASE_KEY,
+              'Authorization': `Bearer ${SUPABASE_KEY}`
+            }
+          });
+        }
+      } catch (_) {
+        try {
+          await fetch(`${SUPABASE_URL}/rest/v1/bank_contacts?id=eq.${id}`, {
+            method: 'DELETE',
+            headers: {
+              'apikey': SUPABASE_KEY,
+              'Authorization': `Bearer ${SUPABASE_KEY}`
+            }
+          });
+        } catch (__) {}
+      }
+    };
+    performCloudDelete();
   }
 
   public getCases(user: User): CaseFile[] {

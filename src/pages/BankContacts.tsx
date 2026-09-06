@@ -192,14 +192,6 @@ export const BankContactsPage: React.FC = () => {
         </div>
       )}
 
-      {/* Agent Scoped Access Notice */}
-      {user?.role === 'agent' && (
-        <div className="p-3 rounded-2xl bg-blue-500/10 border border-blue-500/30 text-xs text-blue-700 dark:text-blue-300 flex items-center gap-2">
-          <UserCheck className="w-4 h-4 text-blue-500 flex-shrink-0" />
-          <span>Showing bank collector and contact details exclusively for the recovery files assigned to your account.</span>
-        </div>
-      )}
-
       {/* Filter Bar */}
       <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="relative">

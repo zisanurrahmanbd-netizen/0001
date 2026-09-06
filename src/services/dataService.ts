@@ -831,42 +831,12 @@ class DataService {
     return getAllSystemProducts();
   }
 
-  public getContacts(user?: User): BankContact[] {
+  public getContacts(_user?: User): BankContact[] {
     const banks = getAllSystemBanks();
-    const all = this.contacts.map(c => ({
+    return this.contacts.map(c => ({
       ...c,
       bank: banks.find(b => b.id === c.bank_id) || INITIAL_BANKS.find(b => b.id === c.bank_id)
     }));
-
-    // If user is an agent and has allocated cases, prioritize their assigned banks/collectors.
-    // However, if that filter returns empty (e.g. contacts not tagged to specific bank ID yet),
-    // show the directory contacts so the agent is NEVER locked out of seeing bank officer phone numbers!
-    if (user && user.role === 'agent') {
-      const userCases = this.getCases(user);
-      const userCollectors = new Set(
-        userCases.map(c => (c.collector_name || '').toLowerCase().trim()).filter(Boolean)
-      );
-      const userBankIds = new Set(userCases.map(c => c.bank_id));
-
-      const scoped = all.filter(contact => {
-        // 1. If contact name matches a collector assigned on this agent's cases
-        if (contact.name && userCollectors.has(contact.name.toLowerCase().trim())) {
-          return true;
-        }
-        // 2. Or if contact belongs to a bank where the agent has allocated cases
-        if (userBankIds.has(contact.bank_id)) {
-          return true;
-        }
-        return false;
-      });
-
-      // If scoped has matches, return scoped. If scoped is empty but there are contacts in the system, return all so agents can always see phone numbers!
-      if (scoped.length > 0) {
-        return scoped;
-      }
-    }
-
-    return all;
   }
 
   public getMissingCollectorContacts(): { collectorName: string; bankId: number; bankName: string; caseCount: number }[] {

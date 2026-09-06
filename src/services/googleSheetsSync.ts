@@ -266,24 +266,15 @@ export async function syncFromGoogleSheet(
     const caseDataList = (cases || []).map(mapRowToCaseData).filter(Boolean) as Record<string, any>[];
     const contactDataList = (contacts || []).map(mapRowToContactData).filter(Boolean) as Record<string, any>[];
 
-    if (caseDataList.length === 0 && contactDataList.length === 0) {
-      onStatus({
-        state: 'error',
-        lastError: 'No valid case or contact rows found in the sheet. Check sheet tab names and column headers.',
-        scriptUrl,
-      });
-      return;
-    }
 
-    // Replace cases if present in sheet
-    if (caseDataList.length > 0) {
-      await dataService.replaceAllCasesFromSheet(caseDataList);
-    }
+    // Always call replace — even an empty list is intentional (user deleted all rows)
+    // The replace functions handle empty arrays by clearing all data
+    await dataService.replaceAllCasesFromSheet(caseDataList);
 
-    // Replace bank contacts if present in sheet
     if (contactDataList.length > 0) {
       await dataService.replaceAllContactsFromSheet(contactDataList);
     }
+
 
     onStatus({
       state: 'success',

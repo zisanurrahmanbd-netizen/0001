@@ -1073,6 +1073,18 @@ class DataService {
 
   // ── Google Sheets full-replace sync ─────────────────────────────────
   public async replaceAllCasesFromSheet(caseDataList: Record<string, any>[]) {
+    // If the sheet Cases tab is completely empty, clear all cases
+    if (caseDataList.length === 0) {
+      this.cases = [];
+      this.saveState();
+      this.notifySubscribers();
+      // Also wipe from Supabase so cloud sync doesn't restore old data
+      try {
+        await supabase.from('cases').delete().neq('id', 0);
+      } catch (_) {}
+      return;
+    }
+
     const banks = getAllSystemBanks();
     const products = getAllSystemProducts();
     const now = new Date().toISOString();

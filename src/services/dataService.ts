@@ -630,7 +630,7 @@ class DataService {
         this.saveState();
       }
 
-      // 5. Sync Contacts from Supabase
+      // 5. Sync Contacts from Supabase (two-way: pull from cloud, or push local if cloud empty)
       const { data: cloudContacts, error: conErr } = await supabase.from('bank_contacts').select('*');
       if (!conErr && Array.isArray(cloudContacts) && cloudContacts.length > 0) {
         this.contacts = cloudContacts.map((c: any) => ({
@@ -646,6 +646,10 @@ class DataService {
           created_at: c.created_at || new Date().toISOString()
         }));
         this.saveState();
+        this.notifySubscribers();
+      } else if (this.contacts.length > 0) {
+        // Cloud is empty but local has contacts → push them up so other devices can see them
+        await this.pushContactsToCloud(this.contacts);
       }
 
       // 6. Sync Templates from Supabase → localStorage (cloud is source of truth)

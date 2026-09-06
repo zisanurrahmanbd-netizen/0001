@@ -105,37 +105,63 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // ── Sync with Supabase on Startup ──────────────────────────────────────────
   useEffect(() => {
+    const mergeCloudUsers = (data: any[]) => {
+      const cloudUsers: User[] = data.map((row: any) => ({
+        id: Number(row.id),
+        name: row.name || 'User',
+        email: (row.email || '').toLowerCase(),
+        phone: row.phone || '',
+        employee_id: row.employee_id || '',
+        role: (row.role || (row.email?.toLowerCase() === REAL_ADMIN.email ? 'admin' : 'agent')) as UserRole,
+        status: row.status || 'active',
+        password: row.password || (row.email?.toLowerCase() === REAL_ADMIN.email ? '@01608800026' : '@Pass2026'),
+        last_latitude: row.last_latitude ? Number(row.last_latitude) : undefined,
+        last_longitude: row.last_longitude ? Number(row.last_longitude) : undefined,
+        last_ping_at: row.last_ping_at,
+        is_online: row.is_online !== false,
+      }));
+
+      setUsers(prev => {
+        const map = new Map<string, User>();
+        prev.forEach(u => map.set(u.email.toLowerCase(), u));
+        cloudUsers.forEach(u => map.set(u.email.toLowerCase(), { ...map.get(u.email.toLowerCase()), ...u }));
+        const merged = Array.from(map.values());
+        localStorage.setItem('recovery_all_users', JSON.stringify(merged));
+        return merged;
+      });
+    };
+
     const fetchCloudUsers = async () => {
+      // Try 1: Supabase JS client
       try {
         const { data, error } = await supabase.from('users').select('*');
         if (!error && Array.isArray(data) && data.length > 0) {
-          const cloudUsers: User[] = data.map((row: any) => ({
-            id: Number(row.id),
-            name: row.name || 'User',
-            email: (row.email || '').toLowerCase(),
-            phone: row.phone || '',
-            employee_id: row.employee_id || '',
-            role: (row.role || (row.email?.toLowerCase() === REAL_ADMIN.email ? 'admin' : 'agent')) as UserRole,
-            status: row.status || 'active',
-            password: row.password || (row.email?.toLowerCase() === REAL_ADMIN.email ? '@01608800026' : '@Pass2026'),
-            last_latitude: row.last_latitude ? Number(row.last_latitude) : undefined,
-            last_longitude: row.last_longitude ? Number(row.last_longitude) : undefined,
-            last_ping_at: row.last_ping_at,
-            is_online: row.is_online !== false,
-          }));
-
-          // Merge cloud users with local users
-          setUsers(prev => {
-            const map = new Map<string, User>();
-            prev.forEach(u => map.set(u.email.toLowerCase(), u));
-            cloudUsers.forEach(u => map.set(u.email.toLowerCase(), { ...map.get(u.email.toLowerCase()), ...u }));
-            const merged = Array.from(map.values());
-            localStorage.setItem('recovery_all_users', JSON.stringify(merged));
-            return merged;
-          });
+          mergeCloudUsers(data);
+          return; // success
         }
       } catch (err) {
-        console.warn('Cloud user sync note:', err);
+        console.warn('Supabase JS client sync failed, trying REST fallback:', err);
+      }
+
+      // Try 2: Direct REST API fallback
+      try {
+        const SUPABASE_URL = 'https://wbgacppzdyqextjxlgwq.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_0FCYjpPT8_7AJOa5aYIXgg_xZhkayuN';
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/users?select=*`, {
+          headers: {
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${SUPABASE_KEY}`,
+            'Accept': 'application/json',
+          },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+            mergeCloudUsers(data);
+          }
+        }
+      } catch (err) {
+        console.warn('REST fallback cloud sync also failed:', err);
       }
     };
     fetchCloudUsers();
@@ -297,44 +323,94 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return code;
   };
 
+  // ── Helper: parse a Supabase row into a User object ─────────────────────
+  const parseCloudUser = (data: any): User => ({
+    id: Number(data.id),
+    name: data.name || 'User',
+    email: (data.email || '').toLowerCase(),
+    phone: data.phone || '',
+    employee_id: data.employee_id || '',
+    role: (data.role || (data.email?.toLowerCase() === REAL_ADMIN.email ? 'admin' : 'agent')) as UserRole,
+    status: data.status || 'active',
+    password: data.password || '@Pass2026',
+    last_latitude: data.last_latitude ? Number(data.last_latitude) : undefined,
+    last_longitude: data.last_longitude ? Number(data.last_longitude) : undefined,
+    last_ping_at: data.last_ping_at,
+    is_online: data.is_online !== false,
+  });
+
+  // ── Direct REST API fallback when Supabase JS client fails ────────────
+  const fetchUserViaRest = async (emailQuery: string): Promise<User | null> => {
+    try {
+      const SUPABASE_URL = 'https://wbgacppzdyqextjxlgwq.supabase.co';
+      const SUPABASE_KEY = 'sb_publishable_0FCYjpPT8_7AJOa5aYIXgg_xZhkayuN';
+      const url = `${SUPABASE_URL}/rest/v1/users?select=*&email=ilike.${encodeURIComponent(emailQuery)}&limit=1`;
+      const res = await fetch(url, {
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
+          'Accept': 'application/json',
+        },
+      });
+      if (res.ok) {
+        const rows = await res.json();
+        if (Array.isArray(rows) && rows.length > 0) {
+          return parseCloudUser(rows[0]);
+        }
+      }
+    } catch (e) {
+      console.warn('REST fallback lookup failed:', e);
+    }
+    return null;
+  };
+
   // ── Multi-Device Cross-Cloud Login ─────────────────────────────────────────
   const login = async (email: string, pass: string): Promise<{ result: 'ok' | 'otp_required' | 'error'; error?: string }> => {
     const cleanEmail = email.trim().toLowerCase();
     let list = getLatestUsers();
     let found = list.find(u => u.email.toLowerCase() === cleanEmail);
+    let cloudError: string | null = null;
 
     // If not in local list, check Supabase cloud database immediately
     if (!found) {
       try {
         const { data, error } = await supabase.from('users').select('*').ilike('email', cleanEmail).maybeSingle();
-        if (data && !error) {
-          found = {
-            id: Number(data.id),
-            name: data.name || 'User',
-            email: data.email.toLowerCase(),
-            phone: data.phone || '',
-            employee_id: data.employee_id || '',
-            role: (data.role || (data.email.toLowerCase() === REAL_ADMIN.email ? 'admin' : 'agent')) as UserRole,
-            status: data.status || 'active',
-            password: data.password || '@Pass2026',
-            last_latitude: data.last_latitude ? Number(data.last_latitude) : undefined,
-            last_longitude: data.last_longitude ? Number(data.last_longitude) : undefined,
-            last_ping_at: data.last_ping_at,
-            is_online: data.is_online !== false,
-          };
-          // Save to local cache
-          setUsers(prev => {
-            const next = [found!, ...prev.filter(u => u.email.toLowerCase() !== cleanEmail)];
-            localStorage.setItem('recovery_all_users', JSON.stringify(next));
-            return next;
-          });
+        if (error) {
+          cloudError = error.message || 'Cloud lookup failed';
+          console.warn('Supabase client lookup error:', error);
         }
-      } catch (err) {
-        console.warn('Supabase cloud login check note:', err);
+        if (data && !error) {
+          found = parseCloudUser(data);
+        }
+      } catch (err: any) {
+        cloudError = err?.message || 'Network error reaching cloud database';
+        console.warn('Supabase client exception:', err);
       }
     }
 
+    // Fallback: direct REST API call if Supabase JS client failed or returned nothing
     if (!found) {
+      const restUser = await fetchUserViaRest(cleanEmail);
+      if (restUser) {
+        found = restUser;
+        cloudError = null; // REST succeeded, clear the error
+      }
+    }
+
+    // Cache the cloud user into local storage for future logins
+    if (found && !list.find(u => u.email.toLowerCase() === cleanEmail)) {
+      setUsers(prev => {
+        const next = [found!, ...prev.filter(u => u.email.toLowerCase() !== cleanEmail)];
+        localStorage.setItem('recovery_all_users', JSON.stringify(next));
+        return next;
+      });
+    }
+
+    if (!found) {
+      // If there was a cloud error, tell the user it might be a network issue
+      if (cloudError) {
+        return { result: 'error', error: `Could not verify your account from the cloud database (${cloudError}). Please check your internet connection and try again.` };
+      }
       return { result: 'error', error: 'No account found with this email address. Please ensure this user has been added in Team Management.' };
     }
     if (found.status === 'inactive') {

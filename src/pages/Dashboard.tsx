@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { usePermissions } from '../context/PermissionsContext';
 import { useLanguage } from '../context/LanguageContext';
 import { dataService, PtpAlertItem } from '../services/dataService';
 import { StatusBadge } from '../components/StatusBadge';
@@ -33,6 +34,7 @@ interface DashboardProps {
 
 export const Dashboard: React.FC<DashboardProps> = ({ onSelectCase, onNavigate }) => {
   const { user } = useAuth();
+  const { can } = usePermissions();
   const { t } = useLanguage();
   const activeUser = user!;
   const [metrics, setMetrics] = useState<any>(() => dataService.getDashboardMetrics(activeUser));
@@ -98,15 +100,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectCase, onNavigate }
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => onNavigate('gsheet_sync')}
-            className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-600/30 flex items-center gap-2 transition-all"
-          >
-            <Sheet className="w-4 h-4" />
-            <span>Google Sheet Live Sync</span>
-          </button>
-        </div>
+        {can('view_imports') && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => onNavigate('gsheet_sync')}
+              className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-600/30 flex items-center gap-2 transition-all"
+            >
+              <Sheet className="w-4 h-4" />
+              <span>Google Sheet Live Sync</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* AUTOMATIC URGENT ACTION POPUP MODAL */}

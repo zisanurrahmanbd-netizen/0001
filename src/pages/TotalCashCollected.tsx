@@ -30,8 +30,12 @@ export const TotalCashCollected: React.FC<TotalCashCollectedProps> = ({ onSelect
   const [refreshKey, setRefreshKey] = useState(0);
 
   const collections = useMemo(() => {
-    return dataService.getAllCollections();
-  }, [refreshKey]);
+    const all = dataService.getAllCollections();
+    if (user?.role === 'agent') {
+      return all.filter(c => c.agent_id === user.id);
+    }
+    return all;
+  }, [user, refreshKey]);
 
   const allCases = useMemo(() => {
     return dataService.getCases(user!);
@@ -39,9 +43,11 @@ export const TotalCashCollected: React.FC<TotalCashCollectedProps> = ({ onSelect
 
   const caseMap = useMemo(() => {
     const map = new Map<number, CaseFile>();
-    allCases.forEach(c => map.set(c.id, c));
+    // For admin, load all cases so every collection file matches
+    const casesToMap = user?.role === 'admin' ? dataService.getCases({ role: 'admin' } as any) : allCases;
+    casesToMap.forEach(c => map.set(c.id, c));
     return map;
-  }, [allCases]);
+  }, [allCases, user]);
 
   // Calculations
   const stats = useMemo(() => {
@@ -341,23 +347,27 @@ export const TotalCashCollected: React.FC<TotalCashCollectedProps> = ({ onSelect
 
                     <td className="py-3.5 px-4 text-right">
                       <div className="flex items-center justify-end gap-1.5">
-                        {st !== 'approved' && (
-                          <button
-                            onClick={() => handleApprove(c.id)}
-                            className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] flex items-center gap-1 transition-all shadow-sm"
-                            title="Approve and confirm collection"
-                          >
-                            <CheckCircle2 className="w-3 h-3" /> Approve
-                          </button>
-                        )}
-                        {st !== 'rejected' && (
-                          <button
-                            onClick={() => handleOpenRejectModal(c)}
-                            className="px-2.5 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 font-bold text-[11px] flex items-center gap-1 transition-all border border-rose-500/30"
-                            title="Reject payment with reason note"
-                          >
-                            <XCircle className="w-3 h-3" /> Reject
-                          </button>
+                        {user?.role !== 'agent' && (
+                          <>
+                            {st !== 'approved' && (
+                              <button
+                                onClick={() => handleApprove(c.id)}
+                                className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] flex items-center gap-1 transition-all shadow-sm"
+                                title="Approve and confirm collection"
+                              >
+                                <CheckCircle2 className="w-3 h-3" /> Approve
+                              </button>
+                            )}
+                            {st !== 'rejected' && (
+                              <button
+                                onClick={() => handleOpenRejectModal(c)}
+                                className="px-2.5 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 font-bold text-[11px] flex items-center gap-1 transition-all border border-rose-500/30"
+                                title="Reject payment with reason note"
+                              >
+                                <XCircle className="w-3 h-3" /> Reject
+                              </button>
+                            )}
+                          </>
                         )}
                         <button
                           onClick={() => handleDelete(c.id)}

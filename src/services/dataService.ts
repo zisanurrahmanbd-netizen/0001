@@ -874,7 +874,35 @@ class DataService {
     if (user.role === 'manager') {
       list = list.filter(c => c.assigned_manager_id === user.id);
     } else if (user.role === 'agent') {
-      list = list.filter(c => c.assigned_agent_id === user.id);
+      const uName = (user.name || '').trim().toLowerCase();
+      const uEmp = (user.employee_id || '').trim().toLowerCase();
+      const uEmail = (user.email || '').trim().toLowerCase();
+
+      list = list.filter(c => {
+        // 1. Direct ID match
+        if (c.assigned_agent_id === user.id) return true;
+
+        // 2. Name or employee_id string match on agent_name or extra_attributes
+        const rawAgent = (
+          c.agent_name || 
+          c.extra_attributes?.AGENT_NAME || 
+          c.extra_attributes?.AGENT || 
+          c.extra_attributes?.FIELD_AGENT || 
+          ''
+        ).trim().toLowerCase();
+
+        if (rawAgent && (
+          rawAgent === uName || 
+          (uEmp && rawAgent === uEmp) || 
+          (uEmail && (rawAgent === uEmail || uEmail.startsWith(rawAgent))) ||
+          uName.includes(rawAgent) ||
+          rawAgent.includes(uName)
+        )) {
+          return true;
+        }
+
+        return false;
+      });
     }
 
     return list.map(c => enrichCase(c));
@@ -891,6 +919,12 @@ class DataService {
     const banks = getAllSystemBanks();
     const products = getAllSystemProducts();
     const now = new Date().toISOString();
+
+    let registeredUsers: User[] = [];
+    try {
+      const saved = localStorage.getItem('recovery_all_users');
+      if (saved) registeredUsers = JSON.parse(saved);
+    } catch (_) {}
 
     const newCases: CaseFile[] = caseDataList.map((data, idx) => {
       // Resolve bank
@@ -926,6 +960,18 @@ class DataService {
         c.file_number.trim().toLowerCase() === String(data.file_number || '').trim().toLowerCase()
       );
 
+      const rawAgentName = String(data.agent_name || existingCase?.agent_name || '').trim();
+      let matchedAgentId = existingCase?.assigned_agent_id ?? null;
+      if (!matchedAgentId && rawAgentName) {
+        const lowerAgent = rawAgentName.toLowerCase();
+        const matchedUser = registeredUsers.find(u =>
+          u.name.trim().toLowerCase() === lowerAgent ||
+          (u.employee_id && u.employee_id.trim().toLowerCase() === lowerAgent) ||
+          (u.email && u.email.trim().toLowerCase().includes(lowerAgent))
+        );
+        if (matchedUser) matchedAgentId = matchedUser.id;
+      }
+
       return {
         id: existingCase?.id ?? (Date.now() + idx),
         file_number: String(data.file_number || `GS-${idx + 1}`).trim(),
@@ -945,9 +991,9 @@ class DataService {
         status: (data.status as any) || existingCase?.status || 'new',
         legal_status: data.legal_status || existingCase?.legal_status || 'Normal Recovery',
         availability_status: existingCase?.availability_status || null,
-        agent_name: data.agent_name || existingCase?.agent_name || '',
+        agent_name: rawAgentName,
         collector_name: data.collector_name || existingCase?.collector_name || '',
-        assigned_agent_id: existingCase?.assigned_agent_id ?? null,
+        assigned_agent_id: matchedAgentId,
         assigned_manager_id: existingCase?.assigned_manager_id ?? null,
         allocation_date: data.allocation_date || existingCase?.allocation_date || null,
         expiry_date: data.expiry_date || existingCase?.expiry_date || null,

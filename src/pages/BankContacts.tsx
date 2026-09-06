@@ -23,8 +23,8 @@ export const BankContactsPage: React.FC = () => {
   const [bankFilter, setBankFilter] = useState<string>('all');
   const [searchQ, setSearchQ] = useState('');
 
-  // Missing collectors from uploaded files
-  const missingCollectors = dataService.getMissingCollectorContacts();
+  // Missing collectors / C.S from uploaded files (scoped to agent files if agent)
+  const missingCollectors = dataService.getMissingCollectorContacts(user || undefined);
 
   // Add/Edit Modal
   const [showModal, setShowModal] = useState(false);
@@ -144,29 +144,27 @@ export const BankContactsPage: React.FC = () => {
           </p>
         </div>
 
-        {user?.role !== 'agent' && (
-          <button
-            onClick={openAddModal}
-            className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-600/30 flex items-center gap-2 transition-all"
-          >
-            <Plus className="w-4 h-4" />
-            <span>{t('contacts.add_new', 'Add Bank Officer')}</span>
-          </button>
-        )}
+        <button
+          onClick={openAddModal}
+          className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-600/30 flex items-center gap-2 transition-all"
+        >
+          <Plus className="w-4 h-4" />
+          <span>{t('contacts.add_new', 'Add Bank Officer')}</span>
+        </button>
       </div>
 
-      {/* MISSING COLLECTORS DETECTED IN RECOVERY FILES BANNER (Admin/Manager) */}
-      {user?.role !== 'agent' && missingCollectors.length > 0 && (
+      {/* MISSING COLLECTORS / C.S NUMBERS DETECTED IN RECOVERY FILES BANNER */}
+      {missingCollectors.length > 0 && (
         <div className="p-4 rounded-2xl bg-gradient-to-r from-rose-500/10 via-pink-500/10 to-rose-500/10 border border-rose-500/30 space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping"></span>
               <span className="text-xs font-extrabold text-rose-900 dark:text-rose-200">
-                {missingCollectors.length} Bank Collectors Detected in Files without Directory Info
+                {missingCollectors.length} Bank Collector / C.S Contact Numbers Missing in Directory
               </span>
             </div>
             <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400">
-              Click to register phone & email
+              Click "+ Add Info" to register their phone & email
             </span>
           </div>
 

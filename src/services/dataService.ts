@@ -839,13 +839,16 @@ class DataService {
     }));
   }
 
-  public getMissingCollectorContacts(): { collectorName: string; bankId: number; bankName: string; caseCount: number }[] {
+  public getMissingCollectorContacts(user?: User): { collectorName: string; bankId: number; bankName: string; caseCount: number }[] {
     const contacts = this.getContacts();
     const contactNames = new Set(contacts.map(c => c.name.toLowerCase().trim()));
 
     const map = new Map<string, { collectorName: string; bankId: number; bankName: string; caseCount: number }>();
     
-    this.cases.forEach(c => {
+    // If agent, check their allocated cases; otherwise check all cases
+    const targetCases = user && user.role === 'agent' ? this.getCases(user) : this.cases;
+
+    targetCases.forEach(c => {
       const enriched = enrichCase(c);
       const collector = enriched.collector_name?.trim();
       if (collector && collector.length > 1 && collector.toLowerCase() !== 'unassigned' && collector.toLowerCase() !== 'n/a') {

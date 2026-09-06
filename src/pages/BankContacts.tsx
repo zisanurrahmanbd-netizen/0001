@@ -289,7 +289,7 @@ export const BankContactsPage: React.FC = () => {
                 className="py-2 px-3 rounded-xl bg-emerald-500/10 hover:bg-emerald-500 hover:text-white text-emerald-600 dark:text-emerald-400 font-bold text-xs flex items-center justify-center gap-1.5 transition-all"
               >
                 <PhoneCall className="w-3.5 h-3.5" />
-                <span>Call ({contact.phone || 'N/A'})</span>
+                <span>Call</span>
               </a>
 
               <a

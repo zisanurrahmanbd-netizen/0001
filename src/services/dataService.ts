@@ -242,7 +242,6 @@ function mapCaseToDb(c: CaseFile): any {
     status: c.status || 'new',
     legal_status: c.legal_status || 'Normal Recovery',
     availability_status: c.availability_status || null,
-    collector_name: c.collector_name || '',
     assigned_agent_id: c.assigned_agent_id ? Number(c.assigned_agent_id) : null,
     agent_name: c.agent_name || '',
     assigned_manager_id: c.assigned_manager_id ? Number(c.assigned_manager_id) : null,
@@ -252,6 +251,7 @@ function mapCaseToDb(c: CaseFile): any {
     total_collected_amount: Number(c.total_collected_amount) || 0,
     extra_attributes: {
       ...(c.extra_attributes || {}),
+      COLLECTOR_NAME: c.collector_name || c.extra_attributes?.COLLECTOR_NAME || '',
       BANK_NAME: c.bank_name || c.extra_attributes?.BANK_NAME || c.bank?.name || '',
       PRODUCT_NAME: c.product_name || c.extra_attributes?.PRODUCT_NAME || c.product?.name || '',
       FILE_TYPE: c.extra_attributes?.FILE_TYPE || c.product_name || '',

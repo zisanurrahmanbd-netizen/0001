@@ -253,7 +253,25 @@ export const BankContactsPage: React.FC = () => {
                   </span>
                   <h3 className="text-sm font-bold text-slate-900 dark:text-white mt-1.5">{contact.name}</h3>
                   <p className="text-xs text-slate-500 font-medium">{contact.designation} • {contact.department}</p>
-                  <p className="text-[11px] text-slate-400 mt-0.5">{contact.branch}</p>
+                  {contact.branch && <p className="text-[11px] text-slate-400 mt-0.5">{contact.branch}</p>}
+
+                  {/* Direct Contact Numbers & Email */}
+                  <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1">
+                    {contact.phone ? (
+                      <div className="flex items-center gap-1.5">
+                        <PhoneCall className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+                        <span className="font-mono font-bold text-xs text-emerald-600 dark:text-emerald-400 tracking-wide select-all">{contact.phone}</span>
+                      </div>
+                    ) : (
+                      <div className="text-[11px] text-slate-400 italic">No phone number</div>
+                    )}
+                    {contact.email && (
+                      <div className="flex items-center gap-1.5 truncate">
+                        <Mail className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
+                        <span className="text-[11px] text-slate-600 dark:text-slate-300 truncate select-all">{contact.email}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {user?.role === 'admin' && (
@@ -281,7 +299,7 @@ export const BankContactsPage: React.FC = () => {
                 className="py-2 px-3 rounded-xl bg-emerald-500/10 hover:bg-emerald-500 hover:text-white text-emerald-600 dark:text-emerald-400 font-bold text-xs flex items-center justify-center gap-1.5 transition-all"
               >
                 <PhoneCall className="w-3.5 h-3.5" />
-                <span>Call</span>
+                <span>Call ({contact.phone || 'N/A'})</span>
               </a>
 
               <a

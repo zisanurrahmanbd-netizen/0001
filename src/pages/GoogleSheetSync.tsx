@@ -128,7 +128,33 @@ function doPost(e) {
         headers.push(colName);
         colIdx = headers.length - 1;
       }
-      sheet.getRange(targetRow, colIdx + 1).setValue(updates[key]);
+
+      var cellValue = updates[key];
+      // If the field contains a base64 image (starts with data:image), save to Google Drive so it doesn't exceed cell limit!
+      if (typeof cellValue === 'string' && cellValue.indexOf('data:image') === 0) {
+        try {
+          var splitParts = cellValue.split(',');
+          var base64Data = splitParts[1];
+          var mimeMatch = splitParts[0].match(/:(.*?);/);
+          var mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+          var ext = mimeType.indexOf('png') !== -1 ? 'png' : 'jpg';
+          var decoded = Utilities.base64Decode(base64Data);
+          var blob = Utilities.newBlob(decoded, mimeType, fileNumber + '_' + colName + '_' + new Date().getTime() + '.' + ext);
+          
+          // Get or create "Bank Recovery Photos" folder in Drive
+          var folders = DriveApp.getFoldersByName('Bank Recovery Photos');
+          var folder = folders.hasNext() ? folders.next() : DriveApp.createFolder('Bank Recovery Photos');
+          var driveFile = folder.createFile(blob);
+          driveFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+          var photoUrl = driveFile.getUrl();
+          cellValue = photoUrl;
+        } catch (imgErr) {
+          // If Drive storage fails, save truncated indicator
+          cellValue = 'Image uploaded (' + new Date().toISOString() + ')';
+        }
+      }
+
+      sheet.getRange(targetRow, colIdx + 1).setValue(cellValue);
       updated.push(colName);
     });
 
@@ -485,6 +511,32 @@ export const GoogleSheetSyncPage: React.FC = () => {
         <p className="text-xs text-slate-500 dark:text-slate-400">
           Paste the copied headers into Row 1 of your Google Sheet (tab named <b>"Cases"</b>). Column order doesn't matter — the system matches by name.
         </p>
+
+        {/* Direct One-Click Copyable Header Bar */}
+        <div className="p-3.5 rounded-2xl bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+              📋 Exact Headers for Google Sheet Row 1 ({SHEET_COLUMNS.length} Columns):
+            </span>
+            <button
+              onClick={() => copyText(colHeaders, 'col')}
+              className="flex items-center gap-1 px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-sm"
+            >
+              <Copy className="w-3 h-3" />
+              {copied === 'col' ? 'Copied to Clipboard!' : 'Copy Headers'}
+            </button>
+          </div>
+          <div 
+            onClick={() => copyText(colHeaders, 'col')}
+            title="Click to copy all headers"
+            className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 font-mono text-[11px] text-emerald-600 dark:text-emerald-400 overflow-x-auto whitespace-pre cursor-pointer hover:border-emerald-500 transition-colors select-all leading-relaxed"
+          >
+            {colHeaders}
+          </div>
+          <p className="text-[10px] text-slate-400">
+            💡 <b>Tip:</b> Click the green box above or the <b>Copy Headers</b> button, then go to your Google Sheet, click cell <b>A1</b>, and press <b>Ctrl + V</b>. All 38 columns will fill in horizontally across Row 1.
+          </p>
+        </div>
 
         {showColumns && (
           <div className="overflow-x-auto">

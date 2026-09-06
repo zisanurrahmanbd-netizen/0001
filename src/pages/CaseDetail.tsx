@@ -61,6 +61,8 @@ export const CaseDetail: React.FC<{ caseId: number; onBack: () => void }> = ({ c
   const [colRec, setColRec] = useState('');
 
   const [remContact, setRemContact] = useState<'contacted' | 'uncontacted' | 'door_locked' | 'shifted'>('contacted');
+  const [remDisposition, setRemDisposition] = useState<'promise' | 'paid' | 'missed_reschedule' | 'refused' | 'unable_to_pay'>('promise');
+  const [remReason, setRemReason] = useState('');
   const [remPtpAmt, setRemPtpAmt] = useState('');
   const [remPtpDate, setRemPtpDate] = useState('');
   const [remText, setRemText] = useState('');
@@ -164,19 +166,32 @@ export const CaseDetail: React.FC<{ caseId: number; onBack: () => void }> = ({ c
 
   const handleRemark = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !remText) return;
+    if (!user) return;
+
+    if (remDisposition === 'paid') {
+      setShowRem(false);
+      setShowCol(true);
+      return;
+    }
+
+    const fullRemark = remReason 
+      ? `[${remDisposition.toUpperCase()} - Reason: ${remReason}] ${remText}`.trim() 
+      : remText;
+
     dataService.addRemark({
       case_file_id: caseItem.id,
       user_id: user.id,
       contact_status: remContact,
-      promised_amount: remPtpAmt ? Number(remPtpAmt) : undefined,
-      promise_date: remPtpDate || undefined,
-      remarks: remText,
+      promised_amount: (remDisposition === 'promise' || remDisposition === 'missed_reschedule') && remPtpAmt ? Number(remPtpAmt) : undefined,
+      promise_date: (remDisposition === 'promise' || remDisposition === 'missed_reschedule') ? (remPtpDate || undefined) : undefined,
+      remarks: fullRemark || `Status update: ${remDisposition.replace('_', ' ')}`,
       photo_url: remPhoto || undefined,
       created_at: new Date().toISOString(),
     });
+
     setShowRem(false);
     setRemText('');
+    setRemReason('');
     setRemPhoto('');
     reload();
   };
@@ -475,6 +490,136 @@ export const CaseDetail: React.FC<{ caseId: number; onBack: () => void }> = ({ c
             </div>
           )}
 
+          {/* CALL HISTORY, REMARKS & PTP PROMISES */}
+          <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-4 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-extrabold flex items-center gap-2 text-slate-900 dark:text-white">
+                  <MessageSquare className="w-4 h-4 text-blue-500" />
+                  <span>{t('detail.call_history', 'Remarks, Call Logs & Promise to Pay (PTP)')} ({remarks.length})</span>
+                </h3>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  Conversations, contact statuses, payment commitments, and field notes
+                </p>
+              </div>
+              {can('log_remark') && (
+                <button
+                  onClick={() => setShowRem(true)}
+                  className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center gap-1 shadow-sm transition-all"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Add Remark</span>
+                </button>
+              )}
+            </div>
+
+            <div className="space-y-3 pt-1">
+              {remarks.length === 0 ? (
+                <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-dashed border-slate-200 dark:border-slate-800 text-center text-xs text-slate-400">
+                  <MessageSquare className="w-5 h-5 mx-auto mb-1 opacity-40" />
+                  <p>No conversation remarks or PTP records logged yet.</p>
+                </div>
+              ) : (
+                remarks.map(r => {
+                  const hasPtp = r.promise_date || r.promised_amount;
+                  const isPtpOverdue = r.promise_date && r.promise_date < new Date().toISOString().split('T')[0];
+
+                  return (
+                    <div
+                      key={'rem-' + r.id}
+                      className={`p-4 rounded-2xl border space-y-2 text-xs transition-all ${
+                        hasPtp
+                          ? isPtpOverdue
+                            ? 'bg-rose-500/5 border-rose-500/30 dark:bg-rose-950/10'
+                            : 'bg-emerald-500/5 border-emerald-500/30 dark:bg-emerald-950/10'
+                          : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800'
+                      }`}
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800/80 pb-2">
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                            r.contact_status === 'contacted'
+                              ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                              : r.contact_status === 'refused'
+                                ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20'
+                                : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
+                          }`}>
+                            {r.contact_status.replace('_', ' ')}
+                          </span>
+                          <span className="text-[11px] font-bold text-slate-800 dark:text-slate-200">
+                            by {r.user?.name || 'Agent'}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-2 text-[11px] text-slate-500 font-medium">
+                          <Clock className="w-3.5 h-3.5 text-slate-400" />
+                          <span>{new Date(r.created_at).toLocaleString()}</span>
+                        </div>
+                      </div>
+
+                      {/* PTP Details Badge if present */}
+                      {hasPtp && (
+                        <div className={`p-2.5 rounded-xl border flex flex-wrap items-center justify-between gap-2 ${
+                          isPtpOverdue
+                            ? 'bg-rose-500/10 border-rose-500/20 text-rose-700 dark:text-rose-300'
+                            : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-700 dark:text-emerald-300'
+                        }`}>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold uppercase text-[10px] tracking-wide">
+                              {isPtpOverdue ? '⚠️ Missed Promise to Pay (PTP)' : '🤝 Promise to Pay (PTP)'}:
+                            </span>
+                            {r.promised_amount && (
+                              <span className="font-black font-mono text-xs">
+                                BDT {r.promised_amount.toLocaleString()}
+                              </span>
+                            )}
+                          </div>
+                          {r.promise_date && (
+                            <span className="font-mono text-[11px] font-semibold">
+                              Date: {r.promise_date} {isPtpOverdue ? '(Overdue)' : ''}
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Remark text */}
+                      <p className="text-slate-700 dark:text-slate-300 font-medium leading-relaxed">
+                        {r.remarks}
+                      </p>
+
+                      {/* Photo if attached */}
+                      {r.photo_url && (
+                        <div className="pt-1">
+                          <span className="text-[10px] font-bold text-blue-500 flex items-center gap-1 mb-1">
+                            <Camera className="w-3 h-3" /> Attached Proof Photo
+                          </span>
+                          <img src={r.photo_url} alt="remark proof" className="rounded-xl max-h-36 object-cover border border-blue-500/20" />
+                        </div>
+                      )}
+
+                      {/* Delete button */}
+                      {can('log_remark') && (
+                        <div className="flex justify-end pt-1">
+                          <button
+                            onClick={() => {
+                              if (confirm('Delete this remark / PTP record permanently?')) {
+                                dataService.deleteRemark(r.id);
+                                reload();
+                              }
+                            }}
+                            className="text-[10px] flex items-center gap-1 text-slate-400 hover:text-rose-600 font-bold px-2 py-0.5 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all"
+                          >
+                            🗑 Delete Remark / PTP
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
           {/* VERIFIED GPS PINPOINT VISIT RECORDS & EMBEDDED MAP */}
           <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-4 shadow-sm">
             <div>
@@ -611,24 +756,62 @@ export const CaseDetail: React.FC<{ caseId: number; onBack: () => void }> = ({ c
 
           <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-3">
             <h3 className="text-sm font-bold flex items-center gap-2 text-slate-900 dark:text-white"><Receipt className="w-4 h-4 text-emerald-500" /> {t('detail.receipts', 'Receipts')}</h3>
-            {collections.map(c => (
-              <div key={c.id} className="p-3 bg-emerald-500/10 rounded-2xl text-xs space-y-1.5">
-                <div className="flex justify-between font-bold text-emerald-600 dark:text-emerald-400">
-                  <span>BDT {c.amount.toLocaleString()}</span>
-                  <span className="font-mono text-[10px]">{c.receipt_number}</span>
-                </div>
-                <div className="flex justify-between text-[10px] text-slate-500">
-                  <span className="capitalize">{c.payment_method?.replace('_', ' ')}</span>
-                  <span>{new Date(c.collected_at).toLocaleDateString()}</span>
-                </div>
-                {c.photo_url && (
-                  <div>
-                    <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-1 mb-1"><Camera className="w-3 h-3" /> Payment Proof</span>
-                    <img src={c.photo_url} alt="payment proof" className="rounded-xl max-h-32 object-cover border border-emerald-500/20 w-full" />
+            {collections.length === 0 && (
+              <p className="text-xs text-slate-400 italic text-center py-4">No payments recorded yet.</p>
+            )}
+            {collections.map(c => {
+              const st = c.status || 'pending';
+              const stColor = st === 'approved' ? 'emerald' : st === 'rejected' ? 'rose' : 'amber';
+              return (
+                <div key={c.id} className={`p-3 rounded-2xl text-xs space-y-1.5 border ${
+                  st === 'rejected' 
+                    ? 'bg-rose-500/5 border-rose-500/20' 
+                    : st === 'approved'
+                      ? 'bg-emerald-500/10 border-emerald-500/20'
+                      : 'bg-amber-500/5 border-amber-500/20'
+                }`}>
+                  <div className="flex justify-between font-bold">
+                    <span className={`text-${stColor}-600 dark:text-${stColor}-400`}>BDT {c.amount.toLocaleString()}</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold bg-${stColor}-500/10 text-${stColor}-600 dark:text-${stColor}-400 uppercase`}>
+                        {st === 'approved' ? '✓ Verified' : st === 'rejected' ? '✗ Rejected' : '⏳ Pending'}
+                      </span>
+                      <span className="font-mono text-[10px] text-slate-400">{c.receipt_number}</span>
+                    </div>
                   </div>
-                )}
-              </div>
-            ))}
+                  {st === 'rejected' && c.rejection_reason && (
+                    <div className="text-[10px] text-rose-600 dark:text-rose-400 font-medium bg-rose-500/10 px-2 py-1 rounded-lg">
+                      ⚠️ Rejected: {c.rejection_reason}
+                    </div>
+                  )}
+                  <div className="flex justify-between text-[10px] text-slate-500">
+                    <span className="capitalize">{c.payment_method?.replace('_', ' ')}</span>
+                    <span>{new Date(c.collected_at).toLocaleDateString()}</span>
+                  </div>
+                  {c.photo_url && (
+                    <div>
+                      <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-1 mb-1"><Camera className="w-3 h-3" /> Payment Proof</span>
+                      <img src={c.photo_url} alt="payment proof" className="rounded-xl max-h-32 object-cover border border-emerald-500/20 w-full" />
+                    </div>
+                  )}
+                  {can('record_payment') && (
+                    <div className="flex justify-end pt-0.5">
+                      <button
+                        onClick={() => {
+                          if (confirm('Delete this payment record permanently?')) {
+                            dataService.deleteCollection(c.id);
+                            reload();
+                          }
+                        }}
+                        className="text-[10px] flex items-center gap-1 text-rose-500 hover:text-rose-700 font-bold px-2 py-0.5 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all"
+                      >
+                        🗑 Delete Record
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -857,17 +1040,95 @@ export const CaseDetail: React.FC<{ caseId: number; onBack: () => void }> = ({ c
         <div className="fixed inset-0 z-[100] w-screen h-screen flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
           <form onSubmit={handleRemark} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-3xl max-w-sm w-full space-y-3 text-xs shadow-2xl max-h-[90vh] overflow-y-auto">
             <h3 className="font-bold text-sm text-slate-900 dark:text-white">{t('detail.log_remark', 'Log Contact Remark / PTP')}</h3>
-            <select value={remContact} onChange={e => setRemContact(e.target.value as any)} className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl">
-              <option value="contacted">{t('top.switch_lang') === 'English' ? 'গ্রাহকের সাথে কথা হয়েছে' : 'Customer Contacted'}</option>
-              <option value="uncontacted">{t('top.switch_lang') === 'English' ? 'যোগাযোগ সম্ভব হয়নি' : 'Unreachable'}</option>
-              <option value="door_locked">{t('top.switch_lang') === 'English' ? 'দরজায় তালাবদ্ধ' : 'Door Locked'}</option>
-              <option value="shifted">{t('top.switch_lang') === 'English' ? 'ঠিকানা পরিবর্তন করেছে' : 'Shifted'}</option>
-            </select>
-            <div className="grid grid-cols-2 gap-2">
-              <input type="number" value={remPtpAmt} onChange={e => setRemPtpAmt(e.target.value)} placeholder="PTP Amount" className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl" />
-              <input type="date" value={remPtpDate} onChange={e => setRemPtpDate(e.target.value)} className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl" />
+            {/* Contact Status */}
+            <div>
+              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Contact Status</label>
+              <select value={remContact} onChange={e => setRemContact(e.target.value as any)} className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl font-semibold">
+                <option value="contacted">{t('top.switch_lang') === 'English' ? 'গ্রাহকের সাথে কথা হয়েছে' : 'Customer Contacted'}</option>
+                <option value="uncontacted">{t('top.switch_lang') === 'English' ? 'যোগাযোগ সম্ভব হয়নি' : 'Unreachable'}</option>
+                <option value="door_locked">{t('top.switch_lang') === 'English' ? 'দরজায় তালাবদ্ধ' : 'Door Locked'}</option>
+                <option value="shifted">{t('top.switch_lang') === 'English' ? 'ঠিকানা পরিবর্তন করেছে' : 'Shifted'}</option>
+                <option value="refused">Refused to Talk / Settle</option>
+              </select>
             </div>
-            <textarea required rows={3} value={remText} onChange={e => setRemText(e.target.value)} placeholder="Customer conversation notes..." className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl" />
+
+            {/* PTP / Payment Outcome Option */}
+            <div className="p-3 rounded-2xl bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800/50 space-y-2">
+              <label className="block font-bold text-blue-700 dark:text-blue-400 uppercase text-[10px]">
+                Follow-Up / PTP Action Type
+              </label>
+              <select
+                value={remDisposition}
+                onChange={e => setRemDisposition(e.target.value as any)}
+                className="w-full p-2.5 bg-white dark:bg-slate-900 border border-blue-200 dark:border-blue-800 rounded-xl font-bold text-xs"
+              >
+                <option value="promise">🤝 New Promise to Pay (PTP)</option>
+                <option value="paid">💰 Customer Paid Now (Record Collection)</option>
+                <option value="missed_reschedule">🔄 Missed PTP Re-Entry (Reschedule with Reason)</option>
+                <option value="unable_to_pay">⚠️ Cannot Pay Right Now (Financial Hardship)</option>
+                <option value="refused">❌ Refused to Pay / Disputed Claim</option>
+              </select>
+
+              {/* Conditional: If Paid, show tip */}
+              {remDisposition === 'paid' && (
+                <div className="p-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-700 dark:text-emerald-300 text-[11px] font-medium">
+                  ✓ Clicking continue will take you directly to <b>Record Payment</b> with receipt and photo upload.
+                </div>
+              )}
+
+              {/* Conditional: If Missed Re-entry or Cannot Pay or Refused, require Reason */}
+              {(remDisposition === 'missed_reschedule' || remDisposition === 'unable_to_pay' || remDisposition === 'refused') && (
+                <div className="space-y-1 pt-1">
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 text-[11px]">
+                    {remDisposition === 'missed_reschedule' && 'Why did the customer miss the previous payment? *'}
+                    {remDisposition === 'unable_to_pay' && 'Why can customer not pay right now? *'}
+                    {remDisposition === 'refused' && 'Reason for refusal / dispute *'}
+                  </label>
+                  <select
+                    value={remReason}
+                    onChange={e => setRemReason(e.target.value)}
+                    className="w-full p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl font-medium text-xs"
+                  >
+                    <option value="">-- Select Reason --</option>
+                    <option value="Salary / business fund delayed">Salary or business income delayed</option>
+                    <option value="Medical / family emergency expense">Medical or family emergency</option>
+                    <option value="Out of town / travelling">Out of station / Travelling</option>
+                    <option value="Loss of job / business closed down">Loss of job or business closed down</option>
+                    <option value="Banking / transfer channel technical issue">Bank app or transfer issue</option>
+                    <option value="Disputes interest / outstanding amount calculation">Disputes interest / charges calculation</option>
+                    <option value="Claims already paid / settlement pending">Claims already paid earlier</option>
+                    <option value="Strictly refused to settle with agency">Refused to cooperate with agency</option>
+                    <option value="Other valid reason">Other reason (explain below)</option>
+                  </select>
+                </div>
+              )}
+
+              {/* Conditional: If Promise or Missed Reschedule, show amount and when will pay date */}
+              {(remDisposition === 'promise' || remDisposition === 'missed_reschedule') && (
+                <div className="space-y-1.5 pt-1">
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 text-[11px]">
+                    {remDisposition === 'missed_reschedule' ? 'Rescheduled PTP Amount & When Will Pay Date *' : 'Committed PTP Amount & Date'}
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <input 
+                      type="number" 
+                      value={remPtpAmt} 
+                      onChange={e => setRemPtpAmt(e.target.value)} 
+                      placeholder="Committed Amount" 
+                      className="w-full p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl font-mono text-xs font-bold" 
+                    />
+                    <input 
+                      type="date" 
+                      value={remPtpDate} 
+                      onChange={e => setRemPtpDate(e.target.value)} 
+                      className="w-full p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl font-mono text-xs font-bold" 
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <textarea required rows={3} value={remText} onChange={e => setRemText(e.target.value)} placeholder="Enter detailed conversation notes..." className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl" />
 
             {/* Remark Proof Photo */}
             <div>

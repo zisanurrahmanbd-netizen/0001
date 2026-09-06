@@ -114,6 +114,10 @@ export interface Collection {
   notes?: string;
   photo_url?: string;
   collected_at: string;
+  status?: 'pending' | 'approved' | 'rejected';
+  rejection_reason?: string;
+  verified_at?: string;
+  verified_by?: string;
   agent?: User;
   case_file?: CaseFile;
 }

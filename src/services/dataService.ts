@@ -1167,6 +1167,95 @@ class DataService {
     return this.collections.filter(c => c.case_file_id === caseId).sort((a, b) => new Date(b.collected_at).getTime() - new Date(a.collected_at).getTime());
   }
 
+  public getAllCollections(): Collection[] {
+    return [...this.collections].sort((a, b) => new Date(b.collected_at).getTime() - new Date(a.collected_at).getTime());
+  }
+
+  public verifyCollection(collectionId: number, status: 'approved' | 'rejected', reason?: string, verifierName?: string): Collection | null {
+    const col = this.collections.find(c => c.id === collectionId);
+    if (!col) return null;
+
+    col.status = status;
+    col.rejection_reason = reason || undefined;
+    col.verified_at = new Date().toISOString();
+    col.verified_by = verifierName || 'Admin';
+
+    // If rejected, subtract from case total_collected_amount
+    const cItem = this.cases.find(c => c.id === col.case_file_id);
+    if (cItem) {
+      if (status === 'rejected') {
+        cItem.total_collected_amount = Math.max(0, (cItem.total_collected_amount || 0) - col.amount);
+        if (cItem.total_collected_amount < cItem.outstanding_amount && cItem.status === 'settled') {
+          cItem.status = 'in_progress';
+        }
+      } else if (status === 'approved') {
+        if ((cItem.total_collected_amount || 0) >= cItem.outstanding_amount) {
+          cItem.status = 'settled';
+        }
+      }
+    }
+
+    this.saveState();
+    this.notifySubscribers();
+    try {
+      supabase.from('collections').update({
+        status: col.status,
+        rejection_reason: col.rejection_reason,
+        verified_at: col.verified_at,
+        verified_by: col.verified_by
+      }).eq('id', col.id).then(() => {});
+      if (cItem) {
+        supabase.from('cases').update({
+          total_collected_amount: cItem.total_collected_amount,
+          status: cItem.status
+        }).eq('id', cItem.id).then(() => {});
+      }
+    } catch (_) {}
+
+    return col;
+  }
+
+  public deleteCollection(collectionId: number): boolean {
+    const idx = this.collections.findIndex(c => c.id === collectionId);
+    if (idx === -1) return false;
+    const removed = this.collections.splice(idx, 1)[0];
+
+    // Re-adjust case collected amount
+    const cItem = this.cases.find(c => c.id === removed.case_file_id);
+    if (cItem && removed.status !== 'rejected') {
+      cItem.total_collected_amount = Math.max(0, (cItem.total_collected_amount || 0) - removed.amount);
+      if (cItem.total_collected_amount < cItem.outstanding_amount && cItem.status === 'settled') {
+        cItem.status = 'in_progress';
+      }
+    }
+
+    this.saveState();
+    this.notifySubscribers();
+    try {
+      supabase.from('collections').delete().eq('id', collectionId).then(() => {});
+      if (cItem) {
+        supabase.from('cases').update({
+          total_collected_amount: cItem.total_collected_amount,
+          status: cItem.status
+        }).eq('id', cItem.id).then(() => {});
+      }
+    } catch (_) {}
+
+    return true;
+  }
+
+  public deleteRemark(remarkId: number): boolean {
+    const idx = this.remarks.findIndex(r => r.id === remarkId);
+    if (idx === -1) return false;
+    this.remarks.splice(idx, 1);
+    this.saveState();
+    this.notifySubscribers();
+    try {
+      supabase.from('case_remarks').delete().eq('id', remarkId).then(() => {});
+    } catch (_) {}
+    return true;
+  }
+
   // TODAY'S PROMISE TO PAY ALERTS
   public getTodayPtpAlerts(user: User): PtpAlertItem[] {
     const userCases = this.getCases(user).filter(c => !['settled', 'closed'].includes(c.status));

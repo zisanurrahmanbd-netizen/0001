@@ -17,7 +17,8 @@ import {
   AlertTriangle,
   UserPlus,
   Sheet,
-  Laptop
+  Laptop,
+  DollarSign
 } from "lucide-react";
 
 interface SidebarProps {
@@ -43,6 +44,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, isOpe
     return dataService.getMissingCollectorContacts();
   }, [currentPage]);
 
+  // Real-time detection of collections needing review or rejected for the logged in agent
+  const { unverifiedCollectionsCount, rejectedCountForUser } = useMemo(() => {
+    const all = dataService.getAllCollections();
+    const unverified = all.filter(c => !c.status || c.status === 'pending').length;
+    const rejected = all.filter(c => c.status === 'rejected' && (user?.role === 'admin' || c.agent_id === user?.id)).length;
+    return { unverifiedCollectionsCount: user?.role === 'admin' ? unverified : 0, rejectedCountForUser: rejected };
+  }, [user, currentPage]);
+
   const navItems: { id: string; label: string; icon: any; perm: PermissionKey; badge?: number }[] = [
     { id: "dashboard", label: t("nav.dashboard", "Dashboard"), icon: LayoutDashboard, perm: "view_dashboard" },
     { id: "cases", label: t("nav.cases", "Bank & MNC Files"), icon: Briefcase, perm: "view_cases" },
@@ -58,6 +67,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, isOpe
     { id: "reports_perf", label: t("nav.reports_perf", "Agent Performance"), icon: TrendingUp, perm: "view_reports_perf" },
     { id: "reports_expiry", label: t("nav.reports_expiry", "Expiry Tracker"), icon: CalendarClock, perm: "view_reports_expiry" },
     { id: "reports_legal", label: t("nav.reports_legal", "Legal & Flagged Cases"), icon: ShieldAlert, perm: "view_reports_legal" },
+    { 
+      id: "cash_collected", 
+      label: "Total Cash Collected", 
+      icon: DollarSign, 
+      perm: "view_dashboard",
+      badge: unverifiedCollectionsCount > 0 ? unverifiedCollectionsCount : (rejectedCountForUser > 0 ? rejectedCountForUser : undefined)
+    },
     { 
       id: "team", 
       label: t("nav.team", "Team Management"), 

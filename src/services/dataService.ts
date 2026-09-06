@@ -251,7 +251,8 @@ function mapCaseToDb(c: CaseFile): any {
     total_collected_amount: Number(c.total_collected_amount) || 0,
     extra_attributes: {
       ...(c.extra_attributes || {}),
-      COLLECTOR_NAME: c.collector_name || c.extra_attributes?.COLLECTOR_NAME || '',
+      AGENT_NAME: c.agent_name || '',
+      COLLECTOR_NAME: c.collector_name || '',
       BANK_NAME: c.bank_name || c.extra_attributes?.BANK_NAME || c.bank?.name || '',
       PRODUCT_NAME: c.product_name || c.extra_attributes?.PRODUCT_NAME || c.product?.name || '',
       FILE_TYPE: c.extra_attributes?.FILE_TYPE || c.product_name || '',
@@ -447,42 +448,56 @@ class DataService {
     const SUPABASE_URL = 'https://wbgacppzdyqextjxlgwq.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_0FCYjpPT8_7AJOa5aYIXgg_xZhkayuN';
 
-    const rows = contactList.map(c => ({
-      id: c.id,
-      bank_id: c.bank_id,
-      name: c.name || '',
-      designation: c.designation || '',
-      department: c.department || '',
-      phone: c.phone || '',
-      email: c.email || '',
-      branch: c.branch || '',
-      notes: c.notes || '',
-      created_at: c.created_at || new Date().toISOString()
-    }));
-
-    // Try Supabase JS client
     try {
-      const { error } = await supabase.from('bank_contacts').upsert(rows, { onConflict: 'id' });
-      if (!error) return { count: rows.length };
-    } catch (_) {}
+      // 1. Fetch existing contacts to match IDs by name + bank_id
+      const { data: existingRows } = await supabase.from('bank_contacts').select('id, name, bank_id');
+      const existingMap = new Map<string, number>();
+      if (Array.isArray(existingRows)) {
+        existingRows.forEach((r: any) => {
+          if (r.name && r.id) {
+            existingMap.set(`${String(r.name).trim().toLowerCase()}___${r.bank_id}`, Number(r.id));
+          }
+        });
+      }
 
-    // Fallback: direct REST upsert
-    try {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/bank_contacts`, {
-        method: 'POST',
-        headers: {
-          'apikey': SUPABASE_KEY,
-          'Authorization': `Bearer ${SUPABASE_KEY}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'resolution=merge-duplicates'
-        },
-        body: JSON.stringify(rows)
+      const rows = contactList.map((c, idx) => {
+        const key = `${String(c.name).trim().toLowerCase()}___${c.bank_id}`;
+        const finalId = existingMap.get(key) || c.id || (Date.now() + idx);
+        c.id = finalId;
+        return {
+          id: finalId,
+          bank_id: c.bank_id,
+          name: c.name || '',
+          designation: c.designation || '',
+          department: c.department || '',
+          phone: c.phone || '',
+          email: c.email || '',
+          branch: c.branch || '',
+          notes: c.notes || '',
+          created_at: c.created_at || new Date().toISOString()
+        };
       });
-      if (res.ok) return { count: rows.length };
+
+      // 2. Delete stale contacts from Supabase that were deleted from the sheet
+      if (Array.isArray(existingRows)) {
+        const activeIds = new Set(rows.map(r => r.id));
+        const staleIds = existingRows.filter((r: any) => !activeIds.has(Number(r.id))).map((r: any) => r.id);
+        if (staleIds.length > 0) {
+          await supabase.from('bank_contacts').delete().in('id', staleIds);
+        }
+      }
+
+      // 3. Upsert active contacts in batches of 25
+      for (let i = 0; i < rows.length; i += 25) {
+        const chunk = rows.slice(i, i + 25);
+        await supabase.from('bank_contacts').upsert(chunk, { onConflict: 'id' });
+      }
+
+      return { count: rows.length };
     } catch (err: any) {
+      console.warn('pushContactsToCloud note:', err);
       return { count: 0, error: err?.message || String(err) };
     }
-    return { count: 0 };
   }
 
   public subscribe(listener: () => void): () => void {
@@ -1101,9 +1116,10 @@ class DataService {
         c.file_number.trim().toLowerCase() === String(data.file_number || '').trim().toLowerCase()
       );
 
-      const rawAgentName = String(data.agent_name || existingCase?.agent_name || '').trim();
-      let matchedAgentId = existingCase?.assigned_agent_id ?? null;
-      if (!matchedAgentId && rawAgentName) {
+      // Agent resolution: Obey Google Sheet directly! If AGENT_NAME in sheet is blank, unassign the agent!
+      const rawAgentName = data.agent_name !== undefined ? String(data.agent_name).trim() : String(existingCase?.agent_name || '').trim();
+      let matchedAgentId: number | null = null;
+      if (rawAgentName) {
         const lowerAgent = rawAgentName.toLowerCase();
         const matchedUser = registeredUsers.find(u =>
           u.name.trim().toLowerCase() === lowerAgent ||
@@ -1111,19 +1127,28 @@ class DataService {
           (u.email && u.email.trim().toLowerCase().includes(lowerAgent))
         );
         if (matchedUser) matchedAgentId = matchedUser.id;
+        else if (existingCase?.assigned_agent_id && existingCase.agent_name?.trim().toLowerCase() === lowerAgent) {
+          matchedAgentId = existingCase.assigned_agent_id;
+        }
+      } else {
+        matchedAgentId = null;
       }
+
+      const collectorName = data.collector_name !== undefined ? String(data.collector_name).trim() : (existingCase?.collector_name || '');
+      const allocationDate = data.allocation_date !== undefined ? (data.allocation_date || null) : (existingCase?.allocation_date || null);
+      const expiryDate = data.expiry_date !== undefined ? (data.expiry_date || null) : (existingCase?.expiry_date || null);
 
       return {
         id: existingCase?.id ?? (Date.now() + idx),
         file_number: String(data.file_number || `GS-${idx + 1}`).trim(),
         bank_id: bankId,
         product_id: productId,
-        account_number: data.account_number || '',
-        customer_name: String(data.customer_name || 'Unknown').trim(),
-        customer_phone: data.customer_phone || '',
-        customer_secondary_phone: data.customer_secondary_phone || '',
-        customer_address_present: data.customer_address_present || '',
-        customer_address_permanent: data.customer_address_permanent || '',
+        account_number: data.account_number !== undefined ? data.account_number : (existingCase?.account_number || ''),
+        customer_name: String(data.customer_name || existingCase?.customer_name || 'Unknown').trim(),
+        customer_phone: data.customer_phone !== undefined ? data.customer_phone : (existingCase?.customer_phone || ''),
+        customer_secondary_phone: data.customer_secondary_phone !== undefined ? data.customer_secondary_phone : (existingCase?.customer_secondary_phone || ''),
+        customer_address_present: data.customer_address_present !== undefined ? data.customer_address_present : (existingCase?.customer_address_present || ''),
+        customer_address_permanent: data.customer_address_permanent !== undefined ? data.customer_address_permanent : (existingCase?.customer_address_permanent || ''),
         present_address_visited: existingCase?.present_address_visited ?? false,
         permanent_address_visited: existingCase?.permanent_address_visited ?? false,
         outstanding_amount: Number(data.outstanding_amount) || 0,
@@ -1133,19 +1158,19 @@ class DataService {
         legal_status: data.legal_status || existingCase?.legal_status || 'Normal Recovery',
         availability_status: existingCase?.availability_status || null,
         agent_name: rawAgentName,
-        collector_name: data.collector_name || existingCase?.collector_name || '',
+        collector_name: collectorName,
         assigned_agent_id: matchedAgentId,
         assigned_manager_id: existingCase?.assigned_manager_id ?? null,
-        allocation_date: data.allocation_date || existingCase?.allocation_date || null,
-        expiry_date: data.expiry_date || existingCase?.expiry_date || null,
+        allocation_date: allocationDate,
+        expiry_date: expiryDate,
         last_visit_at: existingCase?.last_visit_at || null,
         total_collected_amount: existingCase?.total_collected_amount ?? 0,
-        extra_attributes: { ...(existingCase?.extra_attributes || {}), ...(data.extra_attributes || {}) },
-        bank_name: data.bank_name || existingCase?.bank_name || undefined,
-        product_name: data.product_name || existingCase?.product_name || undefined,
-        branch_name: data.branch_name || existingCase?.branch_name || undefined,
-        area: data.area || existingCase?.area || undefined,
-        lap_status: data.lap_status || existingCase?.lap_status || undefined,
+        extra_attributes: { ...(existingCase?.extra_attributes || {}), ...(data.extra_attributes || {}), AGENT_NAME: rawAgentName, COLLECTOR_NAME: collectorName },
+        bank_name: data.bank_name !== undefined ? data.bank_name : existingCase?.bank_name,
+        product_name: data.product_name !== undefined ? data.product_name : existingCase?.product_name,
+        branch_name: data.branch_name !== undefined ? data.branch_name : existingCase?.branch_name,
+        area: data.area !== undefined ? data.area : existingCase?.area,
+        lap_status: data.lap_status !== undefined ? data.lap_status : existingCase?.lap_status,
         created_at: existingCase?.created_at || now,
         updated_at: now,
       };
@@ -1157,6 +1182,59 @@ class DataService {
 
     // Push immediately to Supabase Cloud so all devices and users receive the exact data
     await this.pushAllCasesToCloudStrict(newCases);
+  }
+
+  // ── Google Sheets full-replace sync for Bank Contacts ───────────────
+  public async replaceAllContactsFromSheet(contactDataList: Record<string, any>[]) {
+    const banks = getAllSystemBanks();
+    const now = new Date().toISOString();
+
+    const newContacts: BankContact[] = contactDataList.map((data, idx) => {
+      // Resolve bank
+      let bankId = 1;
+      if (data.bank_name) {
+        const bName = String(data.bank_name).trim().toLowerCase();
+        const bank = banks.find(b => b.name.toLowerCase() === bName || b.code.toLowerCase() === bName);
+        if (bank) {
+          bankId = bank.id;
+        } else {
+          const partialBank = banks.find(b => bName.includes(b.name.toLowerCase()) || b.name.toLowerCase().includes(bName));
+          if (partialBank) {
+            bankId = partialBank.id;
+          } else {
+            let hash = 0;
+            for (let i = 0; i < bName.length; i++) hash = ((hash << 5) - hash) + bName.charCodeAt(i);
+            bankId = Math.abs(hash % 100000) + 100;
+          }
+        }
+      }
+
+      // Try to reuse existing contact id by matching name and (bank_id or phone)
+      const existing = this.contacts.find(c =>
+        c.name.trim().toLowerCase() === String(data.name || '').trim().toLowerCase() &&
+        (c.bank_id === bankId || (data.phone && c.phone === data.phone))
+      );
+
+      return {
+        id: existing?.id ?? (Date.now() + idx),
+        bank_id: bankId,
+        name: String(data.name || '').trim(),
+        designation: data.designation || 'Bank Recovery Officer / Collector',
+        department: data.department || 'Special Asset Management',
+        phone: data.phone || '',
+        email: data.email || '',
+        branch: data.branch || 'Principal Branch',
+        notes: data.notes || '',
+        created_at: existing?.created_at || now,
+      };
+    });
+
+    this.contacts = newContacts;
+    this.saveState();
+    this.notifySubscribers();
+
+    // Push immediately to Supabase Cloud so all devices and users receive the exact data
+    await this.pushContactsToCloud(newContacts);
   }
 
   public reassignCase(caseId: number, agentId: number) {

@@ -39,35 +39,57 @@ const APPS_SCRIPT_CODE = `// ═════════════════
 function doGet(e) {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var sheet = ss.getSheetByName('Cases') || ss.getSheets()[0];
-    var data = sheet.getDataRange().getValues();
+    // Cases sheet
+    var casesSheet = ss.getSheetByName('Cases') || ss.getSheets()[0];
+    var casesData = casesSheet ? casesSheet.getDataRange().getValues() : [];
 
-    if (data.length < 2) {
-      return response({ data: [], total: 0, updated: new Date().toISOString() });
-    }
+    // Contacts sheet: supports 'Bank_Contacts' or 'Bank Contacts'
+    var contactsSheet = ss.getSheetByName('Bank_Contacts') || ss.getSheetByName('Bank Contacts') || (ss.getSheets().length > 1 ? ss.getSheets()[1] : null);
+    var contactsData = contactsSheet ? contactsSheet.getDataRange().getValues() : [];
 
-    // Normalise headers: trim + uppercase + spaces → underscores
-    var headers = data[0].map(function(h) {
-      return String(h).trim().toUpperCase().replace(/\\s+/g, '_');
-    });
-
-    var rows = [];
-    for (var i = 1; i < data.length; i++) {
-      var row = data[i];
-      var obj = {};
-      var hasData = false;
-      for (var j = 0; j < headers.length; j++) {
-        var val = row[j];
-        if (val instanceof Date) val = Utilities.formatDate(val, Session.getScriptTimeZone(), 'yyyy-MM-dd');
-        obj[headers[j]] = val;
-        if (val !== '' && val !== null && val !== undefined) hasData = true;
+    // Process cases
+    var caseRows = [];
+    if (casesData.length > 1) {
+      var caseHeaders = casesData[0].map(function(h) {
+        return String(h).trim().toUpperCase().replace(/\s+/g, '_');
+      });
+      for (var i = 1; i < casesData.length; i++) {
+        var row = casesData[i];
+        var obj = {};
+        var hasData = false;
+        for (var j = 0; j < caseHeaders.length; j++) {
+          var val = row[j];
+          if (val instanceof Date) val = Utilities.formatDate(val, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+          obj[caseHeaders[j]] = val;
+          if (val !== '' && val !== null && val !== undefined) hasData = true;
+        }
+        if (hasData) caseRows.push(obj);
       }
-      if (hasData) rows.push(obj);
     }
 
-    return response({ data: rows, total: rows.length, updated: new Date().toISOString() });
+    // Process contacts
+    var contactsRows = [];
+    if (contactsData.length > 1) {
+      var contactHeaders = contactsData[0].map(function(h) {
+        return String(h).trim().toUpperCase().replace(/\s+/g, '_');
+      });
+      for (var i = 1; i < contactsData.length; i++) {
+        var row = contactsData[i];
+        var obj = {};
+        var hasData = false;
+        for (var j = 0; j < contactHeaders.length; j++) {
+          var val = row[j];
+          if (val instanceof Date) val = Utilities.formatDate(val, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+          obj[contactHeaders[j]] = val;
+          if (val !== '' && val !== null && val !== undefined) hasData = true;
+        }
+        if (hasData) contactsRows.push(obj);
+      }
+    }
+
+    return response({ data: caseRows, total: caseRows.length, updated: new Date().toISOString(), contacts: contactsRows });
   } catch (err) {
-    return response({ error: err.toString(), data: [], total: 0 });
+    return response({ error: err.toString(), data: [], total: 0, contacts: [] });
   }
 }
 
@@ -213,12 +235,23 @@ const SHEET_COLUMNS = [
   { col: 'GUARANTORS', desc: 'Multiple reference / guarantor phone and addresses (JSON or formatted text)', example: '[{"name":"Rahim","phone":"01700000000","address":"Dhaka"}]' },
 ];
 
+const CONTACT_SHEET_COLUMNS = [
+  { col: 'BANK_NAME', desc: 'Partner Bank / Institution Name', example: 'Dutch-Bangla Bank Limited' },
+  { col: 'OFFICER_NAME', desc: 'Official Name of Bank Officer / Collector / C.S (required)', example: 'Md. Tariqul Islam' },
+  { col: 'DESIGNATION', desc: 'Job Title or Role', example: 'Senior Recovery Officer' },
+  { col: 'DEPARTMENT', desc: 'Department / Unit', example: 'Special Asset Management' },
+  { col: 'PHONE', desc: 'Direct Phone / Mobile Number for Agents to Call', example: '01711223344' },
+  { col: 'EMAIL', desc: 'Official Bank Email Address', example: 'tariqul@dbbl.com.bd' },
+  { col: 'BRANCH', desc: 'Assigned Bank Branch or Region', example: 'Principal Branch, Motijheel' },
+  { col: 'NOTES', desc: 'Internal Notes or Remarks', example: 'Card and retail recovery lead' },
+];
+
 export const GoogleSheetSyncPage: React.FC = () => {
   const [settings, setSettings] = useState(loadGSheetSettings);
   const [status, setStatus] = useState<SyncStatus>({ state: 'idle' });
   const [showScript, setShowScript] = useState(false);
   const [showColumns, setShowColumns] = useState(false);
-  const [copied, setCopied] = useState<'script' | 'col' | null>(null);
+  const [copied, setCopied] = useState<'script' | 'col' | 'contact_col' | null>(null);
   const [urlInput, setUrlInput] = useState(settings.scriptUrl);
   const [intervalInput, setIntervalInput] = useState(String(settings.intervalSeconds || 60));
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
@@ -275,7 +308,7 @@ export const GoogleSheetSyncPage: React.FC = () => {
     if (urlInput.trim()) syncFromGoogleSheet(urlInput.trim(), handleStatus);
   };
 
-  const copyText = (text: string, key: 'script' | 'col') => {
+  const copyText = (text: string, key: 'script' | 'col' | 'contact_col') => {
     navigator.clipboard.writeText(text).then(() => {
       setCopied(key);
       setTimeout(() => setCopied(null), 2000);
@@ -283,6 +316,7 @@ export const GoogleSheetSyncPage: React.FC = () => {
   };
 
   const colHeaders = SHEET_COLUMNS.map(c => c.col).join('\t');
+  const contactColHeaders = CONTACT_SHEET_COLUMNS.map(c => c.col).join('\t');
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -296,7 +330,7 @@ export const GoogleSheetSyncPage: React.FC = () => {
             Google Sheets Live Sync
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Auto-pull case files from your private Google Sheet every {settings.intervalSeconds || 60} seconds
+            Auto-pull cases & bank contacts from your private Google Sheet every {settings.intervalSeconds || 60} seconds
           </p>
         </div>
         {/* Live status pill */}
@@ -308,7 +342,7 @@ export const GoogleSheetSyncPage: React.FC = () => {
           )}
           {status.state === 'success' && (
             <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-bold">
-              <Wifi className="w-3.5 h-3.5" /> Live — {status.totalRows} rows @ {status.lastSync}
+              <Wifi className="w-3.5 h-3.5" /> Live — {status.totalRows ?? 0} cases{status.totalContacts !== undefined ? `, ${status.totalContacts} contacts` : ''} @ {status.lastSync}
             </span>
           )}
           {status.state === 'error' && (
@@ -434,20 +468,18 @@ export const GoogleSheetSyncPage: React.FC = () => {
       {/* Step-by-step Setup */}
       <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
         <h3 className="font-bold text-slate-800 dark:text-white text-sm flex items-center gap-2">
-          <Info className="w-4 h-4 text-blue-500" /> Setup Guide (Do Once)
+          <Info className="w-4 h-4 text-blue-500" /> Setup & Sync Guide
         </h3>
 
         <ol className="space-y-3 text-xs text-slate-600 dark:text-slate-300">
           {[
-            { n: 1, text: 'Open your Google Sheet and name the first sheet tab "Cases".' },
-            { n: 2, text: 'Add column headers in Row 1 — use the exact names from the format table below.' },
-            { n: 3, text: 'Fill in your case data starting from Row 2.' },
-            { n: 4, text: 'Click Extensions → Apps Script in the Google Sheet menu.' },
-            { n: 5, text: 'Delete all existing code and paste the Apps Script code below.' },
-            { n: 6, text: 'Click Save (💾 icon), then click Deploy → New Deployment.' },
-            { n: 7, text: 'Set: Type = Web app | Execute as = Me | Who has access = Anyone.' },
-            { n: 8, text: 'Click Deploy → copy the Web App URL that appears.' },
-            { n: 9, text: 'Paste that URL above in "Apps Script Web App URL" field → Click Start Live Sync.' },
+            { n: 1, text: 'Open your Google Sheet. It supports two tabs: Tab 1 named "Cases" (for recovery case files) and Tab 2 named "Bank_Contacts" (for bank officers & C.S directory).' },
+            { n: 2, text: 'Paste the exact headers into Row 1 of each tab using the one-click "Copy Headers" buttons below.' },
+            { n: 3, text: 'Fill in your data starting from Row 2 on each tab.' },
+            { n: 4, text: 'In Google Sheet, click Extensions → Apps Script.' },
+            { n: 5, text: 'Delete any old code, paste the complete Apps Script code below, and click Save (💾 icon).' },
+            { n: 6, text: 'CRITICAL: Click Deploy → Manage deployments → click the pencil (Edit) icon → select "New version" → click Deploy. (If first time: Deploy → New deployment → Web app → Access: Anyone → Deploy).' },
+            { n: 7, text: 'Return to this page, ensure the Web App URL is entered above, and click "Save URL & Sync to All Devices" (or "Sync Now").' },
           ].map(step => (
             <li key={step.n} className="flex gap-3">
               <span className="w-5 h-5 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-600 dark:text-blue-400 font-extrabold text-[11px] flex items-center justify-center flex-shrink-0">
@@ -465,7 +497,7 @@ export const GoogleSheetSyncPage: React.FC = () => {
             className="flex items-center gap-2 text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline"
           >
             <ExternalLink className="w-3.5 h-3.5" />
-            {showScript ? 'Hide' : 'Show'} Apps Script Code (paste into Google Apps Script)
+            {showScript ? 'Hide' : 'Show'} Apps Script Code (supports both Cases and Bank_Contacts)
           </button>
 
           {showScript && (
@@ -486,85 +518,127 @@ export const GoogleSheetSyncPage: React.FC = () => {
       </div>
 
       {/* Column Format Reference */}
-      <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+      <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
         <div className="flex items-center justify-between">
           <h3 className="font-bold text-slate-800 dark:text-white text-sm flex items-center gap-2">
-            <FileSpreadsheet className="w-4 h-4 text-emerald-500" /> Google Sheet Column Format
+            <FileSpreadsheet className="w-4 h-4 text-emerald-500" /> Google Sheet Column Formats
           </h3>
-          <div className="flex gap-2">
-            <button
-              onClick={() => copyText(colHeaders, 'col')}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-[11px] font-bold hover:bg-emerald-500/20 transition-all"
-            >
-              <Copy className="w-3 h-3" />
-              {copied === 'col' ? 'Copied!' : 'Copy All Headers'}
-            </button>
-            <button
-              onClick={() => setShowColumns(v => !v)}
-              className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline"
-            >
-              {showColumns ? 'Hide' : 'Show'} Column Details
-            </button>
-          </div>
+          <button
+            onClick={() => setShowColumns(v => !v)}
+            className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline"
+          >
+            {showColumns ? 'Hide' : 'Show'} Detailed Column Explanations
+          </button>
         </div>
 
-        <p className="text-xs text-slate-500 dark:text-slate-400">
-          Paste the copied headers into Row 1 of your Google Sheet (tab named <b>"Cases"</b>). Column order doesn't matter — the system matches by name.
-        </p>
-
-        {/* Direct One-Click Copyable Header Bar */}
-        <div className="p-3.5 rounded-2xl bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2">
+        {/* ── TAB 1: CASES ── */}
+        <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2.5">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-              📋 Exact Headers for Google Sheet Row 1 ({SHEET_COLUMNS.length} Columns):
+            <span className="text-xs font-extrabold text-slate-700 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+              📁 Tab 1: "Cases" Headers ({SHEET_COLUMNS.length} Columns):
             </span>
             <button
               onClick={() => copyText(colHeaders, 'col')}
               className="flex items-center gap-1 px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-sm"
             >
               <Copy className="w-3 h-3" />
-              {copied === 'col' ? 'Copied to Clipboard!' : 'Copy Headers'}
+              {copied === 'col' ? 'Copied Cases Headers!' : 'Copy Cases Headers'}
             </button>
           </div>
           <div 
             onClick={() => copyText(colHeaders, 'col')}
-            title="Click to copy all headers"
+            title="Click to copy all Cases headers"
             className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 font-mono text-[11px] text-emerald-600 dark:text-emerald-400 overflow-x-auto whitespace-pre cursor-pointer hover:border-emerald-500 transition-colors select-all leading-relaxed"
           >
             {colHeaders}
           </div>
           <p className="text-[10px] text-slate-400">
-            💡 <b>Tip:</b> Click the green box above or the <b>Copy Headers</b> button, then go to your Google Sheet, click cell <b>A1</b>, and press <b>Ctrl + V</b>. All 38 columns will fill in horizontally across Row 1.
+            Paste in cell <b>A1</b> of the <b>"Cases"</b> tab.
+          </p>
+        </div>
+
+        {/* ── TAB 2: BANK_CONTACTS ── */}
+        <div className="p-4 rounded-2xl bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 space-y-2.5">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-extrabold text-blue-900 dark:text-blue-300 uppercase tracking-wider flex items-center gap-1.5">
+              👥 Tab 2: "Bank_Contacts" Headers ({CONTACT_SHEET_COLUMNS.length} Columns):
+            </span>
+            <button
+              onClick={() => copyText(contactColHeaders, 'contact_col')}
+              className="flex items-center gap-1 px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all shadow-sm"
+            >
+              <Copy className="w-3 h-3" />
+              {copied === 'contact_col' ? 'Copied Contacts Headers!' : 'Copy Bank Contacts Headers'}
+            </button>
+          </div>
+          <div 
+            onClick={() => copyText(contactColHeaders, 'contact_col')}
+            title="Click to copy Bank Contacts headers"
+            className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-blue-200 dark:border-blue-800 font-mono text-[11px] text-blue-600 dark:text-blue-400 overflow-x-auto whitespace-pre cursor-pointer hover:border-blue-500 transition-colors select-all leading-relaxed"
+          >
+            {contactColHeaders}
+          </div>
+          <p className="text-[10px] text-slate-500 dark:text-slate-400">
+            Paste in cell <b>A1</b> of the <b>"Bank_Contacts"</b> tab. Contains officer phone numbers, emails, and branch details for all recovery agents to view and call.
           </p>
         </div>
 
         {showColumns && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead className="bg-slate-50 dark:bg-slate-950 text-slate-400 uppercase text-[11px]">
-                <tr>
-                  <th className="px-3 py-2 text-left font-bold">Column Header</th>
-                  <th className="px-3 py-2 text-left font-bold">Description</th>
-                  <th className="px-3 py-2 text-left font-bold">Example Value</th>
-                </tr>
-              </thead>
-              <tbody>
-                {SHEET_COLUMNS.map((c, i) => (
-                  <tr key={c.col} className={i % 2 === 0 ? 'bg-white dark:bg-slate-900' : 'bg-slate-50 dark:bg-slate-950/50'}>
-                    <td className="px-3 py-2 font-mono font-bold text-emerald-700 dark:text-emerald-400">{c.col}</td>
-                    <td className="px-3 py-2 text-slate-600 dark:text-slate-300">{c.desc}</td>
-                    <td className="px-3 py-2 font-mono text-slate-400">{c.example}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="space-y-4">
+            <div>
+              <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-2 uppercase tracking-wide">Bank Contacts Columns</h4>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead className="bg-slate-50 dark:bg-slate-950 text-slate-400 uppercase text-[11px]">
+                    <tr>
+                      <th className="px-3 py-2 text-left font-bold">Column Header</th>
+                      <th className="px-3 py-2 text-left font-bold">Description</th>
+                      <th className="px-3 py-2 text-left font-bold">Example Value</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {CONTACT_SHEET_COLUMNS.map((c, i) => (
+                      <tr key={c.col} className={i % 2 === 0 ? 'bg-white dark:bg-slate-900' : 'bg-slate-50 dark:bg-slate-950/50'}>
+                        <td className="px-3 py-2 font-mono font-bold text-blue-700 dark:text-blue-400">{c.col}</td>
+                        <td className="px-3 py-2 text-slate-600 dark:text-slate-300">{c.desc}</td>
+                        <td className="px-3 py-2 font-mono text-slate-400">{c.example}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-2 uppercase tracking-wide">Cases Columns</h4>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead className="bg-slate-50 dark:bg-slate-950 text-slate-400 uppercase text-[11px]">
+                    <tr>
+                      <th className="px-3 py-2 text-left font-bold">Column Header</th>
+                      <th className="px-3 py-2 text-left font-bold">Description</th>
+                      <th className="px-3 py-2 text-left font-bold">Example Value</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {SHEET_COLUMNS.map((c, i) => (
+                      <tr key={c.col} className={i % 2 === 0 ? 'bg-white dark:bg-slate-900' : 'bg-slate-50 dark:bg-slate-950/50'}>
+                        <td className="px-3 py-2 font-mono font-bold text-emerald-700 dark:text-emerald-400">{c.col}</td>
+                        <td className="px-3 py-2 text-slate-600 dark:text-slate-300">{c.desc}</td>
+                        <td className="px-3 py-2 font-mono text-slate-400">{c.example}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         )}
 
         <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 text-xs text-amber-700 dark:text-amber-400 flex gap-2">
           <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
           <span>
-            <b>Important:</b> The sheet replaces all cases on every sync. Field visit records, remarks and collections already saved in the app are preserved for matching file numbers. New rows from the sheet will appear immediately.
+            <b>Important:</b> The sheet replaces cases and bank contacts on every sync. Field visit records, GPS check-ins, remarks, and collections already saved in the app are safely preserved.
           </span>
         </div>
       </div>

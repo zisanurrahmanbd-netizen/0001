@@ -64,6 +64,7 @@ export interface SyncStatus {
   lastSync?: string;
   lastError?: string;
   totalRows?: number;
+  totalContacts?: number;
   scriptUrl?: string;
 }
 
@@ -111,15 +112,22 @@ export async function fetchGSheetSettingsFromCloud(): Promise<GSheetSettings> {
 
 // ── Parse a value from the sheet row into a CaseFile field ────────────
 function parseValue(field: string, raw: any): any {
-  if (raw === null || raw === undefined || raw === '') return undefined;
+  if (raw === null || raw === undefined || raw === '') {
+    if (['outstanding_amount', 'overdue_amount', 'minimum_payment'].includes(field)) {
+      return 0;
+    }
+    if (['allocation_date', 'expiry_date'].includes(field)) {
+      return null;
+    }
+    return '';
+  }
   const str = String(raw).trim();
   if (['outstanding_amount', 'overdue_amount', 'minimum_payment'].includes(field)) {
     const n = parseFloat(str.replace(/[^0-9.-]/g, ''));
     return isNaN(n) ? 0 : n;
   }
   if (['allocation_date', 'expiry_date'].includes(field)) {
-    // Accept YYYY-MM-DD or any date string
-    if (!str) return undefined;
+    if (!str) return null;
     try {
       const d = new Date(str);
       if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
@@ -128,8 +136,7 @@ function parseValue(field: string, raw: any): any {
   }
   if (field === 'status') {
     // Keep raw FILE_STATUS value as-is (SMA, SS, DF, BL, Write-off, etc.)
-    // Do NOT normalize - just return the original value
-    return str;
+    return str || 'new';
   }
   if (field === 'dpd') {
     const n = parseInt(str.replace(/[^0-9]/g, ''), 10);
@@ -171,8 +178,48 @@ export async function pushUpdateToSheet(
   }
 }
 
-// ── Fetch rows from Apps Script and map to CaseFile-like objects ──────
-async function fetchSheetRows(scriptUrl: string): Promise<any[]> {
+// ── Column mapping for Bank Contacts sheet ────────────────────────────
+const COL_MAP_CONTACTS: Record<string, string> = {
+  BANK_NAME:      'bank_name',
+  BANK:           'bank_name',
+  OFFICER_NAME:   'name',
+  NAME:           'name',
+  OFFICER:        'name',
+  DESIGNATION:    'designation',
+  TITLE:          'designation',
+  DEPARTMENT:     'department',
+  DEPT:           'department',
+  PHONE:          'phone',
+  MOBILE:         'phone',
+  CONTACT_NO:     'phone',
+  EMAIL:          'email',
+  EMAIL_ADDRESS:  'email',
+  BRANCH:         'branch',
+  BRANCH_NAME:    'branch',
+  NOTES:          'notes',
+  REMARKS:        'notes',
+};
+
+function mapRowToContactData(row: Record<string, any>): Record<string, any> | null {
+  const mapped: Record<string, any> = {};
+  for (const [sheetCol, rawVal] of Object.entries(row)) {
+    const normalKey = String(sheetCol).trim().toUpperCase().replace(/\s+/g, '_');
+    const field = COL_MAP_CONTACTS[normalKey];
+    if (field && rawVal !== null && rawVal !== undefined && String(rawVal).trim() !== '') {
+      let val = String(rawVal).trim();
+      if (field === 'phone') {
+        if (/^1[3-9]\d{8}$/.test(val)) val = '0' + val;
+      }
+      mapped[field] = val;
+    }
+  }
+  // Must have at least a name
+  if (!mapped.name) return null;
+  return mapped;
+}
+
+// ── Fetch rows from Apps Script (cases + contacts) ────────────────────
+async function fetchSheetRows(scriptUrl: string): Promise<{ cases: any[]; contacts: any[] }> {
   const url = scriptUrl.includes('?')
     ? `${scriptUrl}&t=${Date.now()}`
     : `${scriptUrl}?t=${Date.now()}`;
@@ -180,7 +227,10 @@ async function fetchSheetRows(scriptUrl: string): Promise<any[]> {
   const res = await fetch(url, { cache: 'no-store' });
   if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
   const json = await res.json();
-  return Array.isArray(json.data) ? json.data : [];
+  return {
+    cases: Array.isArray(json.data) ? json.data : [],
+    contacts: Array.isArray(json.contacts) ? json.contacts : [],
+  };
 }
 
 function mapRowToCaseData(row: Record<string, any>): Record<string, any> | null {
@@ -193,7 +243,7 @@ function mapRowToCaseData(row: Record<string, any>): Record<string, any> | null 
     const field = COL_MAP[normalKey];
     if (field) {
       const val = parseValue(field, rawVal);
-      if (val !== undefined) mapped[field] = val;
+      mapped[field] = val;
     }
   }
 
@@ -212,25 +262,34 @@ export async function syncFromGoogleSheet(
   onStatus({ state: 'syncing', scriptUrl });
 
   try {
-    const rows = await fetchSheetRows(scriptUrl);
-    const caseDataList = rows.map(mapRowToCaseData).filter(Boolean) as Record<string, any>[];
+    const { cases, contacts } = await fetchSheetRows(scriptUrl);
+    const caseDataList = (cases || []).map(mapRowToCaseData).filter(Boolean) as Record<string, any>[];
+    const contactDataList = (contacts || []).map(mapRowToContactData).filter(Boolean) as Record<string, any>[];
 
-    if (caseDataList.length === 0) {
+    if (caseDataList.length === 0 && contactDataList.length === 0) {
       onStatus({
         state: 'error',
-        lastError: 'No valid rows found in the sheet. Check column headers.',
+        lastError: 'No valid case or contact rows found in the sheet. Check sheet tab names and column headers.',
         scriptUrl,
       });
       return;
     }
 
-    // Replace all cases in dataService with the sheet data and push to cloud
-    await dataService.replaceAllCasesFromSheet(caseDataList);
+    // Replace cases if present in sheet
+    if (caseDataList.length > 0) {
+      await dataService.replaceAllCasesFromSheet(caseDataList);
+    }
+
+    // Replace bank contacts if present in sheet
+    if (contactDataList.length > 0) {
+      await dataService.replaceAllContactsFromSheet(contactDataList);
+    }
 
     onStatus({
       state: 'success',
       lastSync: new Date().toLocaleTimeString('en-BD', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
       totalRows: caseDataList.length,
+      totalContacts: contactDataList.length,
       scriptUrl,
     });
   } catch (err: any) {

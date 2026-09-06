@@ -74,7 +74,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       label: t("nav.contacts", "Bank Contacts"), 
       icon: PhoneCall, 
       perm: "view_contacts",
-      badge: missingCollectors.length > 0 ? missingCollectors.length : undefined
+      badge: (user?.role !== 'agent' && missingCollectors.length > 0) ? missingCollectors.length : undefined
     },
     { id: "reports_perf", label: t("nav.reports_perf", "Agent Performance"), icon: TrendingUp, perm: "view_reports_perf" },
     { id: "reports_expiry", label: t("nav.reports_expiry", "Expiry Tracker"), icon: CalendarClock, perm: "view_reports_expiry" },

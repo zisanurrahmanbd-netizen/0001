@@ -630,27 +630,8 @@ class DataService {
         this.saveState();
       }
 
-      // 5. Sync Contacts from Supabase (two-way: pull from cloud, or push local if cloud empty)
-      const { data: cloudContacts, error: conErr } = await supabase.from('bank_contacts').select('*');
-      if (!conErr && Array.isArray(cloudContacts) && cloudContacts.length > 0) {
-        this.contacts = cloudContacts.map((c: any) => ({
-          id: Number(c.id),
-          bank_id: Number(c.bank_id),
-          name: c.name || '',
-          designation: c.designation || '',
-          department: c.department || '',
-          phone: c.phone || '',
-          email: c.email || '',
-          branch: c.branch || '',
-          notes: c.notes || '',
-          created_at: c.created_at || new Date().toISOString()
-        }));
-        this.saveState();
-        this.notifySubscribers();
-      } else if (this.contacts.length > 0) {
-        // Cloud is empty but local has contacts → push them up so other devices can see them
-        await this.pushContactsToCloud(this.contacts);
-      }
+      // 5. Sync Contacts from Supabase (with full REST fallback & auto-push)
+      await this.syncContacts();
 
       // 6. Sync Templates from Supabase → localStorage (cloud is source of truth)
       try {
@@ -857,6 +838,9 @@ class DataService {
       bank: banks.find(b => b.id === c.bank_id) || INITIAL_BANKS.find(b => b.id === c.bank_id)
     }));
 
+    // If user is an agent and has allocated cases, prioritize their assigned banks/collectors.
+    // However, if that filter returns empty (e.g. contacts not tagged to specific bank ID yet),
+    // show the directory contacts so the agent is NEVER locked out of seeing bank officer phone numbers!
     if (user && user.role === 'agent') {
       const userCases = this.getCases(user);
       const userCollectors = new Set(
@@ -864,7 +848,7 @@ class DataService {
       );
       const userBankIds = new Set(userCases.map(c => c.bank_id));
 
-      return all.filter(contact => {
+      const scoped = all.filter(contact => {
         // 1. If contact name matches a collector assigned on this agent's cases
         if (contact.name && userCollectors.has(contact.name.toLowerCase().trim())) {
           return true;
@@ -875,6 +859,11 @@ class DataService {
         }
         return false;
       });
+
+      // If scoped has matches, return scoped. If scoped is empty but there are contacts in the system, return all so agents can always see phone numbers!
+      if (scoped.length > 0) {
+        return scoped;
+      }
     }
 
     return all;

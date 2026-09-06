@@ -1378,7 +1378,17 @@ class DataService {
     }).length;
 
     const totalOutstanding = cases.reduce((acc, c) => acc + (c.outstanding_amount || 0), 0);
-    const totalCollected = cases.reduce((acc, c) => acc + (c.total_collected_amount || 0), 0);
+    
+    // For agent role: compute collected cash specifically from this agent's collections and their assigned files
+    let totalCollected = 0;
+    if (user.role === 'agent') {
+      const agentCols = this.collections.filter(col => col.agent_id === user.id);
+      const agentColsTotal = agentCols.reduce((sum, col) => sum + (Number(col.amount) || 0), 0);
+      const casesCollectedTotal = cases.reduce((acc, c) => acc + (c.total_collected_amount || 0), 0);
+      totalCollected = Math.max(agentColsTotal, casesCollectedTotal);
+    } else {
+      totalCollected = cases.reduce((acc, c) => acc + (c.total_collected_amount || 0), 0);
+    }
 
     const todayPtps = this.getTodayPtpAlerts(user);
     const missedPtps = this.getMissedPaymentAlerts(user);

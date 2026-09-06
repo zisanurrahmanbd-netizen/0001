@@ -262,8 +262,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectCase, onNavigate }
         </div>
       )}
 
-      {/* UNALLOCATED FILES ALERT BANNER */}
-      {unallocatedCases.length > 0 && (
+      {/* UNALLOCATED FILES ALERT BANNER (Admin / Manager only - never for agents) */}
+      {user?.role !== 'agent' && unallocatedCases.length > 0 && (
         <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-xs">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-2xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center flex-shrink-0">
@@ -289,8 +289,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectCase, onNavigate }
         </div>
       )}
 
-      {/* MISSING COLLECTOR CONTACTS ALERT BANNER */}
-      {missingCollectors.length > 0 && (
+      {/* MISSING COLLECTOR CONTACTS ALERT BANNER (Admin / Manager only - never for agents) */}
+      {user?.role !== 'agent' && missingCollectors.length > 0 && (
         <div className="p-4 rounded-2xl bg-gradient-to-r from-rose-500/10 via-pink-500/10 to-rose-500/10 border border-rose-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-xs">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-2xl bg-rose-500/20 text-rose-600 dark:text-rose-400 flex items-center justify-center flex-shrink-0">
@@ -317,7 +317,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectCase, onNavigate }
       )}
 
       {/* KPI Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5 gap-4">
+      <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 ${user?.role === 'agent' ? '2xl:grid-cols-4' : '2xl:grid-cols-5'} gap-4`}>
         {/* Today's PTP Card */}
         <div 
           onClick={() => { setActiveTab('today'); setShowPtpPopup(true); }}
@@ -364,35 +364,37 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectCase, onNavigate }
           </div>
         </div>
 
-        {/* Unallocated Files Card */}
-        <div 
-          onClick={() => onNavigate('cases')}
-          className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-amber-500/30 shadow-sm cursor-pointer hover:border-amber-500 transition-all"
-          title="Click to view all unallocated cases"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
-              Unallocated Files
-            </span>
-            <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
-              <UserX className="w-4 h-4" />
+        {/* Unallocated Files Card (Hidden for agents) */}
+        {user?.role !== 'agent' && (
+          <div 
+            onClick={() => onNavigate('cases')}
+            className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-amber-500/30 shadow-sm cursor-pointer hover:border-amber-500 transition-all"
+            title="Click to view all unallocated cases"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
+                Unallocated Files
+              </span>
+              <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                <UserX className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="mt-3">
+              <div className="text-2xl font-black text-amber-600 dark:text-amber-400 tracking-tight">
+                {unallocatedCases.length} Files
+              </div>
+              <div className="text-xs text-slate-500 mt-1">
+                {unallocatedOutstanding > 0 ? `BDT ${unallocatedOutstanding.toLocaleString()} unassigned` : 'All files assigned'}
+              </div>
             </div>
           </div>
-          <div className="mt-3">
-            <div className="text-2xl font-black text-amber-600 dark:text-amber-400 tracking-tight">
-              {unallocatedCases.length} Files
-            </div>
-            <div className="text-xs text-slate-500 mt-1">
-              {unallocatedOutstanding > 0 ? `BDT ${unallocatedOutstanding.toLocaleString()} unassigned` : 'All files assigned'}
-            </div>
-          </div>
-        </div>
+        )}
 
-        {/* Total Portfolio Card */}
+        {/* Total Portfolio Card / My Assigned Portfolio Card */}
         <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-              {t('dash.total_allocated', 'Total Portfolio')}
+              {user?.role === 'agent' ? 'My Assigned Portfolio' : t('dash.total_allocated', 'Total Portfolio')}
             </span>
             <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center">
               <Coins className="w-4 h-4" />
@@ -403,16 +405,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectCase, onNavigate }
               BDT {summary.total_outstanding.toLocaleString()}
             </div>
             <div className="text-xs text-slate-500 mt-1">
-              {summary.total_files} active recovery cases
+              {summary.total_files} {user?.role === 'agent' ? 'my assigned files' : 'active recovery cases'}
             </div>
           </div>
         </div>
 
-        {/* Total Collected Card */}
+        {/* Total Collected Card / My Collected Cash */}
         <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-              {t('dash.total_collected', 'Total Collected')}
+              {user?.role === 'agent' ? 'My Collected Cash' : t('dash.total_collected', 'Total Collected')}
             </span>
             <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
               <TrendingUp className="w-4 h-4" />

@@ -1155,7 +1155,7 @@ class DataService {
         overdue_amount: Number(data.overdue_amount) || 0,
         minimum_payment: data.minimum_payment ? Number(data.minimum_payment) : null,
         status: (data.status as any) || existingCase?.status || 'new',
-        legal_status: data.legal_status || existingCase?.legal_status || 'Normal Recovery',
+        legal_status: data.file_status || data.legal_status || existingCase?.legal_status || 'Normal Recovery',
         availability_status: existingCase?.availability_status || null,
         agent_name: rawAgentName,
         collector_name: collectorName,
@@ -1165,7 +1165,14 @@ class DataService {
         expiry_date: expiryDate,
         last_visit_at: existingCase?.last_visit_at || null,
         total_collected_amount: existingCase?.total_collected_amount ?? 0,
-        extra_attributes: { ...(existingCase?.extra_attributes || {}), ...(data.extra_attributes || {}), AGENT_NAME: rawAgentName, COLLECTOR_NAME: collectorName },
+        extra_attributes: { 
+          ...(existingCase?.extra_attributes || {}), 
+          ...(data.extra_attributes || {}), 
+          AGENT_NAME: rawAgentName, 
+          COLLECTOR_NAME: collectorName,
+          FILE_STATUS: data.file_status !== undefined ? data.file_status : (existingCase?.extra_attributes?.FILE_STATUS || ''),
+          STATUS: data.status !== undefined ? data.status : (existingCase?.status || 'new'),
+        },
         bank_name: data.bank_name !== undefined ? data.bank_name : existingCase?.bank_name,
         product_name: data.product_name !== undefined ? data.product_name : existingCase?.product_name,
         branch_name: data.branch_name !== undefined ? data.branch_name : existingCase?.branch_name,
@@ -1334,6 +1341,7 @@ class DataService {
           LAST_VISIT_TYPE: newCi.address_type,
           LAST_VISIT_NOTES: newCi.notes || '',
           VISIT_PHOTO: newCi.photo_url || '',
+          STATUS: 'visited',
           FILE_STATUS: 'visited',
         }).catch(() => {});
       }

@@ -211,7 +211,7 @@ const SHEET_COLUMNS = [
   { col: 'OUTSTANDING_AMOUNT', desc: 'Total outstanding balance (number)', example: '125000' },
   { col: 'OVERDUE_AMOUNT', desc: 'Overdue / past-due balance (number)', example: '45000' },
   { col: 'DPD', desc: 'Days Past Due (e.g. 90, 180, 360)', example: '120' },
-  { col: 'FILE_STATUS', desc: 'Status (new / in_progress / visited / settled etc.)', example: 'new' },
+  { col: 'FILE_STATUS', desc: 'Bank loan classification (DF / BL / SS / SMA / STD etc.)', example: 'SMA' },
   { col: 'AGENT_NAME', desc: 'Assigned field recovery agent name', example: 'Md. Karim' },
   { col: 'COLLECTOR_NAME', desc: 'Bank recovery officer / collector name', example: 'Rina Akter' },
   { col: 'BRANCH_NAME', desc: 'Bank home branch name', example: 'Principal Branch' },
@@ -233,6 +233,7 @@ const SHEET_COLUMNS = [
   { col: 'RECEIPT_NO', desc: 'Money receipt number for collection', example: 'MR-98421' },
   { col: 'PAYMENT_PHOTO', desc: 'Payment receipt photo proof (image data/link)', example: 'data:image/jpeg;base64,...' },
   { col: 'GUARANTORS', desc: 'Multiple reference / guarantor phone and addresses (JSON or formatted text)', example: '[{"name":"Rahim","phone":"01700000000","address":"Dhaka"}]' },
+  { col: 'STATUS', desc: 'Field visit & recovery status (visited / new / in_progress / settled)', example: 'visited' },
 ];
 
 const CONTACT_SHEET_COLUMNS = [

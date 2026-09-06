@@ -41,7 +41,7 @@ const COL_MAP: Record<string, string> = {
   MIN_PAYMENT:                'minimum_payment',
   DPD:                        'dpd',
   STATUS:                     'status',
-  FILE_STATUS:                'status',
+  FILE_STATUS:                'file_status',
   LEGAL_STATUS:               'legal_status',
   AGENT_NAME:                 'agent_name',
   AGENT:                      'agent_name',

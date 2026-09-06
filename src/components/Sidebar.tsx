@@ -8,7 +8,6 @@ import {
   LayoutDashboard, 
   Briefcase, 
   MapPin, 
-  FileSpreadsheet, 
   Users, 
   PhoneCall, 
   ShieldAlert, 
@@ -18,7 +17,10 @@ import {
   UserPlus,
   Sheet,
   Laptop,
-  DollarSign
+  DollarSign,
+  FileDown,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 
 interface SidebarProps {
@@ -26,9 +28,18 @@ interface SidebarProps {
   onNavigate: (page: string) => void;
   isOpen: boolean;
   onClose: () => void;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, isOpen, onClose }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ 
+  currentPage, 
+  onNavigate, 
+  isOpen, 
+  onClose,
+  isCollapsed = false,
+  onToggleCollapse
+}) => {
   const { user, users } = useAuth();
   const { branding } = useBranding();
   const { can } = usePermissions();
@@ -55,6 +66,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, isOpe
   const navItems: { id: string; label: string; icon: any; perm: PermissionKey; badge?: number }[] = [
     { id: "dashboard", label: t("nav.dashboard", "Dashboard"), icon: LayoutDashboard, perm: "view_dashboard" },
     { id: "cases", label: t("nav.cases", "Bank & MNC Files"), icon: Briefcase, perm: "view_cases" },
+    { id: "file_export", label: "File Update Export", icon: FileDown, perm: "export_excel" },
     { id: "map", label: t("nav.map", "Live Agent Map"), icon: MapPin, perm: "view_map" },
     { id: "gsheet_sync", label: "Google Sheet Live Sync", icon: Sheet, perm: "view_imports" },
     { 
@@ -102,32 +114,54 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, isOpe
       )}
 
       <aside
-        className={`fixed top-0 bottom-0 left-0 z-50 w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col justify-between transition-transform duration-300 ease-in-out lg:translate-x-0 ${
+        className={`fixed top-0 bottom-0 left-0 z-50 ${
+          isCollapsed ? "w-20" : "w-64"
+        } bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col justify-between transition-all duration-300 ease-in-out lg:translate-x-0 ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div>
+        <div className="flex flex-col flex-1 min-h-0">
           {/* Dynamic Logo Brand Header */}
-          <div className="h-16 px-6 flex items-center gap-3 border-b border-slate-200 dark:border-slate-800">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 text-white flex items-center justify-center text-lg shadow-lg shadow-emerald-950/30 overflow-hidden flex-shrink-0">
-              {branding.customLogoUrl ? (
-                <img src={branding.customLogoUrl} alt="Logo" className="w-full h-full object-cover" onError={(e) => (e.currentTarget.style.display = "none")} />
-              ) : (
-                <i className={`fa-solid ${branding.logoIcon || "fa-vault"}`}></i>
+          <div className={`h-16 ${isCollapsed ? "px-3 justify-center" : "px-4 sm:px-5 justify-between"} flex items-center border-b border-slate-200 dark:border-slate-800 relative`}>
+            <div className="flex items-center gap-3 overflow-hidden">
+              <div 
+                onClick={onToggleCollapse}
+                title={branding.headerText}
+                className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 text-white flex items-center justify-center text-lg shadow-lg shadow-emerald-950/30 overflow-hidden flex-shrink-0 cursor-pointer"
+              >
+                {branding.customLogoUrl ? (
+                  <img src={branding.customLogoUrl} alt="Logo" className="w-full h-full object-cover" onError={(e) => (e.currentTarget.style.display = "none")} />
+                ) : (
+                  <i className={`fa-solid ${branding.logoIcon || "fa-vault"}`}></i>
+                )}
+              </div>
+              {!isCollapsed && (
+                <div className="overflow-hidden min-w-0">
+                  <h1 className="font-extrabold text-sm text-slate-900 dark:text-white leading-tight tracking-tight truncate">
+                    {branding.headerText}
+                  </h1>
+                  <p className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider truncate">
+                    {branding.underText}
+                  </p>
+                </div>
               )}
             </div>
-            <div className="overflow-hidden">
-              <h1 className="font-extrabold text-sm text-slate-900 dark:text-white leading-tight tracking-tight truncate">
-                {branding.headerText}
-              </h1>
-              <p className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider truncate">
-                {branding.underText}
-              </p>
-            </div>
+
+            {/* Desktop Collapse Button */}
+            {!isCollapsed && onToggleCollapse && (
+              <button
+                type="button"
+                onClick={onToggleCollapse}
+                title="Collapse sidebar"
+                className="hidden lg:flex p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors ml-auto flex-shrink-0"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+            )}
           </div>
 
           {/* Navigation Items */}
-          <nav className="p-4 space-y-1.5 overflow-y-auto max-h-[calc(100vh-10rem)]">
+          <nav className={`p-2 sm:p-3 space-y-1.5 overflow-y-auto flex-1 custom-scrollbar`}>
             {allowedItems.map(item => {
               const Icon = item.icon;
               const isActive = currentPage === item.id;
@@ -138,20 +172,34 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, isOpe
                     onNavigate(item.id);
                     onClose();
                   }}
-                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl font-bold text-xs transition-all ${
+                  title={isCollapsed ? item.label : undefined}
+                  className={`w-full flex items-center ${isCollapsed ? "justify-center px-2 py-3" : "justify-between px-3.5 py-2.5"} rounded-2xl font-bold text-xs transition-all relative group ${
                     isActive
                       ? "bg-emerald-600 text-white shadow-lg shadow-emerald-600/30"
                       : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-white"
                   }`}
                 >
-                  <div className="flex items-center gap-3 truncate">
+                  <div className={`flex items-center ${isCollapsed ? "justify-center" : "gap-3 truncate"}`}>
                     <Icon className="w-4 h-4 flex-shrink-0" />
-                    <span className="truncate">{item.label}</span>
+                    {!isCollapsed && <span className="truncate">{item.label}</span>}
                   </div>
+
                   {item.badge !== undefined && (
-                    <span className="px-2 py-0.5 rounded-full bg-amber-500 text-slate-950 font-black text-[10px] shadow-sm animate-pulse">
-                      ! {item.badge}
-                    </span>
+                    isCollapsed ? (
+                      <span className="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-amber-500 ring-2 ring-white dark:ring-slate-900 animate-pulse" />
+                    ) : (
+                      <span className="px-2 py-0.5 rounded-full bg-amber-500 text-slate-950 font-black text-[10px] shadow-sm animate-pulse">
+                        ! {item.badge}
+                      </span>
+                    )
+                  )}
+
+                  {/* Tooltip for collapsed mode */}
+                  {isCollapsed && (
+                    <div className="absolute left-full ml-3 px-2.5 py-1 bg-slate-900 text-white text-xs font-semibold rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 whitespace-nowrap shadow-xl">
+                      {item.label}
+                      {item.badge !== undefined && ` (${item.badge})`}
+                    </div>
                   )}
                 </button>
               );
@@ -161,41 +209,61 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, isOpe
             {unregisteredAgents.length > 0 && user?.role === "admin" && (
               <div 
                 onClick={() => { onNavigate("team"); onClose(); }}
-                className="mt-3 p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 transition-all cursor-pointer space-y-1.5"
+                className={`mt-3 ${isCollapsed ? "p-2 text-center" : "p-3"} rounded-2xl bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 transition-all cursor-pointer space-y-1.5 relative group`}
                 title="Click to register missing agent accounts"
               >
-                <div className="flex items-center justify-between text-amber-600 dark:text-amber-400 font-extrabold text-[11px]">
-                  <div className="flex items-center gap-1.5">
-                    <AlertTriangle className="w-3.5 h-3.5 text-amber-500 animate-pulse flex-shrink-0" />
-                    <span>Unregistered Agents</span>
+                {isCollapsed ? (
+                  <div className="flex justify-center">
+                    <AlertTriangle className="w-4 h-4 text-amber-500 animate-pulse" />
+                    <div className="absolute left-full ml-3 px-2.5 py-1 bg-amber-900 text-amber-100 text-xs font-semibold rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 whitespace-nowrap shadow-xl">
+                      {unregisteredAgents.length} Unregistered Agents Found
+                    </div>
                   </div>
-                  <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-slate-950 font-black text-[9px]">
-                    {unregisteredAgents.length} pending
-                  </span>
-                </div>
-                <p className="text-[10px] text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
-                  {unregisteredAgents.map(a => a.name).join(", ")} found in recovery files. Click to create accounts.
-                </p>
-                <div className="flex items-center gap-1 text-[10px] font-bold text-amber-700 dark:text-amber-300 pt-0.5">
-                  <UserPlus className="w-3 h-3" />
-                  <span>Create Agent Accounts →</span>
-                </div>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between text-amber-600 dark:text-amber-400 font-extrabold text-[11px]">
+                      <div className="flex items-center gap-1.5 truncate">
+                        <AlertTriangle className="w-3.5 h-3.5 text-amber-500 animate-pulse flex-shrink-0" />
+                        <span className="truncate">Unregistered Agents</span>
+                      </div>
+                      <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-slate-950 font-black text-[9px] flex-shrink-0">
+                        {unregisteredAgents.length} pending
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
+                      {unregisteredAgents.map(a => a.name).join(", ")} found in recovery files.
+                    </p>
+                    <div className="flex items-center gap-1 text-[10px] font-bold text-amber-700 dark:text-amber-300 pt-0.5">
+                      <UserPlus className="w-3 h-3" />
+                      <span>Create Agent Accounts →</span>
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </nav>
         </div>
 
         {/* User Card at Bottom */}
-        <div className="p-4 border-t border-slate-200 dark:border-slate-800">
-          <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800/80 flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold flex items-center justify-center text-xs flex-shrink-0">
+        <div className={`p-3 border-t border-slate-200 dark:border-slate-800 ${isCollapsed ? "flex justify-center" : ""}`}>
+          {isCollapsed ? (
+            <div 
+              title={`${user?.name} (${user?.role})`}
+              className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold flex items-center justify-center text-xs flex-shrink-0 cursor-pointer hover:bg-emerald-500/20 transition-colors"
+            >
               {user?.name.charAt(0)}
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{user?.name}</p>
-              <p className="text-[10px] text-slate-400 capitalize truncate">{user?.role} • {user?.employee_id || "ID"}</p>
+          ) : (
+            <div className="p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800/80 flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold flex items-center justify-center text-xs flex-shrink-0">
+                {user?.name.charAt(0)}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{user?.name}</p>
+                <p className="text-[10px] text-slate-400 capitalize truncate">{user?.role} • {user?.employee_id || "ID"}</p>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </aside>
     </>

@@ -759,8 +759,8 @@ export const CasesList: React.FC<CasesListProps> = ({ onSelectCase, searchQuery 
 
       {/* Case Table with Checkboxes, Collector, Agent, and Dates */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[950px] text-left text-xs">
+        <div className="overflow-x-auto custom-scrollbar pb-2">
+          <table className="w-full min-w-[1050px] text-left text-xs border-collapse">
             <thead className="bg-slate-50 dark:bg-slate-950/60 border-b border-slate-200 dark:border-slate-800 text-slate-400 uppercase tracking-wider text-[11px]">
               <tr>
                 {/* Select All Checkbox Header */}
@@ -781,16 +781,18 @@ export const CasesList: React.FC<CasesListProps> = ({ onSelectCase, searchQuery 
                     </button>
                   </th>
                 )}
-                <th className="py-3 px-4">File No / Account</th>
-                <th className="py-3 px-4">Customer Details</th>
-                <th className="py-3 px-4">Bank & Product</th>
-                <th className="py-3 px-4">Bank Collector</th>
-                <th className="py-3 px-4">Assigned Agent</th>
-                <th className="py-3 px-4 text-right">Outstanding</th>
-                <th className="py-3 px-4">Address Visited</th>
-                <th className="py-3 px-4">Status</th>
-                <th className="py-3 px-4">Allocation & Expiry</th>
-                <th className="py-3 px-4 text-right">Action</th>
+                <th className="py-3 px-4 whitespace-nowrap">File No / Account</th>
+                <th className="py-3 px-4 whitespace-nowrap">Customer Details</th>
+                <th className="py-3 px-4 whitespace-nowrap">Bank & Product</th>
+                <th className="py-3 px-4 whitespace-nowrap">Bank Collector</th>
+                <th className="py-3 px-4 whitespace-nowrap">Assigned Agent</th>
+                <th className="py-3 px-4 text-right whitespace-nowrap">Outstanding</th>
+                <th className="py-3 px-4 whitespace-nowrap">Address Visited</th>
+                <th className="py-3 px-4 whitespace-nowrap">Status</th>
+                <th className="py-3 px-4 whitespace-nowrap">Allocation & Expiry</th>
+                <th className="py-3 px-4 text-right sticky right-0 bg-slate-50 dark:bg-slate-950 shadow-[-6px_0_12px_-4px_rgba(0,0,0,0.1)] dark:shadow-[-6px_0_12px_-4px_rgba(0,0,0,0.5)] z-20 whitespace-nowrap min-w-[110px]">
+                  Action
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
@@ -820,7 +822,7 @@ export const CasesList: React.FC<CasesListProps> = ({ onSelectCase, searchQuery 
                 return (
                   <tr 
                     key={c.id} 
-                    className={`hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors ${isSelected ? "bg-blue-50/70 dark:bg-blue-950/30" : ""}`}
+                    className={`hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors group ${isSelected ? "bg-blue-50/70 dark:bg-blue-950/30" : ""}`}
                   >
                     {/* Row Selection Checkbox */}
                     {can("manage_team_users") && (
@@ -944,10 +946,11 @@ export const CasesList: React.FC<CasesListProps> = ({ onSelectCase, searchQuery 
                       <div><span className="text-slate-400">Exp:</span> <b className="font-mono text-slate-800 dark:text-slate-200">{c.expiry_date || 'N/A'}</b></div>
                     </td>
 
-                    <td className="py-3.5 px-4 text-right">
+                    {/* Sticky Action Column — always visible right on desktop & mobile scroll */}
+                    <td className="py-3.5 px-4 text-right sticky right-0 bg-white dark:bg-slate-900 group-hover:bg-slate-50 dark:group-hover:bg-slate-800 shadow-[-6px_0_12px_-4px_rgba(0,0,0,0.1)] dark:shadow-[-6px_0_12px_-4px_rgba(0,0,0,0.5)] z-10">
                       <button 
                         onClick={() => onSelectCase(c.id)}
-                        className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-600/30 transition-all"
+                        className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-600/30 transition-all whitespace-nowrap active:scale-95"
                       >
                         Open Case
                       </button>

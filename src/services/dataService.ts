@@ -259,7 +259,7 @@ function mapCaseToDb(c: CaseFile): any {
       BRANCH_NAME: c.branch_name || c.extra_attributes?.BRANCH_NAME || '',
       AREA: c.area || c.extra_attributes?.AREA || '',
       LAP_STATUS: c.lap_status || c.extra_attributes?.LAP_STATUS || '',
-      FILE_STATUS: c.status || c.extra_attributes?.FILE_STATUS || '',
+      FILE_STATUS: c.extra_attributes?.FILE_STATUS || '',
     },
     created_at: c.created_at || new Date().toISOString(),
     updated_at: new Date().toISOString(),
@@ -284,7 +284,7 @@ function mapCaseFromDb(row: any): CaseFile {
     outstanding_amount: Number(row.outstanding_amount) || 0,
     overdue_amount: Number(row.overdue_amount) || 0,
     minimum_payment: row.minimum_payment ? Number(row.minimum_payment) : undefined,
-    status: row.status || extraAttrs.FILE_STATUS || 'new',
+    status: row.status || 'new',
     legal_status: row.legal_status || 'Normal Recovery',
     availability_status: row.availability_status || undefined,
     assigned_agent_id: row.assigned_agent_id ? Number(row.assigned_agent_id) : undefined,
@@ -578,10 +578,11 @@ class DataService {
       if (Array.isArray(cloudCases)) {
         if (cloudCases.length > 0) {
           const freshCases = cloudCases.map(row => mapCaseFromDb(row));
+          const localMap = new Map(this.cases.map(c => [c.id, c]));
           const hasDiff = freshCases.length !== this.cases.length ||
-            freshCases.some((fc, i) => {
-              const lc = this.cases[i];
-              return !lc || lc.id !== fc.id || lc.updated_at !== fc.updated_at || lc.status !== fc.status;
+            freshCases.some(fc => {
+              const lc = localMap.get(fc.id);
+              return !lc || lc.updated_at !== fc.updated_at || lc.agent_name !== fc.agent_name || lc.status !== fc.status;
             });
           if (hasDiff) {
             this.cases = freshCases;

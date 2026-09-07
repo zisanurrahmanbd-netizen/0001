@@ -165,6 +165,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     };
     fetchCloudUsers();
+
+    // Poll every 20 seconds so all open tabs and devices stay in sync
+    const syncTimer = setInterval(fetchCloudUsers, 20_000);
+
+    // Supabase Realtime channel for instant multi-device user sync
+    let channel: any = null;
+    try {
+      channel = supabase
+        .channel('public:users_sync')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => {
+          fetchCloudUsers();
+        })
+        .subscribe();
+    } catch (_) {}
+
+    return () => {
+      clearInterval(syncTimer);
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -367,40 +388,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // ── Multi-Device Cross-Cloud Login ─────────────────────────────────────────
   const login = async (email: string, pass: string): Promise<{ result: 'ok' | 'otp_required' | 'error'; error?: string }> => {
     const cleanEmail = email.trim().toLowerCase();
-    let list = getLatestUsers();
-    let found = list.find(u => u.email.toLowerCase() === cleanEmail);
+    let found: User | null = null;
     let cloudError: string | null = null;
 
-    // If not in local list, check Supabase cloud database immediately
-    if (!found) {
-      try {
-        const { data, error } = await supabase.from('users').select('*').ilike('email', cleanEmail).maybeSingle();
-        if (error) {
-          cloudError = error.message || 'Cloud lookup failed';
-          console.warn('Supabase client lookup error:', error);
-        }
-        if (data && !error) {
-          found = parseCloudUser(data);
-        }
-      } catch (err: any) {
-        cloudError = err?.message || 'Network error reaching cloud database';
-        console.warn('Supabase client exception:', err);
+    // 1. Check Supabase cloud database first for the latest email, password, and status
+    try {
+      const { data, error } = await supabase.from('users').select('*').ilike('email', cleanEmail).maybeSingle();
+      if (!error && data) {
+        found = parseCloudUser(data);
+      } else if (error) {
+        cloudError = error.message;
       }
+    } catch (err: any) {
+      cloudError = err?.message;
     }
 
-    // Fallback: direct REST API call if Supabase JS client failed or returned nothing
+    // 2. Fallback: Direct REST API lookup
     if (!found) {
       const restUser = await fetchUserViaRest(cleanEmail);
       if (restUser) {
         found = restUser;
-        cloudError = null; // REST succeeded, clear the error
+        cloudError = null;
       }
     }
 
-    // Cache the cloud user into local storage for future logins
-    if (found && !list.find(u => u.email.toLowerCase() === cleanEmail)) {
+    // 3. Fallback: Local cached users (e.g. offline mode)
+    if (!found) {
+      const list = getLatestUsers();
+      const localFound = list.find(u => u.email.toLowerCase() === cleanEmail);
+      if (localFound) {
+        found = localFound;
+        cloudError = null;
+      }
+    }
+
+    // Update local cache with latest user data
+    if (found) {
       setUsers(prev => {
-        const next = [found!, ...prev.filter(u => u.email.toLowerCase() !== cleanEmail)];
+        const next = [found!, ...prev.filter(u => u.id !== found!.id && u.email.toLowerCase() !== cleanEmail)];
         localStorage.setItem('recovery_all_users', JSON.stringify(next));
         return next;
       });
@@ -505,27 +530,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setOtpSession(null);
   };
 
+  const SUPABASE_URL = 'https://wbgacppzdyqextjxlgwq.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_0FCYjpPT8_7AJOa5aYIXgg_xZhkayuN';
+
   // ── Multi-Device Add User ───────────────────────────────────────────────────
   const addUser = async (newUser: Omit<User, 'id'>): Promise<User> => {
     const created: User = {
       ...newUser,
       id: Date.now(),
+      email: newUser.email.trim().toLowerCase(),
       status: newUser.status || 'active',
       is_online: false,
     };
 
-    setUsers(prev => {
-      const next = [created, ...prev.filter(u => u.email.toLowerCase() !== created.email.toLowerCase())];
-      localStorage.setItem('recovery_all_users', JSON.stringify(next));
-      return next;
-    });
+    let cloudSynced = false;
+    let syncError: string | null = null;
 
-    // Cloud Database Upsert
+    // 1. Try Supabase JS client upsert
     try {
-      await supabase.from('users').upsert({
+      const { error } = await supabase.from('users').upsert({
         id: created.id,
         name: created.name,
-        email: created.email.toLowerCase(),
+        email: created.email,
         phone: created.phone || '',
         employee_id: created.employee_id || '',
         role: created.role,
@@ -534,10 +560,59 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }, { onConflict: 'email' });
-      console.log('User synced to Supabase Cloud:', created.email);
-    } catch (err) {
-      console.warn('Supabase user insert note:', err);
+      if (!error) {
+        cloudSynced = true;
+      } else {
+        syncError = error.message;
+      }
+    } catch (err: any) {
+      syncError = err?.message;
     }
+
+    // 2. Fallback: Direct REST API upsert
+    if (!cloudSynced) {
+      try {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/users`, {
+          method: 'POST',
+          headers: {
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${SUPABASE_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'resolution=merge-duplicates',
+          },
+          body: JSON.stringify({
+            id: created.id,
+            name: created.name,
+            email: created.email,
+            phone: created.phone || '',
+            employee_id: created.employee_id || '',
+            role: created.role,
+            status: created.status,
+            password: created.password || '@Pass2026',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+        });
+        if (res.ok) {
+          cloudSynced = true;
+        } else {
+          const text = await res.text();
+          syncError = text || res.statusText;
+        }
+      } catch (err: any) {
+        syncError = err?.message;
+      }
+    }
+
+    if (!cloudSynced) {
+      throw new Error(`Failed to save user to cloud database: ${syncError || 'Network error'}`);
+    }
+
+    setUsers(prev => {
+      const next = [created, ...prev.filter(u => u.email.toLowerCase() !== created.email.toLowerCase())];
+      localStorage.setItem('recovery_all_users', JSON.stringify(next));
+      return next;
+    });
 
     return created;
   };
@@ -547,6 +622,55 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const cleanUpdated: Partial<User> = { ...updated };
     if (cleanUpdated.email) {
       cleanUpdated.email = cleanUpdated.email.trim().toLowerCase();
+    }
+
+    let cloudSynced = false;
+    let syncError: string | null = null;
+
+    // 1. Try Supabase JS client
+    try {
+      const { error } = await supabase.from('users').update({
+        ...cleanUpdated,
+        updated_at: new Date().toISOString(),
+      }).eq('id', id);
+      if (!error) {
+        cloudSynced = true;
+      } else {
+        syncError = error.message;
+      }
+    } catch (err: any) {
+      syncError = err?.message;
+    }
+
+    // 2. Fallback: Direct REST API
+    if (!cloudSynced) {
+      try {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${id}`, {
+          method: 'PATCH',
+          headers: {
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${SUPABASE_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal',
+          },
+          body: JSON.stringify({
+            ...cleanUpdated,
+            updated_at: new Date().toISOString(),
+          })
+        });
+        if (res.ok) {
+          cloudSynced = true;
+        } else {
+          const text = await res.text();
+          syncError = text || res.statusText;
+        }
+      } catch (err: any) {
+        syncError = err?.message;
+      }
+    }
+
+    if (!cloudSynced) {
+      throw new Error(`Failed to update user in cloud database: ${syncError || 'Network error'}`);
     }
 
     setUsers(prev => {
@@ -574,20 +698,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(prev => prev ? { ...prev, ...cleanUpdated, role: updatedRole } : null);
       }
     }
-
-    // Cloud Database Update
-    try {
-      await supabase.from('users').update({
-        ...cleanUpdated,
-        updated_at: new Date().toISOString(),
-      }).eq('id', id);
-    } catch (err) {
-      console.warn('Supabase user update note:', err);
-    }
   };
 
   // ── Multi-Device Delete User ────────────────────────────────────────────────
   const deleteUser = async (id: number): Promise<void> => {
+    let cloudDeleted = false;
+    let deleteError: string | null = null;
+
+    try {
+      const { error } = await supabase.from('users').delete().eq('id', id);
+      if (!error) cloudDeleted = true;
+      else deleteError = error.message;
+    } catch (err: any) {
+      deleteError = err?.message;
+    }
+
+    if (!cloudDeleted) {
+      try {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${id}`, {
+          method: 'DELETE',
+          headers: {
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${SUPABASE_KEY}`,
+          }
+        });
+        if (res.ok) cloudDeleted = true;
+      } catch (_) {}
+    }
+
     setUsers(prev => {
       const next = prev.filter(u => {
         if (u.email.toLowerCase() === REAL_ADMIN.email.toLowerCase()) return true;
@@ -596,12 +734,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('recovery_all_users', JSON.stringify(next));
       return next;
     });
-
-    try {
-      await supabase.from('users').delete().eq('id', id);
-    } catch (err) {
-      console.warn('Supabase user delete note:', err);
-    }
   };
 
   return (

@@ -105,45 +105,64 @@ export const TeamManagementPage: React.FC = () => {
     setShowEditModal(true);
   };
 
-  const handleAddSubmit = (e: React.FormEvent) => {
+  const [savingUser, setSavingUser] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  const handleAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name || !formData.email) return;
 
-    addUser({
-      name: formData.name,
-      email: formData.email,
-      phone: formData.phone,
-      role: formData.role,
-      employee_id: formData.employee_id,
-      manager_id: formData.role === 'agent' ? Number(formData.manager_id) : undefined,
-      manager_name: formData.role === 'agent' ? managers.find(m => m.id === Number(formData.manager_id))?.name : undefined,
-      password: formData.password || '@Pass2026',
-      status: formData.status,
-    });
-    setShowAddModal(false);
+    setSavingUser(true);
+    setSaveError(null);
+    try {
+      await addUser({
+        name: formData.name.trim(),
+        email: formData.email.trim().toLowerCase(),
+        phone: formData.phone.trim(),
+        role: formData.role,
+        employee_id: formData.employee_id.trim(),
+        manager_id: formData.role === 'agent' ? Number(formData.manager_id) : undefined,
+        manager_name: formData.role === 'agent' ? managers.find(m => m.id === Number(formData.manager_id))?.name : undefined,
+        password: formData.password || '@Pass2026',
+        status: formData.status,
+      });
+      setShowAddModal(false);
+    } catch (err: any) {
+      setSaveError(err?.message || 'Failed to add user to cloud database.');
+    } finally {
+      setSavingUser(false);
+    }
   };
 
-  const handleEditSubmit = (e: React.FormEvent) => {
+  const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedUser || !formData.name || !formData.email) return;
 
-    const updates: Partial<User> = {
-      name: formData.name,
-      email: formData.email,
-      phone: formData.phone,
-      role: formData.role,
-      employee_id: formData.employee_id,
-      manager_id: formData.role === 'agent' ? Number(formData.manager_id) : undefined,
-      manager_name: formData.role === 'agent' ? managers.find(m => m.id === Number(formData.manager_id))?.name : undefined,
-      status: formData.status,
-    };
-    if (formData.password) {
-      updates.password = formData.password;
-    }
+    setSavingUser(true);
+    setSaveError(null);
+    try {
+      const updates: Partial<User> = {
+        name: formData.name.trim(),
+        email: formData.email.trim().toLowerCase(),
+        phone: formData.phone.trim(),
+        role: formData.role,
+        employee_id: formData.employee_id.trim(),
+        manager_id: formData.role === 'agent' ? Number(formData.manager_id) : undefined,
+        manager_name: formData.role === 'agent' ? managers.find(m => m.id === Number(formData.manager_id))?.name : undefined,
+        status: formData.status,
+      };
+      if (formData.password) {
+        updates.password = formData.password.trim();
+      }
 
-    updateUser(selectedUser.id, updates);
-    setShowEditModal(false);
-    setSelectedUser(null);
+      await updateUser(selectedUser.id, updates);
+      setShowEditModal(false);
+      setSelectedUser(null);
+    } catch (err: any) {
+      setSaveError(err?.message || 'Failed to save changes to cloud database.');
+    } finally {
+      setSavingUser(false);
+    }
   };
 
   const handleDelete = (id: number, name: string) => {
@@ -488,6 +507,12 @@ export const TeamManagementPage: React.FC = () => {
                 </div>
               )}
 
+              {saveError && (
+                <div className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-rose-600 dark:text-rose-400 text-xs font-semibold">
+                  {saveError}
+                </div>
+              )}
+
               <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
@@ -498,9 +523,10 @@ export const TeamManagementPage: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold shadow-lg shadow-emerald-600/30"
+                  disabled={savingUser}
+                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white font-bold shadow-lg shadow-emerald-600/30 flex items-center gap-2"
                 >
-                  Add User
+                  {savingUser ? 'Saving to Cloud...' : 'Add User'}
                 </button>
               </div>
             </form>
@@ -606,6 +632,12 @@ export const TeamManagementPage: React.FC = () => {
                 </div>
               )}
 
+              {saveError && (
+                <div className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-rose-600 dark:text-rose-400 text-xs font-semibold">
+                  {saveError}
+                </div>
+              )}
+
               <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
@@ -616,9 +648,10 @@ export const TeamManagementPage: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold shadow-lg shadow-blue-600/30"
+                  disabled={savingUser}
+                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white font-bold shadow-lg shadow-blue-600/30 flex items-center gap-2"
                 >
-                  Save Changes
+                  {savingUser ? 'Saving Changes...' : 'Save Changes'}
                 </button>
               </div>
             </form>

@@ -122,9 +122,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }));
 
       setUsers(prev => {
-        const map = new Map<string, User>();
-        prev.forEach(u => map.set(u.email.toLowerCase(), u));
-        cloudUsers.forEach(u => map.set(u.email.toLowerCase(), { ...map.get(u.email.toLowerCase()), ...u }));
+        const map = new Map<number, User>();
+        prev.forEach(u => map.set(u.id, u));
+        cloudUsers.forEach(u => map.set(u.id, { ...map.get(u.id), ...u }));
         const merged = Array.from(map.values());
         localStorage.setItem('recovery_all_users', JSON.stringify(merged));
         return merged;
@@ -544,13 +544,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // ── Multi-Device Update User ────────────────────────────────────────────────
   const updateUser = async (id: number, updated: Partial<User>): Promise<void> => {
+    const cleanUpdated: Partial<User> = { ...updated };
+    if (cleanUpdated.email) {
+      cleanUpdated.email = cleanUpdated.email.trim().toLowerCase();
+    }
+
     setUsers(prev => {
       const next = prev.map(u => {
         if (u.id === id) {
           if (u.email.toLowerCase() === REAL_ADMIN.email.toLowerCase()) {
-            return { ...u, ...updated, role: 'admin' as const };
+            return { ...u, ...cleanUpdated, role: 'admin' as const };
           }
-          return { ...u, ...updated };
+          return { ...u, ...cleanUpdated };
         }
         return u;
       });
@@ -559,21 +564,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     if (user && user.id === id) {
-      if (updated.status === 'inactive') {
+      if (cleanUpdated.status === 'inactive') {
         setUser(null);
         localStorage.removeItem('recovery_auth_user');
       } else {
         const updatedRole = (user.email.toLowerCase() === REAL_ADMIN.email.toLowerCase())
           ? 'admin'
-          : (updated.role || user.role);
-        setUser(prev => prev ? { ...prev, ...updated, role: updatedRole } : null);
+          : (cleanUpdated.role || user.role);
+        setUser(prev => prev ? { ...prev, ...cleanUpdated, role: updatedRole } : null);
       }
     }
 
     // Cloud Database Update
     try {
       await supabase.from('users').update({
-        ...updated,
+        ...cleanUpdated,
         updated_at: new Date().toISOString(),
       }).eq('id', id);
     } catch (err) {

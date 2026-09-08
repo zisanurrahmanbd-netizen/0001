@@ -517,15 +517,15 @@ class DataService {
   }
 
   private loadState() {
-    // Purge any legacy sample/demo mock data from previous browser caches
+    // Purge any legacy sample/demo mock data or heavy cases JSON from localStorage
     const dataVersion = localStorage.getItem('recovery_clean_data_version');
-    if (dataVersion !== '4.0_purged_eternal') {
+    if (dataVersion !== '5.0_cloud_only_storage') {
       localStorage.removeItem('recovery_cases');
       localStorage.removeItem('recovery_remarks');
       localStorage.removeItem('recovery_checkins');
       localStorage.removeItem('recovery_collections');
       localStorage.removeItem('recovery_contacts');
-      localStorage.setItem('recovery_clean_data_version', '4.0_purged_eternal');
+      localStorage.setItem('recovery_clean_data_version', '5.0_cloud_only_storage');
     }
 
     const savedCases = localStorage.getItem('recovery_cases');

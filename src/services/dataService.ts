@@ -545,11 +545,23 @@ class DataService {
   }
 
   private saveState() {
-    localStorage.setItem('recovery_cases', JSON.stringify(this.cases));
-    localStorage.setItem('recovery_remarks', JSON.stringify(this.remarks));
-    localStorage.setItem('recovery_checkins', JSON.stringify(this.checkIns));
-    localStorage.setItem('recovery_collections', JSON.stringify(this.collections));
-    localStorage.setItem('recovery_contacts', JSON.stringify(this.contacts));
+    try {
+      localStorage.setItem('recovery_cases', JSON.stringify(this.cases));
+    } catch (err) {
+      console.warn('LocalStorage quota reached for recovery_cases; data remains safe in memory & Supabase cloud.', err);
+    }
+    try {
+      localStorage.setItem('recovery_remarks', JSON.stringify(this.remarks));
+    } catch (_) {}
+    try {
+      localStorage.setItem('recovery_checkins', JSON.stringify(this.checkIns));
+    } catch (_) {}
+    try {
+      localStorage.setItem('recovery_collections', JSON.stringify(this.collections));
+    } catch (_) {}
+    try {
+      localStorage.setItem('recovery_contacts', JSON.stringify(this.contacts));
+    } catch (_) {}
   }
 
   // ── Two-Way Cloud Synchronization with Supabase ───────────────────────────

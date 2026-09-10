@@ -518,18 +518,18 @@ class DataService {
 
   private loadState() {
     // Purge any legacy sample/demo mock data or heavy cases JSON from localStorage
+    localStorage.removeItem('recovery_cases');
     const dataVersion = localStorage.getItem('recovery_clean_data_version');
-    if (dataVersion !== '5.0_cloud_only_storage') {
-      localStorage.removeItem('recovery_cases');
+    if (dataVersion !== '6.0_no_local_cases') {
       localStorage.removeItem('recovery_remarks');
       localStorage.removeItem('recovery_checkins');
       localStorage.removeItem('recovery_collections');
       localStorage.removeItem('recovery_contacts');
-      localStorage.setItem('recovery_clean_data_version', '5.0_cloud_only_storage');
+      localStorage.setItem('recovery_clean_data_version', '6.0_no_local_cases');
     }
 
-    const savedCases = localStorage.getItem('recovery_cases');
-    this.cases = savedCases ? JSON.parse(savedCases) : [];
+    // Cases are strictly memory + Supabase Cloud (never stored in limited 5MB localStorage)
+    this.cases = [];
 
     const savedRemarks = localStorage.getItem('recovery_remarks');
     this.remarks = savedRemarks ? JSON.parse(savedRemarks) : [];
@@ -545,11 +545,11 @@ class DataService {
   }
 
   private saveState() {
+    // Note: this.cases is NOT stored in localStorage to prevent 5MB browser quota errors!
+    // Cases are safely and permanently stored in Supabase Cloud database and live in memory.
     try {
-      localStorage.setItem('recovery_cases', JSON.stringify(this.cases));
-    } catch (err) {
-      console.warn('LocalStorage quota reached for recovery_cases; data remains safe in memory & Supabase cloud.', err);
-    }
+      localStorage.removeItem('recovery_cases');
+    } catch (_) {}
     try {
       localStorage.setItem('recovery_remarks', JSON.stringify(this.remarks));
     } catch (_) {}
